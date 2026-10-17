@@ -1,14 +1,22 @@
 
 {
-  "name": "J.A.R.V.I.S. — Personal Intelligence",
-  "short_name": "JARVIS",
-  "description": "Personal AI command center for research, memory and projects.",
+  "name": "NORTHSTAR — Wealth Intelligence",
+  "short_name": "NORTHSTAR",
+  "description": "Private portfolio tracking for ETFs and S&P 500 benchmark research.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#050b13",
-  "theme_color": "#07111e",
-  "lang": "en"
+  "background_color": "#060a11",
+  "theme_color": "#060a11",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "./assets/northstar-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
 }
