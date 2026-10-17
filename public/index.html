@@ -1,10 +1,11 @@
+
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#07111e">
-  <meta name="description" content="JARVIS personal command center prototype">
+  <meta name="description" content="JARVIS personal command center">
   <title>J.A.R.V.I.S. — Personal Command Center</title>
   <link rel="icon" href="./assets/jarvis-icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -12,8 +13,6 @@
 </head>
 <body>
 <div class="shell">
-
-  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark"><span>J</span></div>
@@ -23,505 +22,272 @@
       </div>
     </div>
 
-    <div class="nav-caption">
-      CORE SYSTEMS <span>01—04</span>
-    </div>
-
+    <div class="nav-caption">CORE SYSTEMS <span>01—04</span></div>
     <nav class="nav" aria-label="Main navigation">
-      <button data-view="command" class="nav-item active">
-        <span class="nav-glyph">◉</span>
-        <span>Command Center</span>
-        <span class="nav-num">01</span>
+      <button class="nav-item active" data-view="command" type="button">
+        <span class="nav-glyph">◉</span><span>Command Center</span><span class="nav-num">01</span>
       </button>
-      <button data-view="investments" class="nav-item">
-        <span class="nav-glyph">▥</span>
-        <span>Investments</span>
-        <span class="nav-num">02</span>
+      <button class="nav-item" data-view="investments" type="button">
+        <span class="nav-glyph">▥</span><span>Investments</span><span class="nav-num">02</span>
       </button>
-      <button data-view="memory" class="nav-item">
-        <span class="nav-glyph">▤</span>
-        <span>Memory</span>
-        <span class="nav-num">03</span>
+      <button class="nav-item" data-view="memory" type="button">
+        <span class="nav-glyph">▤</span><span>Memory</span><span class="nav-num">03</span>
       </button>
-      <button data-view="tasks" class="nav-item">
-        <span class="nav-glyph">☷</span>
-        <span>Tasks</span>
-        <span class="nav-num">04</span>
+      <button class="nav-item" data-view="tasks" type="button">
+        <span class="nav-glyph">☷</span><span>Tasks</span><span class="nav-num">04</span>
       </button>
     </nav>
 
-    <div class="nav-caption second">
-      CONFIGURATION
-    </div>
-
-    <nav class="nav">
-      <button data-view="system" class="nav-item">
-        <span class="nav-glyph">⚙</span>
-        <span>System Settings</span>
+    <div class="nav-caption second">CONFIGURATION</div>
+    <nav class="nav" aria-label="Configuration">
+      <button class="nav-item" data-view="system" type="button">
+        <span class="nav-glyph">⚙</span><span>System Settings</span>
       </button>
     </nav>
 
     <div class="sidebar-spacer"></div>
-
-    <div class="module-label">
-      <div class="blinking-dot"></div>
-      SYSTEM STATUS
-    </div>
-
+    <div class="module-label"><span class="blinking-dot"></span>SYSTEM STATUS</div>
     <div class="sidebar-status">
       <strong id="sidebarMode">LOCAL COMMAND ENGINE</strong>
       <span>No live brokerage connection</span>
     </div>
-
-    <div class="sidebar-bottom">
-      NORTHSTAR / J.A.R.V.I.S.
-      <span>BUILD 0.2.0</span>
-    </div>
+    <div class="sidebar-bottom">NORTHSTAR / J.A.R.V.I.S.<span>BUILD 0.3.0</span></div>
   </aside>
 
-  <!-- MAIN WORKSPACE -->
   <div class="workspace">
-
     <header class="topbar">
       <div class="breadcrumb">
         <span id="pageCode">SYS / 001</span>
         <span class="slash">/</span>
         <span id="pageTitle">COMMAND CENTER</span>
       </div>
-
       <div class="top-tools">
-        <div class="top-status">
-          <span class="live-dot"></span>
-          <span id="connectionLabel">LOCAL MODE</span>
-        </div>
+        <div class="top-status"><span class="live-dot"></span><span id="connectionLabel">LOCAL MODE</span></div>
         <div class="divider-vertical"></div>
         <span id="liveClock" class="clock">--:--</span>
       </div>
     </header>
 
     <main id="screen">
-
-      <!-- COMMAND CENTER -->
+      <!-- Main JARVIS interface -->
       <section class="view active" id="view-command">
         <div class="main-grid">
-
           <div class="hero-area">
-            <div class="eyebrow">
-              <span class="eyebrow-rule"></span>
-              INTELLIGENCE INTERFACE
-              <span class="mono">001</span>
-            </div>
-
-            <h1>
-              Good to have you back<span class="period">.</span>
-            </h1>
-
-            <p class="hero-sub">
-              Your command center is online.
-              Where shall we begin?
-            </p>
-
-            <!-- ANIMATED AI CORE -->
+            <div class="eyebrow"><span class="eyebrow-rule"></span>INTELLIGENCE INTERFACE <span class="mono">001</span></div>
+            <h1>Good to have you back<span class="period">.</span></h1>
+            <p class="hero-sub">Your command center is online. Where shall we begin?</p>
             <div class="orb-wrap">
               <div class="orb-glow"></div>
               <div class="orb-orbit orbit-outer"></div>
               <div class="orb-orbit orbit-middle"></div>
               <div class="orb-orbit orbit-inner"></div>
-
               <div class="orb-core" id="orb">
-                <div class="orb-core-inner">
-                  <div class="orb-insignia">J</div>
-                </div>
+                <div class="orb-core-inner"><div class="orb-insignia">J</div></div>
               </div>
-
               <span class="orb-node n1"></span>
               <span class="orb-node n2"></span>
               <span class="orb-node n3"></span>
             </div>
-
             <div class="orb-state">
               <span class="state-led" id="stateLed"></span>
-              <span id="orbStateText">
-                SYSTEM READY · AWAITING INPUT
-              </span>
+              <span id="orbStateText">SYSTEM READY · AWAITING INPUT</span>
             </div>
-
             <div class="command-shortcuts">
-              <button data-command="What can you do?">
-                EXPLORE COMMANDS <span>↗</span>
-              </button>
-
-              <button data-command="Show my watchlist">
-                OPEN WATCHLIST <span>↗</span>
-              </button>
-
-              <button data-command="Show my notes">
-                OPEN MEMORY <span>↗</span>
-              </button>
+              <button data-command="What can you do?" type="button">EXPLORE COMMANDS <span>↗</span></button>
+              <button data-command="Show my watchlist" type="button">OPEN WATCHLIST <span>↗</span></button>
+              <button data-command="Show my notes" type="button">OPEN MEMORY <span>↗</span></button>
             </div>
           </div>
 
-          <!-- ACTIVITY RAIL -->
           <aside class="right-rail">
-            <div class="section-top">
-              <span>LIVE ACTIVITY</span>
-              <span class="section-dot"></span>
-            </div>
-
+            <div class="section-top"><span>LIVE ACTIVITY</span><span class="section-dot"></span></div>
             <div class="activity-card">
               <div class="activity-label">CONNECTION</div>
-              <div class="activity-value" id="modeValue">
-                OFFLINE / LOCAL
-              </div>
-              <div class="activity-help">
-                AI brain can be connected in System Settings.
-              </div>
-
+              <div class="activity-value" id="modeValue">OFFLINE / LOCAL</div>
+              <div class="activity-help">The AI backend can be connected in System Settings.</div>
               <div class="subtle-line"></div>
-
               <div class="activity-label">INPUT MODE</div>
               <div class="activity-value">TEXT COMMANDS</div>
-              <div class="activity-help">
-                Type your requests in the command terminal below.
-              </div>
+              <div class="activity-help">Use the command terminal at the bottom of JARVIS.</div>
             </div>
-
-            <div class="section-top modules-title">
-              <span>QUICK ACCESS</span>
-              <span>↗</span>
-            </div>
-
-            <div class="module-card" role="button"
-                 tabindex="0" data-open="investments">
+            <div class="section-top modules-title"><span>QUICK ACCESS</span><span>↗</span></div>
+            <div class="module-card" role="button" tabindex="0" data-open="investments">
               <div class="module-icon">↗</div>
-              <div>
-                <strong>Investment Lab</strong>
-                <small>ETF &amp; digital asset research</small>
-              </div>
+              <div><strong>Investment Lab</strong><small>Portfolio &amp; benchmark research</small></div>
               <span class="module-end">→</span>
             </div>
-
-            <div class="module-card" role="button"
-                 tabindex="0" data-open="memory">
+            <div class="module-card" role="button" tabindex="0" data-open="memory">
               <div class="module-icon">▤</div>
-              <div>
-                <strong>Personal Memory</strong>
-                <small id="memorySummary">0 stored notes</small>
-              </div>
+              <div><strong>Personal Memory</strong><small id="memorySummary">0 stored notes</small></div>
               <span class="module-end">→</span>
             </div>
-
-            <div class="module-card" role="button"
-                 tabindex="0" data-open="tasks">
+            <div class="module-card" role="button" tabindex="0" data-open="tasks">
               <div class="module-icon">✓</div>
-              <div>
-                <strong>Action Queue</strong>
-                <small id="taskSummary">0 pending tasks</small>
-              </div>
+              <div><strong>Action Queue</strong><small id="taskSummary">0 pending tasks</small></div>
               <span class="module-end">→</span>
             </div>
-
             <div class="small-disclaimer">
-              PROTOTYPE / ZERO LIVE MARKET DATA
-              <br>
-              All stored notes stay in this browser
-              unless you export them.
+              PROTOTYPE / NO LIVE BROKERAGE DATA<br>
+              Notes and portfolio inputs are local to this browser.
             </div>
           </aside>
-
         </div>
       </section>
 
-      <!-- INVESTMENT MODULE -->
+      <!-- Investments: the legacy watchlist remains in the DOM for app.js.
+           portfolio.js will display the private portfolio interface here. -->
       <section class="view" id="view-investments">
         <div class="view-heading">
           <span class="eyebrow">RESEARCH MODULE / 002</span>
-          <h1>
-            Investment intelligence<span class="period">.</span>
-          </h1>
-          <p>
-            Watchlist and research entry points.
-            No invented quotes or market movements.
-          </p>
+          <h1>Investment intelligence<span class="period">.</span></h1>
+          <p>Portfolio research. Quotes are not connected yet.</p>
         </div>
-
         <div class="kpi-row">
           <div class="kpi">
-            <label>WATCHLIST ASSETS</label>
-            <strong id="watchCount">09</strong>
-            <small>Personal research universe</small>
+            <label>WATCHLIST ASSETS</label><strong id="watchCount">00</strong>
+            <small>Previous local research list</small>
           </div>
-
           <div class="kpi">
-            <label>LIVE PRICES</label>
-            <strong class="neutral">OFF</strong>
-            <small>Market feed not connected</small>
+            <label>LIVE PRICES</label><strong class="neutral">OFF</strong>
+            <small>Historical feed pending</small>
           </div>
-
           <div class="kpi">
-            <label>TRADE EXECUTION</label>
-            <strong class="neutral">NONE</strong>
-            <small>Research only; no brokerage access</small>
+            <label>TRADE EXECUTION</label><strong class="neutral">NONE</strong>
+            <small>Research only</small>
           </div>
         </div>
-
         <div class="pane">
-          <div class="pane-title">
-            <h2>Watchlist</h2>
-            <span>Editable local research list</span>
-          </div>
-
+          <div class="pane-title"><h2>Research Watchlist</h2><span>Previous version</span></div>
           <div id="watchlist" class="watch-grid"></div>
-
           <form id="addTickerForm" class="inline-form">
-            <input id="newTicker"
-                   maxlength="15"
-                   placeholder="Add ticker · e.g. ETH"
-                   aria-label="Ticker"
-                   required>
-
-            <button type="submit" class="primary mini">
-              ADD ASSET +
-            </button>
+            <input id="newTicker" maxlength="15" placeholder="Add ticker" aria-label="Ticker" required>
+            <button type="submit" class="primary mini">ADD ASSET +</button>
           </form>
         </div>
-
         <div class="pane invested">
           <div>
             <div class="micro">RESEARCH WORKSPACE</div>
             <h2>Northstar Investment Research Lab</h2>
-            <p>
-              Your earlier interactive ETF and crypto scoring
-              tool is included in this repository.
-              Its initial scores remain sample inputs.
-            </p>
-
-            <a href="./investment-lab.html"
-               target="_blank"
-               rel="noopener"
-               class="primary link-button">
-              OPEN FULL RESEARCH LAB <span>↗</span>
-            </a>
+            <p>Legacy charts are available separately while the new private portfolio is developed.</p>
+            <a href="./investment-lab.html" class="primary link-button">OPEN LEGACY CHART <span>↗</span></a>
           </div>
-
           <div class="spark-art" aria-hidden="true">
-            <span></span><span></span><span></span>
-            <span></span><span></span><span></span>
-            <span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
           </div>
         </div>
       </section>
 
-      <!-- MEMORY MODULE -->
+      <!-- Memory -->
       <section class="view" id="view-memory">
         <div class="view-heading">
           <span class="eyebrow">PERSISTENCE MODULE / 003</span>
           <h1>Personal memory<span class="period">.</span></h1>
-          <p>
-            Local notes with export and deletion controls.
-            Not synced between devices yet.
-          </p>
+          <p>Saved browser notes. They do not synchronize across devices.</p>
         </div>
-
         <div class="pane">
           <form id="noteForm" class="add-form">
             <label for="noteInput">CREATE A MEMORY</label>
-
-            <textarea id="noteInput" rows="3"
-              placeholder="Something Jarvis should remember..."></textarea>
-
+            <textarea id="noteInput" rows="3" placeholder="Something you want JARVIS to remember..."></textarea>
             <div class="form-actions">
-              <span>Stored only in this browser</span>
-              <button class="primary mini" type="submit">
-                SAVE MEMORY +
-              </button>
+              <span>Browser-only storage</span>
+              <button class="primary mini" type="submit">SAVE MEMORY +</button>
             </div>
           </form>
         </div>
-
         <div class="pane">
           <div class="pane-title">
             <h2>Saved memories</h2>
-            <button id="exportBtn" class="ghost mini">
-              EXPORT BACKUP ↓
-            </button>
+            <button id="exportBtn" type="button" class="ghost mini">EXPORT BACKUP ↓</button>
           </div>
           <div id="notesList" class="item-list"></div>
         </div>
       </section>
 
-      <!-- TASK MODULE -->
+      <!-- Tasks -->
       <section class="view" id="view-tasks">
         <div class="view-heading">
           <span class="eyebrow">EXECUTION MODULE / 004</span>
           <h1>Action queue<span class="period">.</span></h1>
-          <p>
-            A local checklist, not an automated reminders service.
-          </p>
+          <p>Personal task checklist stored in this browser.</p>
         </div>
-
         <div class="pane">
           <form id="taskForm" class="inline-form big">
-            <input id="taskInput"
-                   placeholder="Add a task to work on..."
-                   required>
-            <button type="submit" class="primary mini">
-              ADD TASK +
-            </button>
+            <input id="taskInput" placeholder="Add a task to work on..." required>
+            <button type="submit" class="primary mini">ADD TASK +</button>
           </form>
         </div>
-
         <div class="pane">
-          <div class="pane-title">
-            <h2>Task list</h2>
-            <span id="tasksPending">0 pending</span>
-          </div>
+          <div class="pane-title"><h2>Task list</h2><span id="tasksPending">0 pending</span></div>
           <div id="tasksList" class="item-list"></div>
         </div>
       </section>
 
-      <!-- SYSTEM SETTINGS -->
+      <!-- Configuration -->
       <section class="view" id="view-system">
         <div class="view-heading">
           <span class="eyebrow">OPERATIONS / 005</span>
           <h1>System configuration<span class="period">.</span></h1>
-          <p>
-            Connect the AI backend only when you're ready.
-            Never paste API keys into this browser.
-          </p>
+          <p>Connect an AI backend securely. Never put private API keys in GitHub.</p>
         </div>
-
         <div class="settings-grid">
           <div class="pane">
-            <div class="pane-title">
-              <h2>AI backend</h2>
-              <span>Optional · secure server required</span>
-            </div>
-
-            <label class="form-label" for="backendInput">
-              BACKEND BASE URL
-            </label>
-            <input id="backendInput" type="url"
-                   placeholder="https://your-secure-backend.example"
-                   autocomplete="url">
-
-            <p class="form-hint">
-              On desktop, running the included Node server
-              uses this page's own address. GitHub Pages
-              hosts only the frontend.
-              Never commit an API key.
-            </p>
-
+            <div class="pane-title"><h2>AI backend</h2><span>Optional secure server</span></div>
+            <label for="backendInput" class="form-label">BACKEND BASE URL</label>
+            <input id="backendInput" type="url" placeholder="https://your-secure-backend.example" autocomplete="url">
+            <p class="form-hint">GitHub Pages only hosts the frontend. API credentials must stay on a secure server.</p>
             <div class="form-actions">
-              <button class="primary mini" id="saveBackendBtn">
-                SAVE URL
-              </button>
-              <button class="ghost mini" id="testBackendBtn">
-                TEST CONNECTION
-              </button>
+              <button id="saveBackendBtn" type="button" class="primary mini">SAVE URL</button>
+              <button id="testBackendBtn" type="button" class="ghost mini">TEST CONNECTION</button>
             </div>
-
-            <p id="backendMessage" class="feedback"
-               role="status"></p>
+            <p id="backendMessage" class="feedback" role="status"></p>
           </div>
-
           <div class="pane">
-            <div class="pane-title">
-              <h2>Privacy &amp; data</h2>
-              <span>Current prototype</span>
-            </div>
-
+            <div class="pane-title"><h2>Privacy &amp; data</h2><span>Local prototype</span></div>
             <div class="setting-line">
-              <div>
-                <strong>Browser notes</strong>
-                <span>
-                  Local storage; not encrypted;
-                  not synchronized
-                </span>
-              </div>
+              <div><strong>Browser notes</strong><span>Local storage; not encrypted and not synced</span></div>
               <span class="settings-state">LOCAL</span>
             </div>
-
             <div class="setting-line">
-              <div>
-                <strong>AI data sharing</strong>
-                <span>
-                  Only chat messages sent when a
-                  backend is configured
-                </span>
-              </div>
+              <div><strong>AI data sharing</strong><span>Only when a backend is configured</span></div>
               <span class="settings-state">OPT-IN</span>
             </div>
-
             <div class="form-actions">
-              <button class="ghost mini" id="importBtn">
-                IMPORT BACKUP
-              </button>
-
-              <input id="importFile" type="file"
-                     accept="application/json" hidden>
-
-              <button class="danger mini" id="clearBtn">
-                CLEAR ALL LOCAL DATA
-              </button>
+              <button id="importBtn" type="button" class="ghost mini">IMPORT BACKUP</button>
+              <input id="importFile" type="file" accept="application/json" hidden>
+              <button id="clearBtn" type="button" class="danger mini">CLEAR LOCAL NOTES / TASKS</button>
             </div>
           </div>
         </div>
       </section>
-
     </main>
 
-    <!-- COMMAND TERMINAL -->
+    <!-- Command terminal always stays available -->
     <footer class="console">
       <div class="console-top">
-        <div class="console-title">
-          <span class="console-led"></span>
-          COMMAND TERMINAL
-        </div>
-
+        <div class="console-title"><span class="console-led"></span>COMMAND TERMINAL</div>
         <div class="console-actions">
-          <button id="clearConversation"
-                  title="Clear displayed conversation">
-            CLEAR CHAT
-          </button>
+          <button id="clearConversation" type="button" title="Clear displayed conversation">CLEAR CHAT</button>
           <span>↵ SEND</span>
         </div>
       </div>
-
-      <div class="console-messages"
-           id="messages"
-           aria-live="polite"></div>
-
+      <div class="console-messages" id="messages" aria-live="polite"></div>
       <form id="commandForm" class="command-input">
         <span class="prompt-chevron">›</span>
-        <input id="commandInput"
-               placeholder="Ask Jarvis anything, or type a local command..."
-               aria-label="Command input"
-               autocomplete="off"
-               maxlength="2000">
-
-        <button id="sendBtn" type="submit"
-                class="send-btn"
-                aria-label="Send command">
-          ➤
-        </button>
+        <input id="commandInput" autocomplete="off" maxlength="2000"
+          aria-label="Command input" placeholder="Ask JARVIS anything, or type a local command...">
+        <button id="sendBtn" type="submit" class="send-btn" aria-label="Send command">➤</button>
       </form>
-
       <div class="console-bottom">
-        <span>
-          <span class="mini-square"></span>
-          <span id="footerStatus">SYSTEM READY</span>
-        </span>
-        <span id="systemFootnote">
-          LOCAL COMMANDS · NO AI CONNECTED
-        </span>
+        <span><span class="mini-square"></span><span id="footerStatus">SYSTEM READY</span></span>
+        <span id="systemFootnote">LOCAL COMMANDS · NO AI CONNECTED</span>
       </div>
     </footer>
-
   </div>
 </div>
 
+<!-- Both scripts are required. The portfolio appears inside Investments. -->
 <script type="module" src="./js/app.js"></script>
+<script defer src="./js/portfolio.js"></script>
 </body>
 </html>
-
