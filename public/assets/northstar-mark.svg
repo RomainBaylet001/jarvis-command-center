@@ -1,0 +1,52 @@
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 128 128"
+     role="img"
+     aria-label="Northstar compass emblem">
+  <defs>
+    <radialGradient id="bg"
+                    cx="45%" cy="35%" r="85%">
+      <stop offset="0" stop-color="#17384c"/>
+      <stop offset="1" stop-color="#070e17"/>
+    </radialGradient>
+    <linearGradient id="star"
+                    x1="0" y1="0"
+                    x2="1" y2="1">
+      <stop offset="0" stop-color="#d8fcff"/>
+      <stop offset="1" stop-color="#4ac4de"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128"
+        rx="26" fill="url(#bg)"/>
+
+  <circle cx="64" cy="64" r="51"
+          fill="none"
+          stroke="#31758e"
+          stroke-width="1"/>
+
+  <circle cx="64" cy="64" r="45"
+          fill="none"
+          stroke="#5bbcd1"
+          stroke-width="1"
+          stroke-dasharray="2 8"
+          opacity=".55"/>
+
+  <path
+    d="M64 13L76 52L115 64L76 76L64 115L52 76L13 64L52 52Z"
+    fill="url(#star)"
+    fill-opacity=".92"
+    stroke="#dcfdff"
+    stroke-width="1.8"
+  />
+
+  <path
+    d="M64 42L86 64L64 86L42 64Z"
+    fill="#103549"
+    stroke="#dbfcff"
+    stroke-width="1.5"
+  />
+
+  <circle cx="64" cy="64" r="5"
+          fill="#ecffff"/>
+</svg>
