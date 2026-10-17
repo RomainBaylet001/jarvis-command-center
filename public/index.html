@@ -1,483 +1,476 @@
-
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#060b12">
-<meta name="application-name" content="NORTHSTAR">
-<meta name="apple-mobile-web-app-title" content="NORTHSTAR">
-<meta name="description" content="NORTHSTAR — private portfolio intelligence.">
-<title>NORTHSTAR — Wealth Intelligence</title>
-<link rel="icon" type="image/svg+xml" href="./assets/northstar-mark.svg">
-<link rel="manifest" href="./manifest.webmanifest">
-<style>
-:root{color-scheme:dark;--bg:#060b12;--ink:#eaf4f8;--sub:#8aa3b1;--line:#233d4a;--cyan:#7ce2ed;--gold:#f6ba49;--purple:#c296ff}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;min-width:320px;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
-a{color:inherit;text-decoration:none}button{font:inherit;cursor:pointer}
-:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
-.shell{min-height:100vh}
-.sidebar{position:fixed;z-index:30;inset:0 auto 0 0;width:220px;padding:28px 15px;display:flex;flex-direction:column;border-right:1px solid #20323e;background:#08111a}
-.brand{display:flex;align-items:center;gap:12px;margin:0 3px 51px}
-.brand-icon{width:43px;height:47px;flex:none;display:grid;place-items:center;background:linear-gradient(145deg,#214a5c,#0c2532);clip-path:polygon(50% 0,94% 23%,94% 76%,50% 100%,6% 76%,6% 23%)}
-.brand-icon svg{width:29px;height:29px;filter:drop-shadow(0 0 6px #64def077)}
-.brand-name{font-size:12px;letter-spacing:.19em;font-weight:750}
-.brand-sub{display:block;color:#7b9ca9;font:8px monospace;letter-spacing:.12em;margin-top:6px}
-.caption,.micro{font:10px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.15em;color:#86bbca}
-.caption{padding-left:11px;color:#668392;margin-bottom:13px}
-.nav{display:grid;gap:6px}
-.nav a{display:flex;align-items:center;gap:12px;min-height:46px;padding:0 13px;border:1px solid transparent;border-radius:5px;color:#93adbb;font-size:12px}
-.nav a:hover,.nav a.active{background:#12303e;color:#e9fcff;border-color:#285264}
-.nav a.active{box-shadow:inset 2px 0 #83deee}
-.nav-icon{font-size:18px;color:#8ad9e5;width:20px;text-align:center}
-.nav-num{margin-left:auto;color:#658495;font:9px monospace}
-.rail-footer{margin-top:auto;border-top:1px solid #23343e;padding:18px 8px 0;color:#738e9e;font:10px monospace;line-height:1.9}
-.led{display:inline-block;width:6px;height:6px;border-radius:50%;background:#82eac6;box-shadow:0 0 8px #82eac6;margin-right:7px}
-.workspace{margin-left:220px}
-.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:0 clamp(18px,3vw,48px);background:#07121beb;border-bottom:1px solid #233541;backdrop-filter:blur(16px)}
-.crumb{color:#a9c1cc;font:10px monospace;letter-spacing:.13em}
-.crumb span{padding:0 11px;color:#4d7b8d}
-.top-right{display:flex;align-items:center;gap:14px}
-.feed-summary{color:#8faebc;font:10px monospace}
-.refresh{color:#c9ebf1;background:#0b2431;border:1px solid #345667;border-radius:4px;padding:10px 14px;font:10px monospace;letter-spacing:.1em}
-.refresh:hover{border-color:#91e7f1}
-.refresh:disabled{opacity:.5}
-.main{max-width:1600px;margin:auto;padding:28px clamp(18px,3vw,48px) 52px}
-.overline{display:flex;justify-content:space-between;gap:12px;margin:0 0 17px}
-.overline small{color:#69899a;font:10px monospace;letter-spacing:.1em}
-.hero{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) minmax(275px,42%);min-height:365px;border:1px solid #2a4a58;border-radius:9px;background:radial-gradient(ellipse 50% 80% at 77% 50%,#17415780,transparent 95%),linear-gradient(120deg,#0b1723,#0b1b29)}
-.hero:before{content:"";position:absolute;inset:0;z-index:-1;background-image:linear-gradient(#5fa4bd15 1px,transparent 1px),linear-gradient(90deg,#5fa4bd15 1px,transparent 1px);background-size:40px 40px;mask-image:linear-gradient(90deg,transparent 10%,black 100%)}
-.hero:after{content:"";position:absolute;top:0;left:0;width:180px;height:1px;background:linear-gradient(90deg,#b4f6fa,transparent)}
-.hero-text{position:relative;z-index:2;align-self:center;padding:35px 8px 35px clamp(26px,4vw,56px)}
-.hero h1{font-size:clamp(40px,4.3vw,65px);letter-spacing:-.06em;line-height:1.08;font-weight:490;margin:24px 0 13px}
-.hero h1 em{color:#9eecf2;font-style:normal;font-weight:350}
-.hero-description{font-size:13px;line-height:1.85;color:#a0b7c4;max-width:450px;margin:0}
-.hero-numbers{display:flex;gap:26px;flex-wrap:wrap;align-items:end;margin-top:27px}
-.hero-numbers small{display:block;margin:0 0 8px;color:#83a5b4;font:9px monospace;letter-spacing:.12em}
-.hero-numbers strong{font-size:clamp(24px,2.7vw,38px);font-weight:550;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
-.hero-numbers .pl{border-left:1px solid #40778a;padding-left:16px}
-.hero-numbers .pl strong{font-size:16px;color:#9fbac7}
-.hero-numbers .pl strong.up{color:#86e7bf}
-.hero-numbers .pl strong.down{color:#f8a4a4}
-.hero-date{display:block;color:#85acbb;font:10px monospace;margin-top:22px}
-.orb{display:grid;place-items:center;position:relative;min-height:365px;perspective:800px;overflow:hidden}
-.orb:before{content:"";position:absolute;width:350px;height:350px;background:radial-gradient(circle,#4ad1ed25,transparent 62%);border-radius:50%;animation:pulse 7s ease-in-out infinite}
-.orb-svg{width:min(100%,340px);height:auto;overflow:visible;filter:drop-shadow(0 0 9px #55daec20);transform:rotateX(var(--pitch,0deg)) rotateY(var(--yaw,0deg));transition:transform .35s ease-out}
-.ring-a,.ring-b,.ring-c{transform-origin:200px 200px}
-.ring-a{animation:spin 58s linear infinite}
-.ring-b{animation:spin 24s linear infinite reverse}
-.ring-c{animation:spin 15s linear infinite}
-.star{filter:drop-shadow(0 0 12px #80eaff66)}
-.orb-label{position:absolute;color:#79abb8;font:9px monospace;letter-spacing:.12em}
-.orb-label.top{top:20px;right:20px}
-.orb-label.bottom{bottom:20px;left:18px}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pulse{50%{opacity:.55;transform:scale(1.1)}}
-.section-label{display:flex;justify-content:space-between;gap:10px;margin:29px 0 5px;color:#99b8c6;font:10px monospace;letter-spacing:.1em}
-#view-investments{scroll-margin-top:85px;min-height:400px}
-#view-investments>.boot{padding:36px 0;color:#97b3c0}
-#view-investments #pf-root>.pf-micro,
-#view-investments #pf-root>h1,
-#view-investments #pf-root>p.pf-sub{display:none!important}
-#view-investments #pf-root .pf-card,
-#view-investments #pf-root .pf-panel{background:linear-gradient(140deg,#0e202e,#091721);border:1px solid #294252;border-radius:7px;box-shadow:0 10px 22px #02070b20}
-#view-investments #pf-root .pf-card{padding:22px;min-width:0}
-#view-investments #pf-root .pf-panel{padding:clamp(18px,2vw,29px)}
-#view-investments #pf-root .pf-card small,
-#view-investments #pf-root .pf-quote small{color:#8ba6b4;letter-spacing:.1em}
-#view-investments #pf-root .pf-card strong{font-size:clamp(20px,2vw,28px);font-weight:550;font-variant-numeric:tabular-nums}
-#view-investments #pf-root .pf-panel h2{font-weight:570}
-#view-investments #pf-root button{border:1px solid #335462;border-radius:4px;background:#0d2836;color:#c0e1e9}
-#view-investments #pf-root button.active{background:#7fe0eb;color:#071e27;border-color:#7fe0eb}
-#view-investments #pf-root .pf-quote{background:#091a28;border-color:#2b4958}
-#view-investments #pf-root th{color:#81a3b3}
-#view-investments #pf-root td{border-bottom-color:#284050}
-#view-investments #pf-root #pf-chart,
-#view-investments #pf-root #pf-prices,
-#view-investments #pf-root #pf-holdings,
-#view-investments #pf-root #pf-trades{scroll-margin-top:95px}
-.footer{border-top:1px solid #263947;margin-top:32px;padding-top:20px;color:#778f9e;font-size:10px;line-height:1.8}
-@media(max-width:1100px){
-.sidebar{width:72px;padding-inline:10px}
-.brand{justify-content:center}
-.brand-copy,.caption,.nav-text,.nav-num,.rail-footer-text{display:none}
-.nav a{justify-content:center;padding:0}
-.workspace{margin-left:72px}
-.hero{grid-template-columns:minmax(0,1fr) minmax(240px,42%)}
-.orb-svg{width:290px}
-.orb-label{display:none}
-}
-@media(max-width:740px){
-.sidebar{width:100%;height:calc(66px + env(safe-area-inset-bottom));inset:auto 0 0;padding:7px 10px calc(7px + env(safe-area-inset-bottom));border-top:1px solid #29404c;border-right:0;flex-direction:row}
-.brand,.rail-footer{display:none}
-.nav{display:flex;justify-content:space-around;align-items:center;width:100%;gap:4px}
-.nav a{width:49px;min-height:45px}
-.workspace{margin:0;padding-bottom:80px}
-.topbar{min-height:58px;padding:0 14px}
-.feed-summary{display:none}
-.main{padding:22px 13px 32px}
-.overline small{display:none}
-.hero{display:block;min-height:365px}
-.hero-text{padding:31px 24px}
-.hero h1{font-size:clamp(40px,12vw,55px)}
-.hero-description{font-size:12px;max-width:300px}
-.hero-numbers{gap:14px;margin-top:22px}
-.hero-numbers strong{font-size:26px}
-.hero-numbers .pl strong{font-size:14px}
-.orb{position:absolute;z-index:0;inset:0 -110px auto auto;width:330px;min-height:330px;opacity:.26;pointer-events:none}
-.hero-text{max-width:100%}
-.section-label{flex-wrap:wrap}
-#view-investments #pf-root .pf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-#view-investments #pf-root .pf-card{padding:16px}
-}
-@media(prefers-reduced-motion:reduce){
-*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
-}
-</style>
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,viewport-fit=cover"
+  >
+
+  <meta name="theme-color" content="#060a11">
+
+  <meta
+    name="description"
+    content="NORTHSTAR — a private wealth observatory. Actual purchases, precise perspective."
+  >
+
+  <title>NORTHSTAR — Wealth Observatory</title>
+
+  <link
+    rel="icon"
+    href="./assets/northstar-mark.svg"
+    type="image/svg+xml"
+  >
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./portfolio.css">
+  <link rel="stylesheet" href="./observatory.css">
+
+  <script defer src="./js/finance-utils.js"></script>
+  <script defer src="./js/observatory.js"></script>
+  <script defer src="./js/portfolio-observatory.js"></script>
 </head>
 
-<body>
-<div class="shell" id="top">
+<body data-state="loading">
 
- <aside class="sidebar" aria-label="Portfolio navigation">
-  <a class="brand" href="#top" aria-label="NORTHSTAR overview">
-   <span class="brand-icon" aria-hidden="true">
-    <svg viewBox="0 0 64 64">
-     <path d="M32 5L39 25L59 32L39 39L32 59L25 39L5 32L25 25Z"
-       fill="#a4eaf3" stroke="#e0ffff" stroke-width="1.3"/>
-     <path d="M32 20L44 32L32 44L20 32Z" fill="#113a4a"/>
-     <circle cx="32" cy="32" r="3" fill="#e7ffff"/>
-    </svg>
-   </span>
-   <span class="brand-copy">
-    <span class="brand-name">NORTHSTAR</span>
-    <span class="brand-sub">WEALTH INTELLIGENCE</span>
-   </span>
+  <a class="skip" href="#view-investments">
+    Skip to portfolio
   </a>
 
-  <span class="caption">INVESTMENT SYSTEMS</span>
-
-  <nav class="nav" aria-label="Portfolio sections">
-   <a href="#top" class="active" aria-label="Overview">
-    <span class="nav-icon">◈</span>
-    <span class="nav-text">Overview</span>
-    <span class="nav-num">01</span>
-   </a>
-   <a href="#pf-chart" aria-label="Performance">
-    <span class="nav-icon">⌁</span>
-    <span class="nav-text">Performance</span>
-    <span class="nav-num">02</span>
-   </a>
-   <a href="#pf-prices" aria-label="Prices">
-    <span class="nav-icon">◉</span>
-    <span class="nav-text">Market prices</span>
-    <span class="nav-num">03</span>
-   </a>
-   <a href="#pf-holdings" aria-label="Holdings">
-    <span class="nav-icon">▤</span>
-    <span class="nav-text">Holdings</span>
-    <span class="nav-num">04</span>
-   </a>
-   <a href="#pf-trades" aria-label="Transactions">
-    <span class="nav-icon">≡</span>
-    <span class="nav-text">Transactions</span>
-    <span class="nav-num">05</span>
-   </a>
-  </nav>
-
-  <div class="rail-footer">
-   <span class="led"></span>PORTFOLIO ENGINE ACTIVE
-   <p class="rail-footer-text">
-    XETRA · EUR / DAILY CLOSES
-    PRIVATE BROWSER STORAGE
-   </p>
+  <div class="atmosphere" aria-hidden="true">
+    <div class="ambient-light"></div>
+    <div class="starfield"></div>
   </div>
- </aside>
 
- <div class="workspace">
-  <header class="topbar">
-   <span class="crumb">
-    NORTHSTAR <span>/</span> INVESTMENT TERMINAL
-   </span>
-   <div class="top-right">
-    <span id="top-feed" class="feed-summary">
-     MARKET DATA / CONNECTING
-    </span>
-    <button id="refresh" class="refresh" type="button">
-     ↻ REFRESH
+  <header class="masthead" id="top">
+
+    <a
+      class="identity"
+      href="#top"
+      aria-label="Northstar overview"
+    >
+      <img
+        src="./assets/northstar-mark.svg"
+        width="38"
+        height="38"
+        alt=""
+      >
+      <span>
+        NORTHSTAR
+        <small>WEALTH OBSERVATORY</small>
+      </span>
+    </a>
+
+    <nav aria-label="Portfolio sections" class="nav">
+      <a class="active" href="#top" aria-current="page">
+        <span>01</span> Overview
+      </a>
+
+      <a href="#pf-chart">
+        <span>02</span> Performance
+      </a>
+
+      <a href="#pf-holdings">
+        <span>03</span> Holdings
+      </a>
+
+      <a href="#pf-trades">
+        <span>04</span> Ledger
+      </a>
+    </nav>
+
+    <button
+      class="motion-toggle"
+      id="motion-toggle"
+      type="button"
+      aria-pressed="false"
+      aria-label="Pause ambient motion"
+    >
+      Motion <span>ON</span>
     </button>
-   </div>
+
   </header>
 
-  <main class="main">
-   <div class="overline">
-    <span class="micro">PRIVATE WEALTH SYSTEM / 001</span>
-    <small>PERSONAL PORTFOLIO TERMINAL</small>
-   </div>
+  <main>
 
-   <section class="hero" aria-labelledby="hero-title">
-    <div class="hero-text">
-     <span class="micro">
-      FINANCIAL INTELLIGENCE / ACTIVE
-     </span>
-     <h1 id="hero-title">
-      Capital.
-      <em>In perspective.</em>
-     </h1>
-     <p class="hero-description">
-      A precise view of your investments,
-      daily market prices, and performance
-      against the S&amp;P 500.
-     </p>
+    <section
+      class="observatory"
+      aria-labelledby="hero-title"
+    >
 
-     <div class="hero-numbers">
-      <div>
-       <small>PORTFOLIO VALUE / EUR</small>
-       <strong id="hero-value">—</strong>
+      <div class="hero-copy">
+
+        <div class="eyebrow">
+          <span class="status-dot"></span>
+          PRIVATE CAPITAL / CLEAR PERSPECTIVE
+        </div>
+
+        <h1 id="hero-title">
+          Your wealth.<br>
+          <em>A wider perspective.</em>
+        </h1>
+
+        <div class="hero-valuation">
+          <span class="label">
+            TOTAL PORTFOLIO VALUE
+            <span class="unit">EUR</span>
+          </span>
+
+          <strong id="hero-value">—</strong>
+
+          <div id="hero-pl" class="hero-pl">
+            Awaiting your portfolio
+          </div>
+        </div>
+
+        <div class="hero-actions">
+          <a class="primary-link" href="#pf-chart">
+            Explore performance <span>↗</span>
+          </a>
+
+          <a class="quiet-link" href="#pf-trades">
+            Portfolio ledger <span>→</span>
+          </a>
+        </div>
+
+        <div class="data-status">
+          <span class="status-dot"></span>
+
+          <span id="hero-date">
+            CONNECTING TO DAILY MARKET DATA
+          </span>
+
+          <button
+            id="refresh"
+            type="button"
+            aria-label="Refresh market data"
+          >↻</button>
+        </div>
+
       </div>
-      <div class="pl">
-       <small>UNREALIZED P/L</small>
-       <strong id="hero-pl">—</strong>
-      </div>
-     </div>
 
-     <span class="hero-date" id="hero-date">
-      WAITING FOR DAILY CLOSING PRICES
-     </span>
+      <div
+        class="instrument"
+        id="instrument"
+        role="img"
+        aria-label="Northstar compass: animated orbital instrument"
+      >
+
+        <div class="instrument-heading">
+          <span>NORTHSTAR CORE</span>
+          <span>NS / 001</span>
+        </div>
+
+        <div class="core-space">
+
+          <div class="core-halo"></div>
+
+          <div class="core-tilt" id="core-tilt">
+
+            <svg
+              class="core-dial"
+              viewBox="0 0 500 500"
+              aria-hidden="true"
+            >
+
+              <defs>
+                <radialGradient id="core-surface">
+                  <stop stop-color="#1a3d50"/>
+                  <stop offset=".65" stop-color="#091520"/>
+                  <stop offset="1" stop-color="#050c14"/>
+                </radialGradient>
+
+                <linearGradient
+                  id="core-metal"
+                  x1="0"
+                  y1="0"
+                  x2="1"
+                  y2="1"
+                >
+                  <stop stop-color="#f0ffff"/>
+                  <stop offset=".44" stop-color="#b5e8f5"/>
+                  <stop offset=".46" stop-color="#5795ad"/>
+                  <stop offset="1" stop-color="#82cbdc"/>
+                </linearGradient>
+
+                <linearGradient id="arc-light">
+                  <stop
+                    stop-color="#4bbedb"
+                    stop-opacity="0"
+                  />
+                  <stop offset="1" stop-color="#d6f9ff"/>
+                </linearGradient>
+              </defs>
+
+              <g
+                class="spatial-guides"
+                stroke="#6eabc7"
+                fill="none"
+                opacity=".2"
+              >
+                <path d="M250 8V492M8 250H492"/>
+
+                <circle cx="250" cy="250" r="230"/>
+
+                <circle
+                  cx="250"
+                  cy="250"
+                  r="215"
+                  stroke-dasharray="1 12"
+                />
+
+                <path
+                  d="M65 65L435 435M435 65L65 435"
+                  stroke-dasharray="2 8"
+                />
+              </g>
+
+              <g
+                fill="#8bacbe"
+                font-family="monospace"
+                font-size="10"
+                text-anchor="middle"
+              >
+                <text x="250" y="15">N</text>
+                <text x="489" y="254">E</text>
+                <text x="250" y="497">S</text>
+                <text x="11" y="254">W</text>
+              </g>
+
+              <g
+                id="precision-ticks"
+                stroke="#82bad0"
+              ></g>
+
+              <g class="orbit orbit-outer" fill="none">
+                <circle
+                  cx="250"
+                  cy="250"
+                  r="203"
+                  stroke="#47809b"
+                  stroke-width=".6"
+                />
+
+                <circle
+                  cx="250"
+                  cy="250"
+                  r="199"
+                  stroke="url(#arc-light)"
+                  stroke-width="3"
+                  stroke-dasharray="180 180 6 320 80 485"
+                />
+
+                <circle
+                  cx="250"
+                  cy="51"
+                  r="4"
+                  fill="#c8f5ff"
+                />
+
+                <circle
+                  cx="250"
+                  cy="449"
+                  r="2"
+                  fill="#87bed5"
+                />
+              </g>
+
+              <g
+                class="orbit orbit-middle"
+                fill="none"
+                stroke="#6dbcd2"
+              >
+                <circle
+                  cx="250"
+                  cy="250"
+                  r="181"
+                  stroke-width=".7"
+                  stroke-dasharray="2 10"
+                />
+
+                <circle
+                  cx="250"
+                  cy="250"
+                  r="171"
+                  stroke-width="1.5"
+                  stroke-dasharray="70 230 15 400"
+                />
+
+                <path
+                  d="M250 69v14M421 250h-14M250 431v-14M79 250h14"
+                  stroke="#e0faff"
+                />
+              </g>
+
+              <g class="orbit orbit-inner" fill="none">
+                <circle
+                  cx="250"
+                  cy="250"
+                  r="147"
+                  stroke="#407891"
+                  stroke-width=".8"
+                />
+
+                <circle
+                  cx="250"
+                  cy="250"
+                  r="142"
+                  stroke="#8bcedf"
+                  stroke-width="3"
+                  stroke-dasharray="1 8"
+                  opacity=".45"
+                />
+
+                <circle
+                  cx="250"
+                  cy="108"
+                  r="3"
+                  fill="#c4eefa"
+                />
+              </g>
+
+              <circle
+                cx="250"
+                cy="250"
+                r="107"
+                fill="url(#core-surface)"
+                stroke="#6295af"
+                stroke-width=".8"
+              />
+
+              <circle
+                cx="250"
+                cy="250"
+                r="99"
+                fill="none"
+                stroke="#47748a"
+                stroke-width=".5"
+              />
+
+              <circle
+                cx="250"
+                cy="250"
+                r="88"
+                fill="none"
+                stroke="#67a8c4"
+                opacity=".25"
+                stroke-dasharray="1 5"
+              />
+
+              <g class="core-star">
+                <path
+                  d="M250 165L269 231L335 250L269 269L250 335L231 269L165 250L231 231Z"
+                  fill="url(#core-metal)"
+                  stroke="#e2faff"
+                  stroke-width=".8"
+                />
+
+                <path
+                  d="M250 165V335M165 250H335"
+                  stroke="#c2f6ff"
+                  opacity=".4"
+                />
+
+                <path
+                  d="M250 218L282 250L250 282L218 250Z"
+                  fill="#0a1d2a"
+                  stroke="#a2d5e5"
+                />
+
+                <path
+                  d="M250 237L263 250L250 263L237 250Z"
+                  fill="#bcefff"
+                />
+
+                <circle
+                  cx="250"
+                  cy="250"
+                  r="3"
+                  fill="white"
+                />
+              </g>
+
+              <g
+                fill="#769cac"
+                font-family="monospace"
+                font-size="7"
+                letter-spacing="2"
+              >
+                <text x="226" y="372">TRUE NORTH</text>
+                <text x="220" y="132">CAPITAL / EUR</text>
+              </g>
+
+            </svg>
+
+            <div class="gyro gyro-one"><i></i></div>
+            <div class="gyro gyro-two"><i></i></div>
+            <div class="gyro gyro-three"><i></i></div>
+
+          </div>
+
+          <div class="orbit-tag tag-world">
+            <i></i>
+            <span>WORLD<small>VWCE</small></span>
+          </div>
+
+          <div class="orbit-tag tag-emerging">
+            <i></i>
+            <span>EMERGING<small>VFEA</small></span>
+          </div>
+
+        </div>
+
+        <div class="instrument-footer">
+          <span>
+            <i class="status-dot"></i>
+            <b id="core-state">ACQUIRING DATA</b>
+          </span>
+
+          <span>PRECISION / PERSPECTIVE</span>
+        </div>
+
+      </div>
+
+    </section>
+
+    <div class="section-divider">
+      <span>01 / CAPITAL OVERVIEW</span>
+      <span>WORLD + EMERGING EQUITIES</span>
     </div>
 
-    <div class="orb"
-      aria-label="Animated NORTHSTAR compass rose"
-      role="img">
+    <section
+      id="view-investments"
+      aria-label="Portfolio overview"
+    >
+      <p class="boot">Loading portfolio engine…</p>
+    </section>
 
-     <span class="orb-label top">NORTH / 001</span>
+    <noscript>
+      <p>
+        JavaScript is required to calculate your portfolio.
+        Your saved records remain in browser storage.
+      </p>
+    </noscript>
 
-     <svg class="orb-svg" viewBox="0 0 400 400"
-       aria-hidden="true">
+    <footer>
+      <a class="identity footer-identity" href="#top">
+        NORTHSTAR <span>✧</span>
+      </a>
 
-      <defs>
-       <radialGradient id="orb-metal">
-        <stop offset="0" stop-color="#296e83"/>
-        <stop offset="1" stop-color="#0b2335"/>
-       </radialGradient>
-      </defs>
+      <p>
+        Perspective, without speculation.<br>
+        Daily closing prices · private browser storage ·
+        no brokerage connection.
+      </p>
 
-      <circle cx="200" cy="200" r="171"
-       stroke="#3d7991" stroke-opacity=".32"
-       fill="none"/>
+      <span>
+        WEALTH OBSERVATORY<br>
+        VWCE / VFEA / SXR8
+      </span>
+    </footer>
 
-      <g class="ring-a" stroke="#8be8f1" fill="none">
-       <circle cx="200" cy="200" r="164"
-        stroke-opacity=".6" stroke-width="1.4"
-        stroke-dasharray="170 94 20 750"/>
-       <circle cx="200" cy="200" r="155"
-        stroke-opacity=".4"
-        stroke-dasharray="2 12"/>
-      </g>
-
-      <g class="ring-b" stroke="#68d6e9" fill="none">
-       <circle cx="200" cy="200" r="139"
-        stroke-width="2"
-        stroke-dasharray="130 115 30 598"/>
-       <circle cx="200" cy="200" r="125"
-        stroke-opacity=".45"
-        stroke-dasharray="15 32"/>
-      </g>
-
-      <g class="ring-c" stroke="#a3e9f2" fill="none">
-       <circle cx="200" cy="200" r="107"
-        stroke-width="1.2"
-        stroke-dasharray="70 90 25 450"/>
-       <circle cx="200" cy="200" r="90"
-        stroke-opacity=".5"
-        stroke-dasharray="1 10"/>
-      </g>
-
-      <circle cx="200" cy="200" r="75"
-       fill="url(#orb-metal)"
-       stroke="#7ad2e5"
-       stroke-opacity=".85"/>
-
-      <circle cx="200" cy="200" r="61"
-       fill="none" stroke="#6ba1b6"
-       stroke-opacity=".4"/>
-
-      <g class="star">
-       <path
-        d="M200 146L213 187L254 200L213 213L200 254L187 213L146 200L187 187Z"
-        fill="#9de6ef"
-        stroke="#d5fbff"
-        stroke-width="1.5"/>
-       <path
-        d="M200 178L222 200L200 222L178 200Z"
-        fill="#0e3144"
-        stroke="#e0fdff"
-        stroke-opacity=".85"/>
-       <circle cx="200" cy="200" r="4"
-        fill="#ecffff"/>
-      </g>
-     </svg>
-
-     <span class="orb-label bottom">
-      PORTFOLIO / ACTIVE
-     </span>
-    </div>
-   </section>
-
-   <div class="section-label">
-    <span>01 / FINANCIAL OVERVIEW</span>
-    <span>VWCE · VFEA · SXR8 BENCHMARK</span>
-   </div>
-
-   <section id="view-investments"
-    aria-label="Portfolio overview">
-    <p class="boot">
-     INITIALIZING PORTFOLIO ENGINE…
-    </p>
-   </section>
-
-   <footer class="footer">
-    NORTHSTAR / WEALTH INTELLIGENCE ·
-    Prices are delayed closing quotes, not real-time trades.
-    Transactions remain in this browser unless exported.
-    Historical benchmark returns exclude costs and taxes.
-   </footer>
   </main>
- </div>
-</div>
 
-<script defer src="./js/portfolio.js"></script>
-
-<script>
-(() => {
- const host = document.getElementById('view-investments');
- const $ = id => document.getElementById(id);
- const nav = [...document.querySelectorAll('.nav a')];
-
- nav.forEach(a => a.addEventListener('click', () => {
-  nav.forEach(x => x.classList.remove('active'));
-  a.classList.add('active');
- }));
-
- $('refresh').addEventListener('click', () => {
-  const b = $('pf-refresh');
-  if (b && !b.disabled) b.click();
- });
-
- function update() {
-  const val = $('pf-value')?.textContent?.trim();
-  const pl = $('pf-pl')?.textContent?.trim();
-  const feed = $('pf-feed')?.textContent || '';
-  const day = feed.match(/\d{4}-\d{2}-\d{2}/)?.[0];
-
-  $('hero-value').textContent =
-   val && val !== '—' ? val : '—';
-
-  $('hero-pl').textContent =
-   pl && pl !== '—' ? pl : '—';
-
-  $('hero-pl').className =
-   pl?.startsWith('+')
-    ? 'up'
-    : pl?.startsWith('-') || pl?.startsWith('−')
-     ? 'down'
-     : '';
-
-  $('hero-date').textContent =
-   day
-    ? 'XETRA CLOSING PRICES / ' + day
-    : 'AWAITING VERIFIED MARKET DATA';
-
-  $('top-feed').textContent =
-   /unavailable|error/i.test(feed)
-    ? 'MARKET DATA / UNAVAILABLE'
-    : day
-     ? 'XETRA / ' + day
-     : 'MARKET DATA / CONNECTING';
-
-  $('refresh').disabled =
-   !!$('pf-refresh')?.disabled;
- }
-
- let pending = false;
-
- new MutationObserver(() => {
-  if (pending) return;
-  pending = true;
-
-  requestAnimationFrame(() => {
-   pending = false;
-   update();
-  });
- }).observe(host, {
-  childList: true,
-  subtree: true,
-  characterData: true,
-  attributes: true,
-  attributeFilter: ['disabled']
- });
-
- update();
-
- // Keep the original storage key to preserve purchases.
- // Only the exported backup filename is rebranded.
- document.addEventListener('click', e => {
-  if (!(e.target instanceof Element)
-      || !e.target.closest('#pf-backup')) return;
-
-  let trades;
-
-  try {
-   trades = JSON.parse(
-    localStorage.getItem('jarvis-private-portfolio-v1') || '{}'
-   ).trades;
-  } catch {
-   return;
-  }
-
-  if (!Array.isArray(trades)) return;
-
-  e.preventDefault();
-  e.stopImmediatePropagation();
-
-  const quote = v =>
-   '"' + String(v ?? '').replaceAll('"', '""') + '"';
-
-  const rows = [
-   ['date','asset','invested','shares','price','broker'],
-   ...trades.map(t => [
-    t.date,
-    t.asset,
-    t.amount,
-    t.shares,
-    t.purchasePrice || '',
-    t.broker || ''
-   ])
-  ];
-
-  const csv = rows
-   .map(r => r.map(quote).join(','))
-   .join('\r\n');
-
-  const url = URL.createObjectURL(
-   new Blob([csv], {
-    type: 'text/csv;charset=utf-8'
-   })
-  );
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'northstar-portfolio-backup.csv';
-
-  document.body.append(a);
-  a.click();
-  a.remove();
-
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
- }, true);
-})();
-</script>
 </body>
 </html>
