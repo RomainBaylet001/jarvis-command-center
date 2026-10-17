@@ -1,0 +1,14 @@
+
+{
+  "name": "J.A.R.V.I.S. — Personal Intelligence",
+  "short_name": "JARVIS",
+  "description": "Personal AI command center for research, memory and projects.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050b13",
+  "theme_color": "#07111e",
+  "lang": "en"
+}
