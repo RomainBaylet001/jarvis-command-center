@@ -2,292 +2,282 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#07111e">
-  <meta name="description" content="JARVIS personal command center">
-  <title>J.A.R.V.I.S. — Personal Command Center</title>
-  <link rel="icon" href="./assets/jarvis-icon.svg" type="image/svg+xml">
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#060a11">
+<meta name="description" content="JARVIS — private investment portfolio intelligence.">
+<title>JARVIS / Wealth Intelligence</title>
+<link rel="icon" href="./assets/jarvis-icon.svg" type="image/svg+xml">
+<link rel="manifest" href="./manifest.webmanifest">
+<style>
+:root {
+  color-scheme:dark;
+  --void:#060a11; --nav:#080f18; --surface:#0a1520; --surface2:#0d1b29;
+  --line:rgba(132,178,202,.15); --line2:rgba(132,178,202,.28);
+  --ink:#edf5f8; --sub:#879cac; --quiet:#597687; --ice:#9deaf3;
+  --cyan:#51d7e9; --green:#7fe6bb; --gold:#f6ba49; --violet:#c296ff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;min-width:320px;overflow-x:clip;color:var(--ink);background:var(--void);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(ellipse 55% 50% at 70% 0%,#0b33404c,transparent 80%)}
+button{font:inherit;cursor:pointer}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ice);outline-offset:4px}
+.app{min-height:100vh}
+
+/* THE FINANCIAL RAIL */
+.rail{position:fixed;z-index:30;inset:0 auto 0 0;width:224px;background:linear-gradient(180deg,#0a131d 0%,#080e17 100%);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:28px 16px 22px}
+.brand{display:flex;align-items:center;gap:12px;margin:0 4px 51px}
+.brand-mark{display:grid;place-items:center;position:relative;flex:0 0 38px;width:38px;height:43px;background:linear-gradient(145deg,#2a6178,#112839);color:#d5faff;font:24px Georgia,serif;clip-path:polygon(50% 0,94% 25%,94% 75%,50% 100%,6% 75%,6% 25%)}
+.brand-mark:after{content:"";position:absolute;inset:2px;border:1px solid #85dced77;clip-path:inherit}
+.brand-name{display:block;font-size:13px;letter-spacing:.26em;font-weight:750;white-space:nowrap}
+.brand-desc{display:block;font-size:8px;letter-spacing:.16em;color:#718d9c;margin-top:5px;white-space:nowrap}
+.rail-eyebrow,.mono{font:10px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.16em;color:#668596}
+.rail-eyebrow{padding-left:13px;margin-bottom:14px}
+.rail nav{display:grid;gap:6px}
+.nav-item{position:relative;display:flex;align-items:center;gap:12px;min-height:47px;padding:0 12px;border:1px solid transparent;border-radius:5px;font-size:12px;color:#91a7b5;transition:background .22s,color .22s,border-color .22s}
+.nav-item:hover{background:#142635;color:#f0fbff}
+.nav-item.active{border-color:#22485a;background:linear-gradient(90deg,#123342aa,#0c23304d);color:#b4ecf4}
+.nav-item.active:before{content:"";position:absolute;left:-1px;top:9px;bottom:9px;width:2px;background:#71ddef;box-shadow:0 0 12px #71ddef77}
+.nav-icon{width:21px;text-align:center;font-size:17px;line-height:1;color:#77cbd9}
+.nav-num{margin-left:auto;font:9px ui-monospace,SFMono-Regular,monospace;color:#668597}
+.rail-bottom{margin-top:auto;border-top:1px solid var(--line);padding:20px 8px 0}
+.status{display:flex;align-items:center;gap:9px;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.07em;color:#b3cbd5}
+.status-light{display:inline-block;flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 11px #80e5c1}
+.rail-bottom p{font-size:10px;line-height:1.85;color:#698394;margin:12px 0 0}
+
+/* CANVAS / TOP CHROME */
+.workspace{margin-left:224px;min-width:0}
+.topbar{position:sticky;top:0;z-index:15;min-height:66px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 clamp(22px,3.2vw,52px);border-bottom:1px solid var(--line);background:#080f18eb;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
+.breadcrumbs{white-space:nowrap;color:#acc3cf;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.12em}
+.breadcrumbs span{color:#527589;margin:0 12px}
+.top-actions{display:flex;align-items:center;gap:19px}
+.feed-status{white-space:nowrap;color:#8fa9b7;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.07em}
+.refresh{height:36px;display:flex;align-items:center;gap:10px;padding:0 14px;border-radius:4px;border:1px solid var(--line2);background:#102330;color:#c6e3e8;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.08em;transition:background .2s,border-color .2s}
+.refresh:hover{background:#173747;border-color:#7cdee8}
+.refresh:disabled{opacity:.45;cursor:wait}
+.content{max-width:1580px;margin:0 auto;padding:32px clamp(22px,3.2vw,52px) 54px}
+.supra{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.supra .serial{color:#617d8d;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.13em}
+
+/* DRAMATIC BUT REFINED HERO */
+.hero{position:relative;isolation:isolate;min-height:383px;overflow:hidden;border-radius:9px;border:1px solid #294553;background:radial-gradient(ellipse 47% 80% at 77% 54%,#15364791,transparent 100%),linear-gradient(125deg,#0c1824,#0b1722 54%,#0b1b2a);display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,44%)}
+.hero:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.13;background-image:linear-gradient(90deg,transparent 97.5%,#6cc5db 100%),linear-gradient(0deg,transparent 97.5%,#6cc5db 100%);background-size:40px 40px;mask-image:linear-gradient(90deg,transparent 18%,black 100%);-webkit-mask-image:linear-gradient(90deg,transparent 18%,black 100%)}
+.hero:after{content:"";position:absolute;left:0;top:0;width:180px;height:1px;background:linear-gradient(90deg,#a9f3fa,transparent)}
+.hero-copy{position:relative;z-index:3;align-self:center;padding:42px 10px 39px clamp(30px,4vw,60px)}
+.hero-label{display:flex;align-items:center;gap:11px;color:#83becb;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.15em}
+.hero-label:before{content:"";width:19px;height:1px;background:var(--cyan)}
+.hero h1{margin:25px 0 14px;font-size:clamp(41px,4.4vw,67px);font-weight:480;letter-spacing:-.065em;line-height:1.06}
+.hero h1 em{font-style:normal;color:#9ee9ef;font-weight:330}
+.hero-desc{margin:0;max-width:450px;color:#97adbb;font-size:13px;line-height:1.8}
+.value-area{display:flex;align-items:baseline;flex-wrap:wrap;gap:14px 28px;margin-top:32px}
+.main-value .small{display:block;margin-bottom:8px;color:#7e9fae;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.14em}
+.main-value strong{display:block;font-size:clamp(26px,2.9vw,40px);font-weight:520;letter-spacing:-.045em;line-height:1.1;font-variant-numeric:tabular-nums}
+.change{padding-left:15px;border-left:1px solid #386e81}
+.change span{display:block;color:#819daa;font:9px ui-monospace,SFMono-Regular,monospace;letter-spacing:.13em;margin-bottom:9px}
+.change strong{font-size:17px;font-weight:530;font-variant-numeric:tabular-nums;color:#a7bbc6}
+.change strong.positive{color:#8ce7be}.change strong.negative{color:#f2a0a0}
+.hero-foot{margin-top:25px;display:flex;align-items:center;gap:9px;color:#83a9b8;font:9px ui-monospace,SFMono-Regular,monospace;letter-spacing:.08em}
+.hero-foot i{display:inline-block;width:5px;height:5px;background:#8fe6be;border-radius:50%;box-shadow:0 0 9px #83e7bc}
+
+/* HELIX: VOLUMETRIC HOLOGRAPHIC CORE, CSS-ANIMATED SVG */
+.orb-scene{position:relative;align-self:stretch;display:grid;place-items:center;min-height:375px;overflow:hidden;perspective:950px}
+.orb-scene:before{content:"";position:absolute;width:440px;height:440px;border-radius:50%;background:radial-gradient(circle,#3ac9e41e,transparent 63%);animation:breathe 7s ease-in-out infinite}
+.orb-scene:after{content:"";position:absolute;inset:18px 17px;border:1px solid #4b8fa020;border-radius:3px;pointer-events:none;clip-path:polygon(0 0,17% 0,17% 1px,83% 1px,83% 0,100% 0,100% 100%,0 100%)}
+.orb-tilt{position:relative;width:min(100%,372px);aspect-ratio:1;display:grid;place-items:center;transform-style:preserve-3d;transform:rotateX(var(--pitch,0deg)) rotateY(var(--yaw,0deg));transition:transform .35s ease-out}
+.orb-svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 0 9px #4bdeef12)}
+.ring-a,.ring-b,.ring-c,.ring-d{transform-origin:200px 200px}
+.ring-a{animation:spin 70s linear infinite}.ring-b{animation:spin 22s linear infinite reverse}.ring-c{animation:spin 33s linear infinite}.ring-d{animation:spin 16s linear infinite reverse}
+.core-letter{fill:#d7fcff;font:normal 77px Georgia,serif;text-anchor:middle;filter:drop-shadow(0 0 13px #9bf6ff77)}
+.beam{position:absolute;width:130px;height:1px;background:linear-gradient(90deg,transparent,#7de6f4aa,transparent);top:50%;left:50%;transform:translate(-50%,-50%) rotate(-45deg);filter:blur(1px);opacity:.55}
+.orb-anno{position:absolute;color:#719eae;font:9px ui-monospace,SFMono-Regular,monospace;letter-spacing:.09em;white-space:nowrap;pointer-events:none}
+.orb-anno.top{top:20px;right:23px}.orb-anno.bottom{bottom:19px;left:18px}
+.orb-anno span{color:#9ee9ed}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes breathe{50%{transform:scale(1.10);opacity:.5}}
+
+/* FINANCIAL WORKSPACE (existing portfolio.js owns the data) */
+.module-title{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:30px 0 13px}
+.module-title h2{margin:0;font-size:10px;font-weight:650;color:#a3c4cf;letter-spacing:.17em}
+.module-title span{color:#668595;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.05em}
+#view-investments{min-height:530px;scroll-margin-top:88px}
+#view-investments>.boot{padding:45px 0;color:#98aeba;font-size:13px}
+#view-investments #pf-root>.pf-micro,#view-investments #pf-root>h1,#view-investments #pf-root>p.pf-sub{display:none!important}
+#view-investments #pf-root .pf-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin:18px 0 14px;gap:12px}
+#view-investments #pf-root .pf-grid .pf-card:nth-child(2){display:none}
+#view-investments #pf-root .pf-card,#view-investments #pf-root .pf-panel{position:relative;background:linear-gradient(145deg,#0d1b29,#0a1520);border:1px solid #223946;border-radius:7px;box-shadow:0 12px 45px #01070c20;min-width:0}
+#view-investments #pf-root .pf-card{padding:22px 21px;min-height:117px;overflow:hidden}
+#view-investments #pf-root .pf-card:before{content:"";position:absolute;top:0;left:20px;width:65px;height:1px;background:linear-gradient(90deg,#92e9f58c,transparent)}
+#view-investments #pf-root .pf-card small,#view-investments #pf-root .pf-quote small{color:#86a0b0;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.1em}
+#view-investments #pf-root .pf-card strong{font-size:clamp(19px,2vw,29px);font-weight:570;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+#view-investments #pf-root .pf-panel{padding:clamp(19px,2.3vw,29px);margin:13px 0}
+#view-investments #pf-root h2{font-size:17px;font-weight:560;letter-spacing:-.015em;color:#ebf5f7}
+#view-investments #pf-root .pf-sub{color:#8da4b2;line-height:1.7}
+#view-investments #pf-root .pf-micro{color:#7eb7c4}
+#view-investments #pf-root .pf-controls{flex-wrap:wrap}
+#view-investments #pf-root button{border:1px solid #294d5e;background:#102734;color:#b7dce6;border-radius:4px;transition:background .2s,border-color .2s}
+#view-investments #pf-root button:hover{border-color:#83dbe8}
+#view-investments #pf-root button.active{background:#8fe5ed;color:#0a202a;border-color:#8fe5ed}
+#view-investments #pf-root .pf-quote{background:#0a1925;border-color:#234456;padding:18px}
+#view-investments #pf-root .pf-quote strong{font-size:clamp(20px,2vw,27px);font-weight:550}
+#view-investments #pf-root table{font-variant-numeric:tabular-nums}
+#view-investments #pf-root th{color:#7d99a7;font:10px ui-monospace,SFMono-Regular,monospace;letter-spacing:.10em}
+#view-investments #pf-root td{border-bottom:1px solid #1e3643;color:#c8dce5}
+#view-investments #pf-root tr:hover td{background:#162f3a50}
+#view-investments #pf-root #pf-chart svg{width:100%;height:auto}
+#view-investments #pf-root #pf-chart,#view-investments #pf-root #pf-prices,#view-investments #pf-root #pf-holdings,#view-investments #pf-root #pf-trades{scroll-margin-top:95px}
+.site-foot{margin-top:36px;padding:20px 0 0;border-top:1px solid var(--line);color:#718998;font-size:10px;line-height:1.9}
+
+/* IPAD AND PHONE */
+@media(max-width:1120px){
+  .rail{width:72px;padding:25px 10px 18px}.brand{justify-content:center;margin:0 0 43px}.brand-text,.rail-eyebrow,.nav-label,.nav-num,.rail-word,.rail-bottom p{display:none}.nav-item{justify-content:center;padding:0}.rail-bottom{padding:16px 0}.status{justify-content:center}.workspace{margin-left:72px}
+  .hero{grid-template-columns:minmax(0,1fr) minmax(260px,42%)}.orb-tilt{width:min(100%,320px)}.orb-anno{display:none}
+}
+@media(max-width:740px){
+  .rail{inset:auto 0 0;width:100%;height:calc(66px + env(safe-area-inset-bottom));flex-direction:row;justify-content:center;padding:5px 9px calc(5px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--line);background:#08111bea}.brand,.rail-bottom{display:none}.rail nav{display:flex;width:100%;align-items:center;justify-content:space-around;gap:4px}.nav-item{width:52px;min-height:47px}.workspace{margin-left:0;padding-bottom:80px}.topbar{min-height:57px;padding:0 16px}.breadcrumbs{font-size:9px}.feed-status{display:none}.content{padding:22px 13px 38px}.supra .serial{display:none}
+  .hero{display:block;min-height:354px}.hero-copy{padding:29px 23px;max-width:100%}.hero h1{font-size:clamp(40px,12vw,53px);margin:18px 0 12px}.hero-desc{max-width:300px;font-size:12px}.value-area{margin-top:22px;gap:15px}.main-value strong{font-size:28px}.change strong{font-size:13px}.hero-foot{margin-top:20px}
+  .orb-scene{position:absolute;right:0;top:0;width:325px;min-height:325px;opacity:.27;z-index:0;pointer-events:none}.orb-tilt{width:325px}.module-title{flex-wrap:wrap}.module-title span{font-size:9px}#view-investments #pf-root .pf-card{padding:18px 14px}#view-investments #pf-root .pf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#view-investments #pf-root .pf-grid .pf-card:nth-child(4){grid-column:1/-1}
+}
+@media(max-width:385px){.hero{min-height:375px}.hero-copy{padding:25px 18px}.value-area{gap:10px 16px}.change{padding-left:10px}.change strong{font-size:12px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+</style>
 </head>
 <body>
-<div class="shell">
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-mark"><span>J</span></div>
-      <div>
-        <div class="brand-title">J.A.R.V.I.S.</div>
-        <div class="brand-subtitle">PERSONAL INTELLIGENCE SYSTEM</div>
-      </div>
-    </div>
-
-    <div class="nav-caption">CORE SYSTEMS <span>01—04</span></div>
-    <nav class="nav" aria-label="Main navigation">
-      <button class="nav-item active" data-view="command" type="button">
-        <span class="nav-glyph">◉</span><span>Command Center</span><span class="nav-num">01</span>
-      </button>
-      <button class="nav-item" data-view="investments" type="button">
-        <span class="nav-glyph">▥</span><span>Investments</span><span class="nav-num">02</span>
-      </button>
-      <button class="nav-item" data-view="memory" type="button">
-        <span class="nav-glyph">▤</span><span>Memory</span><span class="nav-num">03</span>
-      </button>
-      <button class="nav-item" data-view="tasks" type="button">
-        <span class="nav-glyph">☷</span><span>Tasks</span><span class="nav-num">04</span>
-      </button>
+<div class="app" id="top">
+  <aside class="rail" aria-label="Portfolio navigation">
+    <a class="brand" href="#top" aria-label="JARVIS overview">
+      <span class="brand-mark" aria-hidden="true">J</span>
+      <span class="brand-text"><span class="brand-name">J.A.R.V.I.S.</span><span class="brand-desc">WEALTH INTELLIGENCE</span></span>
+    </a>
+    <span class="rail-eyebrow">INVESTMENT SYSTEMS</span>
+    <nav aria-label="Sections">
+      <a class="nav-item active" href="#top" aria-current="page" aria-label="Overview"><span class="nav-icon">◈</span><span class="nav-label">Overview</span><span class="nav-num">01</span></a>
+      <a class="nav-item" href="#pf-chart" aria-label="Performance"><span class="nav-icon">⌁</span><span class="nav-label">Performance</span><span class="nav-num">02</span></a>
+      <a class="nav-item" href="#pf-prices" aria-label="Market prices"><span class="nav-icon">◉</span><span class="nav-label">Market prices</span><span class="nav-num">03</span></a>
+      <a class="nav-item" href="#pf-holdings" aria-label="Holdings"><span class="nav-icon">▥</span><span class="nav-label">Holdings</span><span class="nav-num">04</span></a>
+      <a class="nav-item" href="#pf-trades" aria-label="Transactions"><span class="nav-icon">≡</span><span class="nav-label">Transactions</span><span class="nav-num">05</span></a>
     </nav>
-
-    <div class="nav-caption second">CONFIGURATION</div>
-    <nav class="nav" aria-label="Configuration">
-      <button class="nav-item" data-view="system" type="button">
-        <span class="nav-glyph">⚙</span><span>System Settings</span>
-      </button>
-    </nav>
-
-    <div class="sidebar-spacer"></div>
-    <div class="module-label"><span class="blinking-dot"></span>SYSTEM STATUS</div>
-    <div class="sidebar-status">
-      <strong id="sidebarMode">LOCAL COMMAND ENGINE</strong>
-      <span>No live brokerage connection</span>
-    </div>
-    <div class="sidebar-bottom">NORTHSTAR / J.A.R.V.I.S.<span>BUILD 0.3.0</span></div>
+    <div class="rail-bottom"><div class="status"><i class="status-light"></i><span class="rail-word" id="rail-status">PORTFOLIO READY</span></div><p>NORTHSTAR / PERSONAL DISPLAY
+EUR · DELAYED XETRA CLOSES
+LOCAL TRANSACTION STORAGE</p></div>
   </aside>
 
   <div class="workspace">
     <header class="topbar">
-      <div class="breadcrumb">
-        <span id="pageCode">SYS / 001</span>
-        <span class="slash">/</span>
-        <span id="pageTitle">COMMAND CENTER</span>
-      </div>
-      <div class="top-tools">
-        <div class="top-status"><span class="live-dot"></span><span id="connectionLabel">LOCAL MODE</span></div>
-        <div class="divider-vertical"></div>
-        <span id="liveClock" class="clock">--:--</span>
-      </div>
+      <div class="breadcrumbs">NORTHSTAR <span>/</span> JARVIS FINANCE</div>
+      <div class="top-actions"><span class="feed-status" id="top-status" aria-live="polite">MARKET DATA / CONNECTING</span><button class="refresh" id="refresh" type="button" aria-label="Refresh market prices">↻ &nbsp; REFRESH</button></div>
     </header>
-
-    <main id="screen">
-      <!-- Main JARVIS interface -->
-      <section class="view active" id="view-command">
-        <div class="main-grid">
-          <div class="hero-area">
-            <div class="eyebrow"><span class="eyebrow-rule"></span>INTELLIGENCE INTERFACE <span class="mono">001</span></div>
-            <h1>Good to have you back<span class="period">.</span></h1>
-            <p class="hero-sub">Your command center is online. Where shall we begin?</p>
-            <div class="orb-wrap">
-              <div class="orb-glow"></div>
-              <div class="orb-orbit orbit-outer"></div>
-              <div class="orb-orbit orbit-middle"></div>
-              <div class="orb-orbit orbit-inner"></div>
-              <div class="orb-core" id="orb">
-                <div class="orb-core-inner"><div class="orb-insignia">J</div></div>
-              </div>
-              <span class="orb-node n1"></span>
-              <span class="orb-node n2"></span>
-              <span class="orb-node n3"></span>
-            </div>
-            <div class="orb-state">
-              <span class="state-led" id="stateLed"></span>
-              <span id="orbStateText">SYSTEM READY · AWAITING INPUT</span>
-            </div>
-            <div class="command-shortcuts">
-              <button data-command="What can you do?" type="button">EXPLORE COMMANDS <span>↗</span></button>
-              <button data-command="Show my watchlist" type="button">OPEN WATCHLIST <span>↗</span></button>
-              <button data-command="Show my notes" type="button">OPEN MEMORY <span>↗</span></button>
-            </div>
+    <main class="content">
+      <div class="supra"><span class="mono">PRIVATE WEALTH SYSTEM &nbsp; / &nbsp; 001</span><span class="serial">NORTHSTAR &nbsp; — &nbsp; PORTFOLIO EDITION</span></div>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="hero-label">FINANCIAL INTELLIGENCE / ONLINE</span>
+          <h1 id="hero-title">Capital.<em>Under control.</em></h1>
+          <p class="hero-desc">Your assets, their movement, and the market benchmark — distilled into one precise interface.</p>
+          <div class="value-area" aria-live="polite">
+            <div class="main-value"><span class="small">CURRENT PORTFOLIO VALUE / EUR</span><strong id="hero-value">—</strong></div>
+            <div class="change"><span>UNREALIZED RETURN</span><strong id="hero-profit">—</strong></div>
           </div>
-
-          <aside class="right-rail">
-            <div class="section-top"><span>LIVE ACTIVITY</span><span class="section-dot"></span></div>
-            <div class="activity-card">
-              <div class="activity-label">CONNECTION</div>
-              <div class="activity-value" id="modeValue">OFFLINE / LOCAL</div>
-              <div class="activity-help">The AI backend can be connected in System Settings.</div>
-              <div class="subtle-line"></div>
-              <div class="activity-label">INPUT MODE</div>
-              <div class="activity-value">TEXT COMMANDS</div>
-              <div class="activity-help">Use the command terminal at the bottom of JARVIS.</div>
-            </div>
-            <div class="section-top modules-title"><span>QUICK ACCESS</span><span>↗</span></div>
-            <div class="module-card" role="button" tabindex="0" data-open="investments">
-              <div class="module-icon">↗</div>
-              <div><strong>Investment Lab</strong><small>Portfolio &amp; benchmark research</small></div>
-              <span class="module-end">→</span>
-            </div>
-            <div class="module-card" role="button" tabindex="0" data-open="memory">
-              <div class="module-icon">▤</div>
-              <div><strong>Personal Memory</strong><small id="memorySummary">0 stored notes</small></div>
-              <span class="module-end">→</span>
-            </div>
-            <div class="module-card" role="button" tabindex="0" data-open="tasks">
-              <div class="module-icon">✓</div>
-              <div><strong>Action Queue</strong><small id="taskSummary">0 pending tasks</small></div>
-              <span class="module-end">→</span>
-            </div>
-            <div class="small-disclaimer">
-              PROTOTYPE / NO LIVE BROKERAGE DATA<br>
-              Notes and portfolio inputs are local to this browser.
-            </div>
-          </aside>
+          <div class="hero-foot"><i></i><span id="hero-date">WAITING FOR VERIFIED CLOSING PRICES</span></div>
+        </div>
+        <div class="orb-scene" role="img" aria-label="Animated holographic JARVIS financial core">
+          <span class="orb-anno top">CORE ENGINE &nbsp; / &nbsp; <span>01</span></span>
+          <div class="orb-tilt" id="orb">
+            <svg class="orb-svg" viewBox="0 0 400 400" aria-hidden="true">
+              <defs>
+                <radialGradient id="jarvis-metal" cx="35%" cy="28%" r="75%"><stop offset="0" stop-color="#367f95"/><stop offset=".48" stop-color="#153e53"/><stop offset="1" stop-color="#091924"/></radialGradient>
+                <filter id="jarvis-glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="9"/></filter>
+              </defs>
+              <circle cx="200" cy="200" r="173" fill="none" stroke="#39849a" stroke-opacity=".22" stroke-width="1"/>
+              <circle cx="200" cy="200" r="150" fill="none" stroke="#74cddd" stroke-opacity=".17" stroke-width="1"/>
+              <g class="ring-a" fill="none" stroke="#80deeb" stroke-linecap="round"><circle cx="200" cy="200" r="171" stroke-width="1" stroke-opacity=".5" stroke-dasharray="1 17"/><circle cx="200" cy="200" r="163" stroke-width="2.3" stroke-opacity=".84" stroke-dasharray="90 152 16 770"/><circle cx="200" cy="200" r="158" stroke-width="1" stroke-opacity=".43" stroke-dasharray="15 80 4 300 35 570"/></g>
+              <g class="ring-b" fill="none" stroke="#64d5e8" stroke-linecap="round"><circle cx="200" cy="200" r="139" stroke-width="2.2" stroke-opacity=".88" stroke-dasharray="146 180 22 510"/><circle cx="200" cy="200" r="134" stroke-width="1" stroke-opacity=".38" stroke-dasharray="6 9"/></g>
+              <g class="ring-c" fill="none" stroke="#9ce7ec"><circle cx="200" cy="200" r="113" stroke-width="1.3" stroke-opacity=".55" stroke-dasharray="65 104 11 530"/><circle cx="200" cy="200" r="106" stroke-width="1" stroke-opacity=".28" stroke-dasharray="2 13"/></g>
+              <g class="ring-d" fill="none" stroke="#6ee3ee"><circle cx="200" cy="200" r="91" stroke-width="1.8" stroke-opacity=".65" stroke-dasharray="95 125 8 350"/></g>
+              <circle cx="200" cy="200" r="75" fill="#4bd2eb" opacity=".17" filter="url(#jarvis-glow)"/>
+              <circle cx="200" cy="200" r="72" fill="url(#jarvis-metal)" stroke="#9ae7ef" stroke-opacity=".65"/>
+              <circle cx="200" cy="200" r="61" fill="none" stroke="#9eeff3" stroke-opacity=".24"/>
+              <circle cx="200" cy="200" r="81" fill="none" stroke="#75cbdb" stroke-opacity=".42" stroke-dasharray="1 7"/>
+              <text x="200" y="226" class="core-letter">J</text>
+              <path d="M200 16v23M200 361v23M16 200h23M361 200h23" stroke="#7ed1e0" stroke-opacity=".38"/>
+              <circle cx="75" cy="100" r="3" fill="#b3f8fb"/><circle cx="321" cy="301" r="3" fill="#b3f8fb"/>
+              <path d="M75 100l25 -13m220 213l19 16" stroke="#8de7f0" stroke-opacity=".38"/>
+            </svg>
+            <div class="beam" aria-hidden="true"></div>
+          </div>
+          <span class="orb-anno bottom">PRECISION / <span>ACTIVE</span></span>
         </div>
       </section>
-
-      <!-- Investments: the legacy watchlist remains in the DOM for app.js.
-           portfolio.js will display the private portfolio interface here. -->
-      <section class="view" id="view-investments">
-        <div class="view-heading">
-          <span class="eyebrow">RESEARCH MODULE / 002</span>
-          <h1>Investment intelligence<span class="period">.</span></h1>
-          <p>Portfolio research. Quotes are not connected yet.</p>
-        </div>
-        <div class="kpi-row">
-          <div class="kpi">
-            <label>WATCHLIST ASSETS</label><strong id="watchCount">00</strong>
-            <small>Previous local research list</small>
-          </div>
-          <div class="kpi">
-            <label>LIVE PRICES</label><strong class="neutral">OFF</strong>
-            <small>Historical feed pending</small>
-          </div>
-          <div class="kpi">
-            <label>TRADE EXECUTION</label><strong class="neutral">NONE</strong>
-            <small>Research only</small>
-          </div>
-        </div>
-        <div class="pane">
-          <div class="pane-title"><h2>Research Watchlist</h2><span>Previous version</span></div>
-          <div id="watchlist" class="watch-grid"></div>
-          <form id="addTickerForm" class="inline-form">
-            <input id="newTicker" maxlength="15" placeholder="Add ticker" aria-label="Ticker" required>
-            <button type="submit" class="primary mini">ADD ASSET +</button>
-          </form>
-        </div>
-        <div class="pane invested">
-          <div>
-            <div class="micro">RESEARCH WORKSPACE</div>
-            <h2>Northstar Investment Research Lab</h2>
-            <p>Legacy charts are available separately while the new private portfolio is developed.</p>
-            <a href="./investment-lab.html" class="primary link-button">OPEN LEGACY CHART <span>↗</span></a>
-          </div>
-          <div class="spark-art" aria-hidden="true">
-            <span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Memory -->
-      <section class="view" id="view-memory">
-        <div class="view-heading">
-          <span class="eyebrow">PERSISTENCE MODULE / 003</span>
-          <h1>Personal memory<span class="period">.</span></h1>
-          <p>Saved browser notes. They do not synchronize across devices.</p>
-        </div>
-        <div class="pane">
-          <form id="noteForm" class="add-form">
-            <label for="noteInput">CREATE A MEMORY</label>
-            <textarea id="noteInput" rows="3" placeholder="Something you want JARVIS to remember..."></textarea>
-            <div class="form-actions">
-              <span>Browser-only storage</span>
-              <button class="primary mini" type="submit">SAVE MEMORY +</button>
-            </div>
-          </form>
-        </div>
-        <div class="pane">
-          <div class="pane-title">
-            <h2>Saved memories</h2>
-            <button id="exportBtn" type="button" class="ghost mini">EXPORT BACKUP ↓</button>
-          </div>
-          <div id="notesList" class="item-list"></div>
-        </div>
-      </section>
-
-      <!-- Tasks -->
-      <section class="view" id="view-tasks">
-        <div class="view-heading">
-          <span class="eyebrow">EXECUTION MODULE / 004</span>
-          <h1>Action queue<span class="period">.</span></h1>
-          <p>Personal task checklist stored in this browser.</p>
-        </div>
-        <div class="pane">
-          <form id="taskForm" class="inline-form big">
-            <input id="taskInput" placeholder="Add a task to work on..." required>
-            <button type="submit" class="primary mini">ADD TASK +</button>
-          </form>
-        </div>
-        <div class="pane">
-          <div class="pane-title"><h2>Task list</h2><span id="tasksPending">0 pending</span></div>
-          <div id="tasksList" class="item-list"></div>
-        </div>
-      </section>
-
-      <!-- Configuration -->
-      <section class="view" id="view-system">
-        <div class="view-heading">
-          <span class="eyebrow">OPERATIONS / 005</span>
-          <h1>System configuration<span class="period">.</span></h1>
-          <p>Connect an AI backend securely. Never put private API keys in GitHub.</p>
-        </div>
-        <div class="settings-grid">
-          <div class="pane">
-            <div class="pane-title"><h2>AI backend</h2><span>Optional secure server</span></div>
-            <label for="backendInput" class="form-label">BACKEND BASE URL</label>
-            <input id="backendInput" type="url" placeholder="https://your-secure-backend.example" autocomplete="url">
-            <p class="form-hint">GitHub Pages only hosts the frontend. API credentials must stay on a secure server.</p>
-            <div class="form-actions">
-              <button id="saveBackendBtn" type="button" class="primary mini">SAVE URL</button>
-              <button id="testBackendBtn" type="button" class="ghost mini">TEST CONNECTION</button>
-            </div>
-            <p id="backendMessage" class="feedback" role="status"></p>
-          </div>
-          <div class="pane">
-            <div class="pane-title"><h2>Privacy &amp; data</h2><span>Local prototype</span></div>
-            <div class="setting-line">
-              <div><strong>Browser notes</strong><span>Local storage; not encrypted and not synced</span></div>
-              <span class="settings-state">LOCAL</span>
-            </div>
-            <div class="setting-line">
-              <div><strong>AI data sharing</strong><span>Only when a backend is configured</span></div>
-              <span class="settings-state">OPT-IN</span>
-            </div>
-            <div class="form-actions">
-              <button id="importBtn" type="button" class="ghost mini">IMPORT BACKUP</button>
-              <input id="importFile" type="file" accept="application/json" hidden>
-              <button id="clearBtn" type="button" class="danger mini">CLEAR LOCAL NOTES / TASKS</button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <div class="module-title"><h2>01 &nbsp; / &nbsp; YOUR FINANCIAL OVERVIEW</h2><span>VWCE · VFEA · SXR8 BENCHMARK</span></div>
+      <section id="view-investments" aria-label="Portfolio value, historical chart, market prices, holdings and transactions"><p class="boot">INITIALIZING PORTFOLIO ENGINE…</p></section>
+      <footer class="site-foot">JARVIS / NORTHSTAR · Prices are latest available Xetra closing quotes, not real-time trades. Benchmark comparisons use matched capital contributions. Portfolio transactions are stored locally in this browser; export a backup regularly.</footer>
     </main>
-
-    <!-- Command terminal always stays available -->
-    <footer class="console">
-      <div class="console-top">
-        <div class="console-title"><span class="console-led"></span>COMMAND TERMINAL</div>
-        <div class="console-actions">
-          <button id="clearConversation" type="button" title="Clear displayed conversation">CLEAR CHAT</button>
-          <span>↵ SEND</span>
-        </div>
-      </div>
-      <div class="console-messages" id="messages" aria-live="polite"></div>
-      <form id="commandForm" class="command-input">
-        <span class="prompt-chevron">›</span>
-        <input id="commandInput" autocomplete="off" maxlength="2000"
-          aria-label="Command input" placeholder="Ask JARVIS anything, or type a local command...">
-        <button id="sendBtn" type="submit" class="send-btn" aria-label="Send command">➤</button>
-      </form>
-      <div class="console-bottom">
-        <span><span class="mini-square"></span><span id="footerStatus">SYSTEM READY</span></span>
-        <span id="systemFootnote">LOCAL COMMANDS · NO AI CONNECTED</span>
-      </div>
-    </footer>
   </div>
 </div>
-
-<!-- Both scripts are required. The portfolio appears inside Investments. -->
-<script type="module" src="./js/app.js"></script>
+<!-- This existing script is unchanged: it owns transactions and financial calculations. -->
 <script defer src="./js/portfolio.js"></script>
+<script>
+(() => {
+  const host = document.getElementById('view-investments');
+  const value = document.getElementById('hero-value');
+  const profit = document.getElementById('hero-profit');
+  const date = document.getElementById('hero-date');
+  const status = document.getElementById('top-status');
+  const railStatus = document.getElementById('rail-status');
+  const button = document.getElementById('refresh');
+  const orbScene = document.querySelector('.orb-scene');
+  const orb = document.getElementById('orb');
+  const links = [...document.querySelectorAll('.nav-item')];
+  const clean = s => (s || '').replace(/\s+/g,' ').trim();
+
+  function update() {
+    const v = clean(document.getElementById('pf-value')?.textContent);
+    const p = clean(document.getElementById('pf-pl')?.textContent);
+    const feed = clean(document.getElementById('pf-feed')?.textContent);
+    const match = feed.match(/\d{4}-\d{2}-\d{2}/);
+    value.textContent = v && v !== '—' ? v : '—';
+    profit.textContent = p && p !== '—' ? p : '—';
+    profit.classList.toggle('positive', p.startsWith('+'));
+    profit.classList.toggle('negative', p.startsWith('−') || p.startsWith('-'));
+
+    const unavailable = /unavailable|error|failed/i.test(feed);
+    const stale = /stale/i.test(feed);
+    date.textContent = match ? `XETRA DAILY CLOSE / ${match[0]}${stale ? ' · STALE' : ''}` : 'WAITING FOR VERIFIED CLOSING PRICES';
+    status.textContent = unavailable ? 'PRICE FEED / UNAVAILABLE' : match ? `MARKET CLOSE / ${match[0]}${stale ? ' / STALE' : ''}` : 'MARKET DATA / CONNECTING';
+    railStatus.textContent = unavailable ? 'DATA UNAVAILABLE' : match ? 'DATA FEED CONNECTED' : 'CONNECTING';
+    button.disabled = !!document.getElementById('pf-refresh')?.disabled;
+  }
+
+  button.addEventListener('click', () => {
+    const internal = document.getElementById('pf-refresh');
+    if (internal && !internal.disabled) internal.click();
+  });
+  links.forEach(link => link.addEventListener('click', () => {
+    links.forEach(n => { n.classList.remove('active'); n.removeAttribute('aria-current'); });
+    link.classList.add('active'); link.setAttribute('aria-current','page');
+  }));
+
+  if (window.matchMedia('(pointer:fine) and (prefers-reduced-motion:no-preference)').matches) {
+    orbScene.addEventListener('pointermove', e => {
+      const r = orbScene.getBoundingClientRect();
+      const x = (e.clientX-r.left)/r.width-.5;
+      const y = (e.clientY-r.top)/r.height-.5;
+      orb.style.setProperty('--yaw', `${(x*10).toFixed(2)}deg`);
+      orb.style.setProperty('--pitch', `${(-y*10).toFixed(2)}deg`);
+    });
+    orbScene.addEventListener('pointerleave', () => {
+      orb.style.setProperty('--yaw','0deg'); orb.style.setProperty('--pitch','0deg');
+    });
+  }
+  let pending = false;
+  new MutationObserver(() => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => { pending=false; update(); });
+  }).observe(host,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['disabled']});
+  update();
+})();
+</script>
 </body>
 </html>
