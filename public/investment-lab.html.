@@ -1,0 +1,402 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JARVIS | Investment Lab</title>
+
+<style>
+:root {
+  --bg:#050c16;
+  --panel:#0b1a2a;
+  --border:#19364a;
+  --cyan:#51d9f5;
+  --text:#edf7ff;
+  --muted:#849bab;
+}
+
+* { box-sizing:border-box; }
+
+body {
+  margin:0;
+  color:var(--text);
+  background:
+    radial-gradient(ellipse at 50% 0%,
+    #103047 0%,#050c16 65%);
+  font-family:Arial,Helvetica,sans-serif;
+  min-height:100vh;
+}
+
+header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:22px 5%;
+  border-bottom:1px solid var(--border);
+  gap:15px;
+}
+
+.brand {
+  color:var(--cyan);
+  font-weight:700;
+  letter-spacing:4px;
+  font-size:18px;
+}
+
+.back {
+  color:var(--muted);
+  text-decoration:none;
+  font-size:12px;
+  letter-spacing:1px;
+}
+
+main {
+  max-width:1500px;
+  margin:auto;
+  padding:40px 5%;
+}
+
+.eyebrow {
+  color:var(--cyan);
+  letter-spacing:3px;
+  font-size:11px;
+}
+
+h1 {
+  font-size:clamp(30px,4vw,52px);
+  font-weight:500;
+  margin:15px 0;
+}
+
+h1 span { color:var(--cyan); }
+
+.subtitle {
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.7;
+}
+
+.assets {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:15px;
+  margin-top:35px;
+}
+
+.asset {
+  background:var(--panel);
+  border:1px solid var(--border);
+  padding:22px;
+  border-radius:8px;
+}
+
+.asset small {
+  color:var(--muted);
+  letter-spacing:2px;
+  font-size:10px;
+}
+
+.asset h2 {
+  color:var(--cyan);
+  margin:12px 0 5px;
+  font-size:29px;
+}
+
+.asset p {
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+}
+
+.chart-section {
+  margin-top:30px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:22px;
+}
+
+.chart-heading {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:15px;
+}
+
+.chart-heading h2 {
+  font-size:20px;
+  margin:0;
+}
+
+.tabs {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:22px 0;
+}
+
+.tab {
+  border:1px solid var(--border);
+  background:#081624;
+  color:var(--muted);
+  padding:12px 19px;
+  cursor:pointer;
+  border-radius:5px;
+  font-size:12px;
+}
+
+.tab.active {
+  color:#03141c;
+  background:var(--cyan);
+  border-color:var(--cyan);
+  font-weight:700;
+}
+
+#chartHost {
+  width:100%;
+  height:clamp(440px,65vh,720px);
+  background:#07121f;
+  overflow:hidden;
+  border-radius:5px;
+}
+
+.tradingview-widget-container {
+  height:100%;
+  width:100%;
+}
+
+.tradingview-widget-copyright {
+  text-align:center;
+  padding:6px;
+  font-size:11px;
+}
+
+.tradingview-widget-copyright a {
+  color:var(--muted);
+}
+
+.note {
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.8;
+  margin-top:20px;
+}
+
+footer {
+  color:var(--muted);
+  text-align:center;
+  font-size:10px;
+  letter-spacing:2px;
+  padding:30px;
+}
+
+@media(max-width:700px) {
+  header {padding:18px;}
+  main {padding:28px 16px;}
+  .assets {grid-template-columns:1fr;}
+  .chart-section {padding:12px;}
+  .tab {padding:11px;}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="brand">J.A.R.V.I.S.</div>
+  <a class="back" href="./index.html">
+    ← COMMAND CENTER
+  </a>
+</header>
+
+<main>
+
+  <div class="eyebrow">
+    NORTHSTAR / RESEARCH MODULE 002
+  </div>
+
+  <h1>Investment <span>Intelligence.</span></h1>
+
+  <p class="subtitle">
+    Global equity research, market monitoring
+    and benchmark comparison.
+  </p>
+
+  <section class="assets">
+
+    <div class="asset">
+      <small>CORE PORTFOLIO / 01</small>
+      <h2>VWCE</h2>
+      <p>Vanguard FTSE All-World</p>
+      <p>Developed + Emerging Markets</p>
+    </div>
+
+    <div class="asset">
+      <small>CORE PORTFOLIO / 02</small>
+      <h2>VFEA</h2>
+      <p>Vanguard FTSE Emerging Markets</p>
+      <p>Emerging Markets Exposure</p>
+    </div>
+
+    <div class="asset">
+      <small>BENCHMARK / 03</small>
+      <h2>SXR8</h2>
+      <p>iShares Core S&P 500</p>
+      <p>US Large-Cap Benchmark</p>
+    </div>
+
+  </section>
+
+  <section class="chart-section">
+
+    <div class="chart-heading">
+      <h2 id="chartTitle">Market Comparison</h2>
+      <div class="eyebrow">MARKET DATA / TRADINGVIEW</div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-mode="compare">
+        COMPARE ALL
+      </button>
+
+      <button class="tab" data-mode="world">
+        WORLD
+      </button>
+
+      <button class="tab" data-mode="emerging">
+        EMERGING
+      </button>
+
+      <button class="tab" data-mode="sp500">
+        S&P 500
+      </button>
+    </div>
+
+    <div id="chartHost"></div>
+
+    <p class="note" id="chartNote">
+      Compare the price performance of all three
+      ETFs on the same chart. Market data may be delayed.
+    </p>
+
+    <p class="note">
+      All three instruments are Xetra-listed,
+      EUR-traded ETFs. This chart compares ETF
+      prices, not yet the historical returns of
+      your weighted portfolio.
+    </p>
+
+  </section>
+
+</main>
+
+<footer>
+  NORTHSTAR SYSTEMS · JARVIS INVESTMENT LAB
+</footer>
+
+<script>
+const assets = {
+  world: "XETR:VWCE",
+  emerging: "XETR:VFEA",
+  sp500: "XETR:SXR8"
+};
+
+const titles = {
+  compare: "Market Comparison",
+  world: "World Equity — VWCE",
+  emerging: "Emerging Markets — VFEA",
+  sp500: "S&P 500 Benchmark — SXR8"
+};
+
+function loadChart(mode) {
+
+  const host = document.getElementById("chartHost");
+  host.replaceChildren();
+
+  const container = document.createElement("div");
+  container.className = "tradingview-widget-container";
+
+  const widget = document.createElement("div");
+  widget.className = "tradingview-widget-container__widget";
+  widget.style.height = "calc(100% - 28px)";
+  widget.style.width = "100%";
+
+  const credit = document.createElement("div");
+  credit.className = "tradingview-widget-copyright";
+
+  const creditLink = document.createElement("a");
+  creditLink.href = "https://www.tradingview.com/";
+  creditLink.target = "_blank";
+  creditLink.rel = "noopener noreferrer";
+  creditLink.textContent = "Charts by TradingView";
+
+  credit.appendChild(creditLink);
+  container.appendChild(widget);
+  container.appendChild(credit);
+
+  const comparisons = mode === "compare" ? [
+    {symbol:"XETR:VFEA",position:"SameScale"},
+    {symbol:"XETR:SXR8",position:"SameScale"}
+  ] : [];
+
+  const config = {
+    autosize:true,
+    symbol:mode === "compare"
+      ? assets.world
+      : assets[mode],
+    interval:"D",
+    timezone:"exchange",
+    theme:"dark",
+    style:3,
+    locale:"en",
+    backgroundColor:"#07121f",
+    gridColor:"rgba(81,217,245,0.07)",
+    withdateranges:true,
+    hide_side_toolbar:false,
+    allow_symbol_change:true,
+    hide_top_toolbar:false,
+    save_image:true,
+    compareSymbols:comparisons,
+    calendar:false,
+    support_host:"https://www.tradingview.com"
+  };
+
+  const script = document.createElement("script");
+  script.type = "text/javascript";
+  script.src =
+    "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+  script.async = true;
+  script.textContent = JSON.stringify(config);
+
+  host.appendChild(container);
+  container.appendChild(script);
+
+  document.getElementById("chartTitle").textContent =
+    titles[mode];
+
+  document.getElementById("chartNote").textContent =
+    mode === "compare"
+    ? "Three ETF price series displayed together. Use the chart percentage scale for relative performance comparisons."
+    : "Interactive ETF price chart. Change the timeframe, add indicators or inspect historical movements.";
+
+  document.querySelectorAll(".tab").forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.mode === mode
+    );
+  });
+}
+
+document.querySelectorAll(".tab").forEach(button => {
+  button.addEventListener("click", () => {
+    loadChart(button.dataset.mode);
+  });
+});
+
+loadChart("compare");
+</script>
+
+</body>
+</html>
