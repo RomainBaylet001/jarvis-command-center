@@ -1,23 +1,20 @@
 
 /*
   NORTHSTAR — PORTFOLIO X-RAY
-  Geographic look-through for VWCE and VFEA.
-  Read-only: never changes transactions.
+  Homepage geographic exposure preview.
+
+  The full interactive experience lives in:
+  ./xray.html
+
+  Read-only. Never modifies saved transactions.
 */
+
 (() => {
   "use strict";
 
   const ASSETS = ["VWCE", "VFEA"];
   const DATA_URL = "./data/country-exposure.json";
 
-  const SOURCES = {
-    VWCE: "https://global.vanguard.com/it-it/investment-products/etf/equities/9679/ftse-all-world-ucits-etf-usd-accumulating-usd-accumulating",
-    VFEA: "https://global.vanguard.com/it-it/investment-products/etf/equities/9678/ftse-emerging-markets-ucits-etf-usd-accumulating"
-  };
-
-  // Official Vanguard disclosures, 30 September 2026.
-  // The published market table lists the 15 largest
-  // countries. The remainder is labelled "Other markets".
   const FALLBACK = {
     funds: {
       VWCE: {
@@ -40,6 +37,7 @@
           "Italy": 0.75
         }
       },
+
       VFEA: {
         asOf: "2026-09-30",
         countries: {
@@ -63,37 +61,7 @@
     }
   };
 
-  const REGIONS = {
-    "North America": [
-      "United States", "Canada"
-    ],
-    "Europe": [
-      "United Kingdom", "France", "Switzerland",
-      "Germany", "Netherlands", "Spain", "Italy"
-    ],
-    "Asia-Pacific": [
-      "Japan", "Taiwan", "China", "South Korea",
-      "India", "Australia", "Malaysia",
-      "Thailand", "Indonesia"
-    ],
-    "Latin America": [
-      "Brazil", "Mexico", "Chile"
-    ],
-    "Middle East & Africa": [
-      "South Africa", "Saudi Arabia",
-      "United Arab Emirates", "Turkey",
-      "Kuwait", "Qatar"
-    ]
-  };
-
-  const REGION_COLORS = {
-    "North America": "#24566b",
-    "Europe": "#7799a6",
-    "Asia-Pacific": "#b99a6c",
-    "Latin America": "#6e9d90",
-    "Middle East & Africa": "#b67d72",
-    "Other markets": "#d9d3c7"
-  };
+  const $ = id => document.getElementById(id);
 
   const euro = new Intl.NumberFormat("en-IE", {
     style: "currency",
@@ -102,16 +70,20 @@
   });
 
   const number = new Intl.NumberFormat("en-IE", {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
 
   const money = value =>
     Number.isFinite(value) ? euro.format(value) : "—";
 
-  const pct = value => number.format(value) + "%";
+  const pct = value =>
+    Number.isFinite(value)
+      ? number.format(value) + "%"
+      : "—";
 
   const escapeHtml = value =>
-    String(value).replace(/[&<>"']/g, character => ({
+    String(value ?? "").replace(/[&<>"']/g, character => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
@@ -119,32 +91,24 @@
       "'": "&#39;"
     })[character]);
 
-  const dateLabel = iso => {
-    const date = new Date(iso + "T12:00:00Z");
-
-    return Number.isNaN(date.getTime())
-      ? "Unknown"
-      : new Intl.DateTimeFormat("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-          timeZone: "UTC"
-        }).format(date);
-  };
-
   let issuer = null;
   let portfolio = null;
   let root = null;
-  let mode = "ALL";
-  let grouping = "country";
-  let expanded = false;
-  let selected = "";
-  let dataStatus = "Verified issuer snapshot";
 
-  function validateData(payload) {
-    if (!payload || !payload.funds) return null;
+  let sourceStatus = "Verified Vanguard snapshot";
 
-    const result = { funds: {} };
+  /* ==========================================
+     COUNTRY DATA VALIDATION
+     ========================================== */
+
+  function validateCountryData(payload) {
+    if (!payload || !payload.funds) {
+      throw Error("Missing country allocations");
+    }
+
+    const result = {
+      funds: {}
+    };
 
     for (const asset of ASSETS) {
       const fund = payload.funds[asset];
@@ -153,28 +117,34 @@
         !fund ||
         !/^\d{4}-\d{2}-\d{2}$/.test(fund.asOf || "") ||
         !fund.countries
-      ) return null;
+      ) {
+        throw Error("Invalid ETF country data");
+      }
 
-      let total = 0;
       const countries = {};
+      let total = 0;
 
-      for (const [country, raw] of Object.entries(
+      for (const [name, raw] of Object.entries(
         fund.countries
       )) {
         const weight = Number(raw);
 
         if (
-          !country ||
+          !name ||
           !Number.isFinite(weight) ||
           weight < 0 ||
           weight > 100
-        ) return null;
+        ) {
+          throw Error("Invalid country weight");
+        }
 
-        countries[country] = weight;
+        countries[name] = weight;
         total += weight;
       }
 
-      if (total < 80 || total > 100.3) return null;
+      if (total < 80 || total > 100.3) {
+        throw Error("Country weights failed validation");
+      }
 
       if (!("Other markets" in countries)) {
         countries["Other markets"] =
@@ -190,594 +160,146 @@
     return result;
   }
 
-  issuer = validateData(FALLBACK);
+  issuer = validateCountryData(FALLBACK);
 
-  function regionFor(country) {
-    return Object.keys(REGIONS).find(region =>
-      REGIONS[region].includes(country)
-    ) || "Other markets";
-  }
+  /* ==========================================
+     PORTFOLIO LOOK-THROUGH
+     ========================================== */
 
-  function getValues() {
-    const rows = portfolio?.rows || {};
-    const market = Number.isFinite(portfolio?.value);
+  function calculate() {
+    const market =
+      Number.isFinite(portfolio?.value) &&
+      portfolio.value > 0;
 
     const amounts = {};
 
     for (const asset of ASSETS) {
-      const holding = rows[asset];
+      const holding = portfolio?.rows?.[asset];
 
-      const value = market
+      const amount = market
         ? holding?.value
         : holding?.invested;
 
       amounts[asset] =
-        Number.isFinite(value) && value > 0
-          ? value
+        Number.isFinite(amount) && amount > 0
+          ? amount
           : 0;
     }
 
-    return {
-      amounts,
-      market,
-      total: amounts.VWCE + amounts.VFEA
-    };
-  }
+    const total =
+      amounts.VWCE + amounts.VFEA;
 
-  function calculate() {
-    const valuation = getValues();
-
-    const weights = mode === "ALL"
-      ? valuation.amounts
-      : {
-          VWCE: mode === "VWCE" ? 1 : 0,
-          VFEA: mode === "VFEA" ? 1 : 0
-        };
-
-    const totalWeight = weights.VWCE + weights.VFEA;
     const countries = new Map();
 
-    if (totalWeight > 0) {
+    if (total > 0) {
       for (const asset of ASSETS) {
-        const factor = weights[asset] / totalWeight;
+        const factor = amounts[asset] / total;
 
-        for (const [country, weight] of Object.entries(
+        for (const [name, weight] of Object.entries(
           issuer.funds[asset].countries
         )) {
-          const row = countries.get(country) || {
-            name: country,
+          const row = countries.get(name) || {
+            name,
             weight: 0,
-            parts: { VWCE: 0, VFEA: 0 }
+            parts: {
+              VWCE: 0,
+              VFEA: 0
+            }
           };
 
-          const contribution = factor * weight;
+          const contribution =
+            factor * weight;
 
           row.weight += contribution;
           row.parts[asset] += contribution;
 
-          countries.set(country, row);
+          countries.set(name, row);
         }
       }
     }
 
-    const countryRows = [...countries.values()].sort(
-      (a, b) => b.weight - a.weight
-    );
-
-    const regions = new Map();
-
-    for (const country of countryRows) {
-      const name = regionFor(country.name);
-
-      const row = regions.get(name) || {
-        name,
-        weight: 0,
-        parts: { VWCE: 0, VFEA: 0 }
-      };
-
-      row.weight += country.weight;
-
-      for (const asset of ASSETS) {
-        row.parts[asset] += country.parts[asset];
-      }
-
-      regions.set(name, row);
-    }
-
     return {
-      countries: countryRows,
-      regions: [...regions.values()].sort(
-        (a, b) => b.weight - a.weight
-      ),
-      value: mode === "ALL"
-        ? valuation.total
-        : valuation.amounts[mode],
-      hasHoldings: valuation.total > 0,
-      market: valuation.market
+      rows: [...countries.values()]
+        .filter(row => row.weight > 0.000001)
+        .sort((a, b) => b.weight - a.weight),
+
+      total,
+      market,
+      hasHoldings: total > 0
     };
   }
 
-  function makeRing(regions) {
-    if (!regions.length) {
-      return "conic-gradient(#e1e7e3 0% 100%)";
-    }
+  /* ==========================================
+     DATES
+     ========================================== */
 
-    let position = 0;
-
-    const stops = regions.map(region => {
-      const colour =
-        REGION_COLORS[region.name] || "#d9d3c7";
-
-      const end = Math.min(
-        100,
-        position + region.weight
-      );
-
-      const segment =
-        `${colour} ${position}% ${end}%`;
-
-      position = end;
-      return segment;
-    });
-
-    return "conic-gradient(" + stops.join(",") + ")";
-  }
-
-  function render() {
-    if (!root) return;
-
-    const result = calculate();
-
-    const rows = grouping === "country"
-      ? result.countries
-      : result.regions;
-
-    const mainCountries = result.countries.filter(
-      item => item.name !== "Other markets"
-    );
-
+  function asOfLabel() {
     const dates = ASSETS.map(
       asset => issuer.funds[asset].asOf
-    );
+    ).sort();
 
-    const oldest = [...dates].sort()[0];
+    const date = dates[0];
 
-    const daysOld = Math.floor(
-      (
-        Date.now() -
-        Date.parse(oldest + "T12:00:00Z")
-      ) / 86400000
-    );
-
-    root.querySelector("#nx-asof").textContent =
-      dates[0] === dates[1]
-        ? dateLabel(oldest)
-        : dates.map(dateLabel).join(" / ");
-
-    root.querySelector("#nx-feed").textContent =
-      dataStatus +
-      (daysOld > 60 ? " · OLD DATA" : "");
-
-    root.querySelector("#nx-feed").dataset.stale =
-      String(daysOld > 60);
-
-    root.querySelector("#nx-chart-title").textContent =
-      grouping === "country"
-        ? "Country exposure"
-        : "Regional exposure";
-
-    root.querySelector("#nx-basis").textContent =
-      mode !== "ALL"
-        ? mode + " / FUND COMPOSITION"
-        : !result.hasHoldings
-          ? "ADD PURCHASES TO CALCULATE"
-          : (
-              result.market
-                ? "MARKET VALUE / "
-                : "INVESTED CAPITAL / "
-            ) + money(result.value);
-
-    const stats = root.querySelector("#nx-stats");
-
-    const top = mainCountries.slice(0, 3);
-
-    stats.innerHTML = top.length
-      ? top.map((item, index) => `
-          <article class="nx-stat">
-            <span>
-              0${index + 1} /
-              ${escapeHtml(item.name.toUpperCase())}
-            </span>
-            <strong>${pct(item.weight)}</strong>
-            <small>
-              ${
-                result.hasHoldings
-                  ? money(result.value * item.weight / 100)
-                  : "Fund allocation"
-              }
-            </small>
-          </article>
-        `).join("")
-      : `<p class="nx-empty">
-          Add VWCE or VFEA purchases in Ledger
-          to calculate portfolio exposure.
-        </p>`;
-
-    root.querySelectorAll("[data-fund]").forEach(
-      button => {
-        button.setAttribute(
-          "aria-pressed",
-          String(button.dataset.fund === mode)
-        );
+    const formatted = new Intl.DateTimeFormat(
+      "en-GB",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC"
       }
-    );
+    ).format(new Date(date + "T12:00:00Z"));
 
-    root.querySelectorAll("[data-group]").forEach(
-      button => {
-        button.setAttribute(
-          "aria-pressed",
-          String(button.dataset.group === grouping)
-        );
-      }
-    );
-
-    const visible = expanded || grouping === "region"
-      ? rows
-      : rows.filter(
-          item => item.name !== "Other markets"
-        ).slice(0, 8);
-
-    const maximum = Math.max(
-      1,
-      ...rows.map(item => item.weight)
-    );
-
-    root.querySelector("#nx-bars").innerHTML =
-      visible.length
-        ? visible.map(item => {
-            const world =
-              item.parts.VWCE / maximum * 100;
-
-            const emerging =
-              item.parts.VFEA / maximum * 100;
-
-            return `
-              <button
-                type="button"
-                class="nx-line ${
-                  item.name === selected ? "chosen" : ""
-                }"
-                data-item="${escapeHtml(item.name)}"
-                aria-pressed="${
-                  item.name === selected
-                }"
-              >
-                <span class="nx-country">
-                  ${escapeHtml(item.name)}
-                </span>
-                <span class="nx-rail">
-                  <span
-                    class="nx-world"
-                    style="width:${world}%"
-                  ></span>
-                  <span
-                    class="nx-emerging"
-                    style="width:${emerging}%"
-                  ></span>
-                </span>
-                <strong>${pct(item.weight)}</strong>
-              </button>
-            `;
-          }).join("")
-        : `<p class="nx-empty">
-            No holdings recorded.
-            Select VWCE or VFEA to see
-            an individual fund breakdown.
-          </p>`;
-
-    const more = root.querySelector("#nx-more");
-
-    more.hidden =
-      grouping !== "country" || rows.length <= 8;
-
-    more.textContent = expanded
-      ? "SHOW FEWER MARKETS ↑"
-      : "EXPLORE ALL MARKETS ↓";
-
-    root.querySelector("#nx-ring").style.background =
-      makeRing(result.regions);
-
-    root.querySelector("#nx-regions").innerHTML =
-      result.regions.map(item => `
-        <div>
-          <span>
-            <i style="background:${
-              REGION_COLORS[item.name] || "#d9d3c7"
-            }"></i>
-            ${escapeHtml(item.name)}
-          </span>
-          <strong>${pct(item.weight)}</strong>
-        </div>
-      `).join("");
-
-    const focused =
-      rows.find(item => item.name === selected) ||
-      rows.find(item => item.name !== "Other markets") ||
-      rows[0];
-
-    if (focused) selected = focused.name;
-
-    root.querySelector("#nx-focus").innerHTML =
-      focused
-        ? `
-          <span class="nx-overline">
-            SELECTED EXPOSURE
-          </span>
-          <h4>${escapeHtml(focused.name)}</h4>
-          <div class="nx-focus-value">
-            ${pct(focused.weight)}
-            <small>
-              ${
-                result.hasHoldings
-                  ? money(
-                      result.value *
-                      focused.weight / 100
-                    )
-                  : "of the selected allocation"
-              }
-            </small>
-          </div>
-          <div class="nx-contributions">
-            ${ASSETS.map(asset => `
-              <div>
-                <span>
-                  <i class="nx-dot ${
-                    asset === "VWCE"
-                      ? "world"
-                      : "emerging"
-                  }"></i>
-                  ${asset}
-                </span>
-                <strong>
-                  ${pct(focused.parts[asset])}
-                </strong>
-                <small>
-                  ${
-                    result.hasHoldings
-                      ? money(
-                          result.value *
-                          focused.parts[asset] / 100
-                        )
-                      : "No position value"
-                  }
-                </small>
-              </div>
-            `).join("")}
-          </div>
-        `
-        : "";
-
-    root.querySelector("#nx-note").textContent =
-      `Issuer disclosures: VWCE ${dateLabel(dates[0])}; ` +
-      `VFEA ${dateLabel(dates[1])}. ` +
-      `Other markets includes omitted smaller countries ` +
-      `and rounding. Country exposure is based on ` +
-      `investee-market classification, not sales revenue. ` +
-      `SXR8 benchmark excluded.`;
+    return formatted;
   }
 
-  function build() {
-    if (document.getElementById("portfolio-xray")) {
-      return;
-    }
+  /* ==========================================
+     NAVIGATION
+     ========================================== */
 
-    root = document.createElement("section");
-    root.id = "portfolio-xray";
-    root.className = "nx-section";
-
-    root.setAttribute(
-      "aria-labelledby",
-      "nx-title"
-    );
-
-    root.innerHTML = `
-      <div class="section-coordinate">
-        04 / PORTFOLIO X-RAY
-      </div>
-
-      <div class="nx-shell">
-        <div class="nx-eyebrow">
-          <span class="nx-spark">✳</span>
-          NORTHSTAR / LOOK THROUGH YOUR ETFs
-          <span class="nx-reference">NS—04</span>
-        </div>
-
-        <div class="nx-intro">
-          <div>
-            <h2 id="nx-title">
-              The geography of
-              <em>your wealth.</em>
-            </h2>
-            <p>
-              One portfolio. Thousands of companies.
-              A clearer view of where your capital
-              is actually invested.
-            </p>
-          </div>
-
-          <div class="nx-snapshot">
-            <span>ISSUER SNAPSHOT</span>
-            <strong id="nx-asof">—</strong>
-            <small id="nx-feed">
-              Loading country data…
-            </small>
-          </div>
-        </div>
-
-        <div class="nx-stats" id="nx-stats"></div>
-
-        <div class="nx-workspace">
-          <div class="nx-primary">
-            <header class="nx-panel-heading">
-              <div>
-                <span class="nx-overline">
-                  GEOGRAPHIC ALLOCATION
-                </span>
-                <h3 id="nx-chart-title">
-                  Country exposure
-                </h3>
-              </div>
-              <span class="nx-basis" id="nx-basis"></span>
-            </header>
-
-            <div class="nx-toolbar">
-              <div class="nx-segments">
-                <button
-                  type="button"
-                  data-fund="ALL"
-                  aria-pressed="true"
-                >Portfolio</button>
-                <button
-                  type="button"
-                  data-fund="VWCE"
-                  aria-pressed="false"
-                >VWCE</button>
-                <button
-                  type="button"
-                  data-fund="VFEA"
-                  aria-pressed="false"
-                >VFEA</button>
-              </div>
-
-              <div class="nx-segments">
-                <button
-                  type="button"
-                  data-group="country"
-                  aria-pressed="true"
-                >Countries</button>
-                <button
-                  type="button"
-                  data-group="region"
-                  aria-pressed="false"
-                >Regions</button>
-              </div>
-            </div>
-
-            <div class="nx-list-heading">
-              <span>MARKET</span>
-              <span>EXPOSURE</span>
-            </div>
-
-            <div class="nx-bars" id="nx-bars"></div>
-
-            <button
-              class="nx-more"
-              id="nx-more"
-              type="button"
-            >
-              EXPLORE ALL MARKETS ↓
-            </button>
-
-            <div class="nx-legend">
-              <span>
-                <i class="nx-dot world"></i>
-                VWCE / World
-              </span>
-              <span>
-                <i class="nx-dot emerging"></i>
-                VFEA / Emerging
-              </span>
-            </div>
-          </div>
-
-          <aside class="nx-aside">
-            <header class="nx-aside-heading">
-              <span class="nx-overline">
-                REGIONAL LENS
-              </span>
-              <span>GLOBAL / 01</span>
-            </header>
-
-            <div class="nx-ring" id="nx-ring">
-              <div>
-                <small>YOUR CAPITAL</small>
-                <strong>GLOBAL</strong>
-              </div>
-            </div>
-
-            <div
-              class="nx-regions"
-              id="nx-regions"
-            ></div>
-
-            <div
-              class="nx-focus"
-              id="nx-focus"
-              aria-live="polite"
-            ></div>
-          </aside>
-        </div>
-
-        <footer class="nx-footnote">
-          <p id="nx-note"></p>
-
-          <div>
-            <a
-              href="${SOURCES.VWCE}"
-              target="_blank"
-              rel="noopener noreferrer"
-            >VWCE SOURCE ↗</a>
-
-            <a
-              href="${SOURCES.VFEA}"
-              target="_blank"
-              rel="noopener noreferrer"
-            >VFEA SOURCE ↗</a>
-          </div>
-        </footer>
-      </div>
-    `;
-
-    const goal = document.getElementById(
-      "goal-section"
-    );
-
-    const portfolioRoot = document.getElementById(
-      "pf-root"
-    );
-
-    if (goal) {
-      goal.after(root);
-    } else if (portfolioRoot) {
-      portfolioRoot.append(root);
-    } else {
-      root = null;
-      return;
-    }
-
+  function addNavigation() {
     const nav = document.querySelector(".nav");
-    const goalLink = nav?.querySelector(
+
+    if (!nav) return;
+
+    if (
+      nav.querySelector('a[href="./xray.html"]')
+    ) {
+      return;
+    }
+
+    const link = document.createElement("a");
+
+    link.href = "./xray.html";
+    link.innerHTML = "<span>04</span> X-Ray";
+
+    link.setAttribute(
+      "aria-label",
+      "Open Portfolio X-Ray world map"
+    );
+
+    const goal = nav.querySelector(
       'a[href="#goal-section"]'
     );
 
-    if (goalLink) {
-      const link = document.createElement("a");
-
-      link.href = "#portfolio-xray";
-      link.innerHTML = "<span>04</span> X-Ray";
-      goalLink.after(link);
-    }
-
-    const holdingsLink = nav?.querySelector(
+    const holdings = nav.querySelector(
       'a[href="#pf-holdings"]'
     );
 
-    if (holdingsLink) {
-      holdingsLink.innerHTML =
+    if (goal) {
+      goal.after(link);
+    } else if (holdings) {
+      holdings.before(link);
+    } else {
+      nav.append(link);
+    }
+
+    if (holdings) {
+      holdings.innerHTML =
         "<span>05</span> Holdings";
     }
 
-    const ledgerNumber = nav?.querySelector(
+    const ledgerNumber = nav.querySelector(
       ".goal-nav > span"
     );
 
@@ -785,685 +307,904 @@
       ledgerNumber.textContent = "06";
     }
 
-    const holdingsSection = document.getElementById(
-      "pf-holdings"
-    )?.closest("section");
+    const holdingsSection =
+      document.getElementById("pf-holdings")
+        ?.closest("section");
 
-    const holdingsCoordinate =
+    const coordinate =
       holdingsSection?.querySelector(
         ".section-coordinate"
       );
 
-    if (holdingsCoordinate) {
-      holdingsCoordinate.textContent =
+    if (coordinate) {
+      coordinate.textContent =
         "05 / HOLDINGS";
     }
+  }
 
-    root.addEventListener("click", event => {
-      const button = event.target.closest("button");
+  /* ==========================================
+     HOMEPAGE PREVIEW
+     ========================================== */
 
-      if (!button) return;
+  function build() {
+    if (
+      root ||
+      document.getElementById("portfolio-xray")
+    ) {
+      return;
+    }
 
-      if (button.dataset.fund) {
-        mode = button.dataset.fund;
-        selected = "";
-        expanded = false;
-      } else if (button.dataset.group) {
-        grouping = button.dataset.group;
-        selected = "";
-        expanded = false;
-      } else if (button.dataset.item) {
-        selected = button.dataset.item;
-      } else if (button.id === "nx-more") {
-        expanded = !expanded;
-      } else {
-        return;
-      }
+    root = document.createElement("section");
 
-      render();
-    });
+    root.id = "portfolio-xray";
+    root.className = "nxp-card";
 
+    root.setAttribute(
+      "aria-labelledby",
+      "nxp-title"
+    );
+
+    root.innerHTML = `
+      <div class="nxp-topline">
+
+        <span>
+          <i class="nxp-indicator"></i>
+          NORTHSTAR / GEOGRAPHIC INTELLIGENCE
+        </span>
+
+        <span id="nxp-date">
+          VERIFYING ISSUER DATA…
+        </span>
+
+      </div>
+
+      <div class="nxp-grid">
+
+        <div class="nxp-copy">
+
+          <div class="nxp-eyebrow">
+            04 / PORTFOLIO X-RAY
+          </div>
+
+          <h2 id="nxp-title">
+            Invested worldwide.<br>
+            <em>Understand it locally.</em>
+          </h2>
+
+          <p class="nxp-description">
+            Look beyond your ETF names.
+            Discover the countries behind your
+            investments and explore where your
+            capital is really allocated.
+          </p>
+
+          <a
+            class="nxp-action"
+            href="./xray.html"
+          >
+
+            EXPLORE THE WORLD MAP
+
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 13L13 3M3 3h10v10"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+              />
+            </svg>
+
+          </a>
+
+        </div>
+
+        <div class="nxp-preview">
+
+          <div class="nxp-preview-heading">
+
+            <div>
+              <span>YOUR GLOBAL FOOTPRINT</span>
+              <strong>Top country exposures</strong>
+            </div>
+
+            <span class="nxp-preview-index">
+              01 — 03
+            </span>
+
+          </div>
+
+          <div
+            id="nxp-countries"
+            class="nxp-countries"
+            aria-live="polite"
+          >
+            <div class="nxp-empty">
+              Connecting to portfolio data…
+            </div>
+          </div>
+
+          <div class="nxp-preview-footer">
+
+            <div class="nxp-legend">
+              <span>
+                <i class="nxp-world-dot"></i>
+                VWCE
+              </span>
+
+              <span>
+                <i class="nxp-emerging-dot"></i>
+                VFEA
+              </span>
+            </div>
+
+            <span id="nxp-basis">
+              AWAITING VALUATION
+            </span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="nxp-bottomline">
+
+        <span id="nxp-source">
+          VERIFIED VANGUARD COUNTRY ALLOCATIONS
+        </span>
+
+        <span>
+          FULL ANALYSIS / INTERACTIVE ATLAS ↗
+        </span>
+
+      </div>
+    `;
+
+    const goal = document.getElementById(
+      "goal-section"
+    );
+
+    const chart = document.getElementById(
+      "pf-chart"
+    )?.closest("section");
+
+    const portfolioRoot = document.getElementById(
+      "pf-root"
+    );
+
+    if (goal) {
+      goal.after(root);
+    } else if (chart) {
+      chart.after(root);
+    } else if (portfolioRoot) {
+      portfolioRoot.prepend(root);
+    } else {
+      root = null;
+      return;
+    }
+
+    addNavigation();
     render();
   }
+
+  /* ==========================================
+     PREVIEW RENDERING
+     ========================================== */
+
+  function render() {
+    if (!root) return;
+
+    const result = calculate();
+
+    $("nxp-date").textContent =
+      "COUNTRY DATA / " +
+      asOfLabel().toUpperCase();
+
+    $("nxp-source").textContent =
+      sourceStatus.toUpperCase() +
+      " · OTHER MARKETS GROUPED";
+
+    $("nxp-basis").textContent =
+      result.market
+        ? "MARKET VALUE BASIS"
+        : "INVESTED CAPITAL BASIS";
+
+    const target = $("nxp-countries");
+
+    if (!result.hasHoldings) {
+      target.innerHTML = `
+        <div class="nxp-empty">
+
+          <span class="nxp-empty-symbol">✧</span>
+
+          <strong>
+            Your geography starts here.
+          </strong>
+
+          <p>
+            Add VWCE or VFEA purchases in your
+            Ledger to reveal your actual
+            country exposure.
+          </p>
+
+        </div>
+      `;
+
+      $("nxp-basis").textContent =
+        "NO HOLDINGS SAVED";
+
+      return;
+    }
+
+    const top = result.rows
+      .filter(row => row.name !== "Other markets")
+      .slice(0, 3);
+
+    const maximum = Math.max(
+      1,
+      ...top.map(row => row.weight)
+    );
+
+    target.innerHTML = top.map((row, index) => {
+      const worldWidth = Math.max(
+        0,
+        Math.min(
+          100,
+          row.parts.VWCE / maximum * 100
+        )
+      );
+
+      const emergingWidth = Math.max(
+        0,
+        Math.min(
+          100,
+          row.parts.VFEA / maximum * 100
+        )
+      );
+
+      const estimatedValue =
+        result.total * row.weight / 100;
+
+      return `
+        <div class="nxp-country">
+
+          <div class="nxp-country-heading">
+
+            <span class="nxp-country-name">
+
+              <small>
+                ${String(index + 1).padStart(2, "0")}
+              </small>
+
+              ${escapeHtml(row.name)}
+
+            </span>
+
+            <strong>
+              ${pct(row.weight)}
+            </strong>
+
+          </div>
+
+          <div
+            class="nxp-country-track"
+            aria-hidden="true"
+          >
+
+            <i
+              class="nxp-country-world"
+              style="width:${worldWidth}%"
+            ></i>
+
+            <i
+              class="nxp-country-emerging"
+              style="width:${emergingWidth}%"
+            ></i>
+
+          </div>
+
+          <div class="nxp-country-value">
+            <span>
+              IMPLIED EXPOSURE
+            </span>
+
+            <span>
+              ${money(estimatedValue)}
+            </span>
+          </div>
+
+        </div>
+      `;
+    }).join("");
+  }
+
+  /* ==========================================
+     ISSUER DATA REFRESH
+     ========================================== */
 
   async function refreshIssuer() {
     try {
       const response = await fetch(DATA_URL, {
-        cache: "no-cache"
+        cache: "no-store"
       });
 
       if (!response.ok) {
-        throw Error("Country file unavailable");
+        throw Error(
+          "Issuer feed HTTP " + response.status
+        );
       }
 
-      const next = validateData(
+      issuer = validateCountryData(
         await response.json()
       );
 
-      if (!next) {
-        throw Error("Invalid country file");
-      }
+      sourceStatus =
+        "Automated Vanguard disclosure";
 
-      issuer = next;
-      dataStatus = "Vanguard / AUTOMATED";
-    } catch {
-      dataStatus =
-        "VERIFIED SNAPSHOT / REFRESH PENDING";
+    } catch (error) {
+      console.warn(
+        "NORTHSTAR X-Ray preview:",
+        error
+      );
+
+      sourceStatus =
+        "Verified September 2026 snapshot";
     }
 
     render();
   }
 
+  /* ==========================================
+     DARK NORTHSTAR DESIGN
+     ========================================== */
+
   const style = document.createElement("style");
-  style.id = "northstar-xray-style";
+
+  style.id = "northstar-xray-preview-style";
 
   style.textContent = `
-    #portfolio-xray {
-      scroll-margin-top: 108px;
-      width: 100%;
-      margin: 20px 0 44px;
+
+    #portfolio-xray.nxp-card {
+      position: relative;
+      isolation: isolate;
+
+      margin: 26px 0 35px;
+
+      color: #edf0f3;
+
+      border: 1px solid #a4b5c52a;
+
+      background:
+        linear-gradient(
+          135deg,
+          #111b28ed 0%,
+          #0a111bed 58%,
+          #0c141eed 100%
+        );
+
+      overflow: hidden;
     }
 
-    #portfolio-xray * {
+    #portfolio-xray.nxp-card::before {
+      content: "";
+
+      position: absolute;
+      z-index: -1;
+
+      width: 440px;
+      height: 440px;
+
+      right: -230px;
+      top: -240px;
+
+      border: 1px solid #cdb78c1e;
+      border-radius: 50%;
+
+      box-shadow:
+        0 0 0 55px #cdb78c04,
+        0 0 0 110px #cdb78c03;
+
+      pointer-events: none;
+    }
+
+    #portfolio-xray *,
+    #portfolio-xray *::before,
+    #portfolio-xray *::after {
       box-sizing: border-box;
     }
 
-    #portfolio-xray .section-coordinate {
-      margin-bottom: 18px;
-    }
+    /* TOP COORDINATE */
 
-    .nx-shell {
-      background: #f6f4ee;
-      color: #203541;
-      border: 1px solid #ffffff66;
-      border-radius: 12px;
-      padding: clamp(22px, 3.6vw, 54px);
-      box-shadow: 0 24px 80px #00000030;
-      overflow: hidden;
-      font-family: inherit;
-    }
-
-    .nx-eyebrow,
-    .nx-overline {
-      font-family: var(--mono, monospace);
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: .12em;
-      color: #758784;
-    }
-
-    .nx-eyebrow {
+    .nxp-topline,
+    .nxp-bottomline {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 10px;
-      padding-bottom: 24px;
-      border-bottom: 1px solid #d8deda;
-    }
-
-    .nx-eyebrow .nx-reference {
-      margin-left: auto;
-      color: #aeb9b4;
-    }
-
-    .nx-spark {
-      color: #a68c62;
-      font-size: 19px;
-    }
-
-    .nx-intro {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-      gap: 30px;
-      padding: 32px 0 38px;
-    }
-
-    .nx-intro h2 {
-      margin: 0 0 15px;
-      max-width: 640px;
-      font: 400 clamp(32px, 4.3vw, 56px)/1.05 Georgia, serif;
-      letter-spacing: -.045em;
-      color: #193442;
-    }
-
-    .nx-intro h2 em {
-      font-weight: 400;
-      color: #aa8c62;
-    }
-
-    .nx-intro p {
-      max-width: 580px;
-      margin: 0;
-      font-size: 13px;
-      line-height: 1.8;
-      color: #71827e;
-    }
-
-    .nx-snapshot {
-      min-width: 190px;
-      display: grid;
-      gap: 6px;
-      text-align: right;
-    }
-
-    .nx-snapshot span {
-      font: 10px var(--mono, monospace);
-      letter-spacing: .12em;
-      color: #81918d;
-    }
-
-    .nx-snapshot strong {
-      font: 400 19px Georgia, serif;
-      color: #294754;
-    }
-
-    .nx-snapshot small {
-      font-size: 10px;
-      color: #97a39e;
-    }
-
-    .nx-snapshot small[data-stale="true"] {
-      color: #b77859;
-    }
-
-    .nx-stats {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-
-    .nx-stat {
-      min-width: 0;
-      padding: 23px 24px;
-      border: 1px solid #e5e9e5;
-      border-radius: 8px;
-      background: #fff;
-    }
-
-    .nx-stat span,
-    .nx-stat small {
-      display: block;
-      font: 10px/1.7 var(--mono, monospace);
-      color: #91a09b;
-    }
-
-    .nx-stat strong {
-      display: block;
-      margin: 11px 0 7px;
-      font: 400 clamp(30px, 3.5vw, 44px) Georgia, serif;
-      letter-spacing: -.045em;
-      color: #20465a;
-    }
-
-    .nx-workspace {
-      display: grid;
-      grid-template-columns: minmax(0, 1.65fr) minmax(270px, 1fr);
-      gap: 12px;
-    }
-
-    .nx-primary,
-    .nx-aside {
-      min-width: 0;
-      padding: clamp(20px, 2.7vw, 32px);
-      background: #fff;
-      border: 1px solid #e6ebe6;
-      border-radius: 8px;
-    }
-
-    .nx-panel-heading,
-    .nx-aside-heading {
-      display: flex;
-      justify-content: space-between;
-      align-items: start;
-      gap: 12px;
-    }
-
-    .nx-panel-heading h3 {
-      margin: 9px 0 0;
-      color: #204253;
-      font: 400 29px Georgia, serif;
-      letter-spacing: -.035em;
-    }
-
-    .nx-basis {
-      max-width: 210px;
-      text-align: right;
-      font: 10px/1.7 var(--mono, monospace);
-      color: #83938e;
-    }
-
-    .nx-toolbar {
-      display: flex;
-      justify-content: space-between;
       flex-wrap: wrap;
-      gap: 10px;
-      padding: 27px 0 22px;
+
+      gap: 10px 25px;
+
+      padding: 16px 28px;
+
+      color: #718397;
+
+      font: 8px/1.7 var(--mono, monospace);
+      letter-spacing: .12em;
     }
 
-    .nx-segments {
+    .nxp-topline {
+      border-bottom: 1px solid #a4b5c51c;
+    }
+
+    .nxp-topline > span:first-child {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+
+      color: #aaaeaa;
+    }
+
+    .nxp-indicator {
+      display: inline-block;
+
+      width: 5px;
+      height: 5px;
+
+      border-radius: 50%;
+      background: #cdb78c;
+
+      box-shadow: 0 0 12px #cdb78c45;
+    }
+
+    /* TWO COLUMN LAYOUT */
+
+    .nxp-grid {
+      display: grid;
+
+      grid-template-columns:
+        minmax(0, 1.05fr)
+        minmax(0, .95fr);
+
+      min-height: 330px;
+    }
+
+    /* INTRODUCTION */
+
+    .nxp-copy {
+      min-width: 0;
+
+      padding:
+        clamp(28px, 3.7vw, 53px)
+        clamp(24px, 3.7vw, 53px);
+
       display: flex;
-      gap: 3px;
-      padding: 3px;
-      border: 1px solid #dce5df;
-      border-radius: 7px;
-      background: #f7f9f7;
+      flex-direction: column;
+      align-items: flex-start;
     }
 
-    .nx-segments button {
-      appearance: none;
-      border: 0;
-      min-height: 36px;
-      padding: 0 12px;
-      border-radius: 5px;
-      background: transparent;
-      color: #80908d;
-      font: 600 11px system-ui, sans-serif;
-      cursor: pointer;
+    .nxp-eyebrow {
+      margin-bottom: 18px;
+
+      color: #cdb78c;
+
+      font: 9px/1.6 var(--mono, monospace);
+      letter-spacing: .15em;
     }
 
-    .nx-segments button[aria-pressed="true"] {
-      background: #fff;
-      color: #284b5b;
-      box-shadow: 0 1px 6px #1a383b19;
+    #portfolio-xray h2 {
+      margin: 0;
+
+      color: #edf0f3;
+
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(30px, 3.3vw, 47px);
+      font-weight: 400;
+      line-height: 1.14;
+      letter-spacing: -.045em;
     }
 
-    .nx-list-heading {
+    #portfolio-xray h2 em {
+      color: #a6b3c0;
+      font-weight: 400;
+    }
+
+    .nxp-description {
+      max-width: 425px;
+
+      margin: 20px 0 27px;
+
+      color: #96a5b4;
+      font-size: 12px;
+      line-height: 1.85;
+    }
+
+    /* CTA */
+
+    .nxp-action {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 23px;
+
+      min-height: 45px;
+      padding: 12px 16px;
+
+      border: 1px solid #cdb78c;
+
+      background: #cdb78c;
+      color: #171b1f;
+
+      font: 9px/1.5 var(--mono, monospace);
+      font-weight: 600;
+      letter-spacing: .075em;
+
+      text-decoration: none;
+
+      transition:
+        background .2s ease,
+        color .2s ease,
+        transform .2s ease;
+    }
+
+    .nxp-action:hover {
+      background: #ead5ac;
+      border-color: #ead5ac;
+      color: #10161a;
+
+      transform: translateY(-2px);
+    }
+
+    .nxp-action:focus-visible {
+      outline: 2px solid #99dce4;
+      outline-offset: 4px;
+    }
+
+    /* RIGHT PREVIEW */
+
+    .nxp-preview {
+      min-width: 0;
+
+      display: flex;
+      flex-direction: column;
+
+      padding: 29px 30px 23px;
+
+      border-left: 1px solid #a4b5c521;
+
+      background: #080f18a8;
+    }
+
+    .nxp-preview-heading {
       display: flex;
       justify-content: space-between;
-      padding: 13px 6px;
-      border-bottom: 1px solid #e5ebe6;
-      font: 10px var(--mono, monospace);
-      letter-spacing: .12em;
-      color: #9aa6a0;
+      align-items: flex-start;
+      gap: 20px;
+
+      padding-bottom: 21px;
+      border-bottom: 1px solid #a4b5c523;
     }
 
-    .nx-bars {
-      min-height: 100px;
+    .nxp-preview-heading > div > span {
+      display: block;
+
+      color: #9daaaf;
+
+      font: 8px/1.6 var(--mono, monospace);
+      letter-spacing: .14em;
     }
 
-    .nx-line {
-      display: grid;
-      grid-template-columns:
-        minmax(105px, 1fr)
-        minmax(80px, 2fr)
-        67px;
-      gap: 13px;
-      align-items: center;
-      width: 100%;
-      min-height: 44px;
-      padding: 7px;
-      border: 1px solid transparent;
-      border-radius: 5px;
-      background: transparent;
-      color: #3b5660;
-      text-align: left;
-      cursor: pointer;
-      font-family: inherit;
+    .nxp-preview-heading strong {
+      display: block;
+
+      margin-top: 8px;
+
+      color: #e9edef;
+
+      font-family: Georgia, serif;
+      font-size: 21px;
+      font-weight: 400;
     }
 
-    .nx-line:hover,
-    .nx-line.chosen {
-      background: #f5f8f5;
-      border-color: #e6ece6;
-    }
+    .nxp-preview-index {
+      color: #6d7e90;
 
-    .nx-country {
-      font-size: 12px;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font: 8px/1.6 var(--mono, monospace);
       white-space: nowrap;
     }
 
-    .nx-rail {
+    .nxp-countries {
+      display: grid;
+      align-content: center;
+      flex: 1;
+      gap: 16px;
+
+      padding: 22px 0;
+    }
+
+    /* COUNTRY ROW */
+
+    .nxp-country {
+      min-width: 0;
+    }
+
+    .nxp-country-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      gap: 15px;
+    }
+
+    .nxp-country-name {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      color: #d6e2e9;
+      font-size: 12px;
+    }
+
+    .nxp-country-name small {
+      color: #667b8c;
+      font: 8px var(--mono, monospace);
+    }
+
+    .nxp-country-heading > strong {
+      color: #e7edf0;
+
+      font: 11px var(--mono, monospace);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .nxp-country-track {
       display: flex;
       width: 100%;
-      height: 9px;
+      height: 4px;
+
+      margin-top: 10px;
+
+      background: #253440;
       overflow: hidden;
-      border-radius: 20px;
-      background: #edf1ed;
     }
 
-    .nx-world {
-      background: #347c89;
-      transition: width .4s ease;
-    }
-
-    .nx-emerging {
-      background: #c39d69;
-      transition: width .4s ease;
-    }
-
-    .nx-line strong {
-      color: #294958;
-      text-align: right;
-      font: 600 12px var(--mono, monospace);
-    }
-
-    .nx-more {
+    .nxp-country-track i {
       display: block;
-      margin: 19px auto;
-      padding: 9px;
-      border: 0;
-      background: transparent;
-      color: #4f7882;
-      font: 600 11px var(--mono, monospace);
-      cursor: pointer;
+      height: 100%;
+      flex: 0 0 auto;
+
+      transition: width .35s ease;
     }
 
-    .nx-more[hidden] {
-      display: none;
+    .nxp-country-world {
+      background: #99dce4;
     }
 
-    .nx-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      padding-top: 18px;
-      border-top: 1px solid #e7ede8;
-      font-size: 11px;
-      color: #82918c;
+    .nxp-country-emerging {
+      background: #cdb78c;
     }
 
-    .nx-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      margin-right: 8px;
-      border-radius: 50%;
-    }
-
-    .nx-dot.world {
-      background: #347c89;
-    }
-
-    .nx-dot.emerging {
-      background: #c39d69;
-    }
-
-    .nx-aside-heading > span:last-child {
-      font: 10px var(--mono, monospace);
-      color: #aab6ae;
-    }
-
-    .nx-ring {
-      position: relative;
-      display: grid;
-      place-items: center;
-      width: min(235px, 78%);
-      aspect-ratio: 1;
-      margin: 38px auto;
-      border-radius: 50%;
-      background: #e1e7e3;
-    }
-
-    .nx-ring::after {
-      content: "";
-      position: absolute;
-      inset: 18px;
-      border-radius: 50%;
-      background: #fff;
-    }
-
-    .nx-ring > div {
-      position: relative;
-      z-index: 1;
-      display: grid;
-      gap: 5px;
-      text-align: center;
-    }
-
-    .nx-ring small {
-      font: 9px var(--mono, monospace);
-      letter-spacing: .12em;
-      color: #98a7a1;
-    }
-
-    .nx-ring strong {
-      font: 400 24px Georgia, serif;
-      color: #254a5a;
-    }
-
-    .nx-regions {
-      display: grid;
-      gap: 14px;
-      padding-bottom: 25px;
-      border-bottom: 1px solid #e4eae5;
-    }
-
-    .nx-regions > div {
+    .nxp-country-value {
       display: flex;
       justify-content: space-between;
-      gap: 10px;
-      color: #71817e;
-      font-size: 11px;
+
+      gap: 12px;
+      margin-top: 7px;
+
+      color: #738697;
+
+      font: 8px/1.6 var(--mono, monospace);
+      letter-spacing: .045em;
     }
 
-    .nx-regions span {
+    .nxp-country-value span:last-child {
+      color: #9baab5;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* EMPTY PORTFOLIO */
+
+    .nxp-empty {
       display: flex;
-      gap: 10px;
-      align-items: center;
-    }
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
 
-    .nx-regions i {
-      width: 8px;
-      height: 8px;
-      border-radius: 2px;
-    }
+      min-height: 190px;
 
-    .nx-regions strong {
-      color: #294958;
-      font: 600 11px var(--mono, monospace);
-    }
-
-    .nx-focus {
-      padding-top: 25px;
-    }
-
-    .nx-focus h4 {
-      margin: 10px 0;
-      color: #244759;
-      font: 400 27px Georgia, serif;
-    }
-
-    .nx-focus-value {
-      color: #347c89;
-      font: 400 34px Georgia, serif;
-    }
-
-    .nx-focus-value small {
-      display: block;
-      margin-top: 6px;
-      color: #9aa9a2;
-      font: 11px var(--mono, monospace);
-    }
-
-    .nx-contributions {
-      display: grid;
-      gap: 14px;
-      margin-top: 24px;
-    }
-
-    .nx-contributions > div {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 5px;
-      font: 12px var(--mono, monospace);
-      color: #617875;
-    }
-
-    .nx-contributions strong {
-      color: #284756;
-    }
-
-    .nx-contributions small {
-      grid-column: 1 / -1;
-      margin-left: 16px;
-      color: #9aaba4;
-    }
-
-    .nx-footnote {
-      display: flex;
-      justify-content: space-between;
-      gap: 22px;
-      flex-wrap: wrap;
-      padding-top: 24px;
-      color: #81938c;
-      font-size: 10px;
-      line-height: 1.8;
-    }
-
-    .nx-footnote p {
-      max-width: 700px;
-      margin: 0;
-    }
-
-    .nx-footnote a {
-      display: inline-block;
-      margin-left: 12px;
-      color: #4f7378;
-    }
-
-    .nx-empty {
-      padding: 26px 12px;
-      color: #879790;
-      font-size: 13px;
+      color: #91a0af;
+      font-size: 12px;
       line-height: 1.7;
     }
 
-    #portfolio-xray button:focus-visible,
-    #portfolio-xray a:focus-visible {
-      outline: 2px solid #347c89;
-      outline-offset: 3px;
+    .nxp-empty-symbol {
+      margin-bottom: 14px;
+
+      color: #cdb78c;
+      font-size: 30px;
     }
 
-    @media (max-width: 980px) {
-      .nx-workspace {
-        grid-template-columns: 1fr;
+    .nxp-empty strong {
+      color: #e3e9ed;
+
+      font-family: Georgia, serif;
+      font-size: 23px;
+      font-weight: 400;
+    }
+
+    .nxp-empty p {
+      max-width: 270px;
+      margin: 10px 0 0;
+
+      color: #8e9fad;
+      font-size: 11px;
+    }
+
+    /* RIGHT FOOTER */
+
+    .nxp-preview-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+
+      gap: 12px;
+
+      padding-top: 16px;
+
+      border-top: 1px solid #a4b5c523;
+    }
+
+    .nxp-legend {
+      display: flex;
+      align-items: center;
+      gap: 17px;
+    }
+
+    .nxp-legend > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+
+      color: #8295a4;
+
+      font: 8px var(--mono, monospace);
+    }
+
+    .nxp-legend i {
+      width: 7px;
+      height: 7px;
+
+      border-radius: 2px;
+    }
+
+    .nxp-world-dot {
+      background: #99dce4;
+    }
+
+    .nxp-emerging-dot {
+      background: #cdb78c;
+    }
+
+    #nxp-basis {
+      color: #728696;
+
+      font: 8px/1.5 var(--mono, monospace);
+      letter-spacing: .05em;
+    }
+
+    /* BOTTOM COORDINATE */
+
+    .nxp-bottomline {
+      padding: 15px 28px;
+
+      border-top: 1px solid #a4b5c521;
+    }
+
+    .nxp-bottomline > span:last-child {
+      color: #c3b18f;
+    }
+
+    /* TABLET */
+
+    @media (max-width: 1000px) {
+
+      .nxp-grid {
+        grid-template-columns: minmax(0, 1fr);
       }
 
-      .nx-aside {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 18px 24px;
+      .nxp-preview {
+        border-left: 0;
+        border-top: 1px solid #a4b5c521;
+
+        padding: 25px 28px;
       }
 
-      .nx-aside-heading {
-        grid-column: 1 / -1;
+      .nxp-copy {
+        padding: 33px 28px;
       }
 
-      .nx-ring {
-        width: min(200px, 80%);
-        margin: 12px auto;
+      #portfolio-xray h2 {
+        font-size: clamp(32px, 4.5vw, 44px);
       }
 
-      .nx-focus {
-        grid-column: 1 / -1;
-        border-top: 1px solid #e4eae5;
-      }
-
-      .nx-regions {
-        border-bottom: 0;
+      .nxp-countries {
+        max-width: 600px;
       }
     }
 
-    @media (max-width: 650px) {
-      .nx-shell {
-        padding: 18px;
+    /* MOBILE */
+
+    @media (max-width: 620px) {
+
+      #portfolio-xray.nxp-card {
+        margin: 20px 0 28px;
       }
 
-      .nx-intro {
-        display: block;
+      .nxp-topline,
+      .nxp-bottomline {
+        padding: 14px 17px;
+        font-size: 7px;
       }
 
-      .nx-snapshot {
-        margin-top: 24px;
-        text-align: left;
+      .nxp-copy {
+        padding: 28px 18px;
       }
 
-      .nx-stats {
-        grid-template-columns: 1fr 1fr;
+      .nxp-eyebrow {
+        font-size: 8px;
       }
 
-      .nx-stat {
-        padding: 16px;
+      #portfolio-xray h2 {
+        font-size: 33px;
       }
 
-      .nx-stat:last-child {
-        display: none;
+      .nxp-description {
+        font-size: 12px;
+        margin: 17px 0 24px;
       }
 
-      .nx-stat strong {
-        font-size: 30px;
+      .nxp-action {
+        width: 100%;
+        justify-content: space-between;
       }
 
-      .nx-panel-heading {
-        display: block;
+      .nxp-preview {
+        padding: 24px 18px;
       }
 
-      .nx-basis {
-        display: block;
-        max-width: none;
-        margin-top: 13px;
-        text-align: left;
+      .nxp-preview-heading strong {
+        font-size: 20px;
       }
 
-      .nx-toolbar {
-        display: grid;
+      .nxp-preview-footer {
+        gap: 12px;
       }
 
-      .nx-segments {
-        width: max-content;
-        max-width: 100%;
-      }
-
-      .nx-line {
-        grid-template-columns:
-          minmax(90px, 1fr)
-          minmax(65px, 1fr)
-          55px;
-        gap: 8px;
-      }
-
-      .nx-country {
-        font-size: 11px;
-      }
-
-      .nx-line strong {
-        font-size: 10px;
-      }
-
-      .nx-primary,
-      .nx-aside {
-        padding: 17px;
-      }
-
-      .nx-aside {
-        display: block;
-      }
-
-      .nx-regions {
-        border-bottom: 1px solid #e4eae5;
-      }
-
-      .nx-footnote {
-        display: block;
-      }
-
-      .nx-footnote > div {
-        margin-top: 14px;
+      .nav a[href="./xray.html"] {
+        white-space: nowrap;
       }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .nx-world,
-      .nx-emerging {
+
+      .nxp-action,
+      .nxp-country-track i {
         transition: none;
       }
     }
+
   `;
 
   document.head.append(style);
+
+  /* ==========================================
+     EVENT CONNECTIONS
+     ========================================== */
 
   document.addEventListener(
     "northstar:ready",
@@ -1481,4 +1222,5 @@
       render();
     }
   );
+
 })();
