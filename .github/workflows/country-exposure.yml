@@ -1,0 +1,461 @@
+
+name: NORTHSTAR - Vanguard Country Exposure
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '43 7 * * 1'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update-country-exposure:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out Northstar
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install data readers
+        run: |
+          python -m pip install \
+            'requests>=2.31,<3' \
+            'beautifulsoup4>=4.12,<5'
+
+      - name: Retrieve official Vanguard allocations
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          import time
+
+          from datetime import (
+              date,
+              datetime,
+              timedelta,
+              timezone
+          )
+          from pathlib import Path
+
+          import requests
+          from bs4 import BeautifulSoup
+
+          BASE = (
+              "https://global.vanguard.com/it-it/"
+              "investment-products/etf/equities/"
+          )
+
+          FUNDS = {
+              "VWCE": (
+                  BASE +
+                  "9679/ftse-all-world-ucits-etf-"
+                  "usd-accumulating-usd-accumulating"
+              ),
+              "VFEA": (
+                  BASE +
+                  "9678/ftse-emerging-markets-ucits-"
+                  "etf-usd-accumulating"
+              ),
+          }
+
+          MONTHS = {
+              "gen": 1,
+              "feb": 2,
+              "mar": 3,
+              "apr": 4,
+              "mag": 5,
+              "giu": 6,
+              "lug": 7,
+              "ago": 8,
+              "set": 9,
+              "ott": 10,
+              "nov": 11,
+              "dic": 12,
+          }
+
+          COUNTRY_NAMES = {
+              "Stati Uniti d'America": "United States",
+              "Giappone": "Japan",
+              "Taiwan": "Taiwan",
+              "Regno Unito": "United Kingdom",
+              "Canada": "Canada",
+              "Cina": "China",
+              "Corea del Sud": "South Korea",
+              "Francia": "France",
+              "Svizzera": "Switzerland",
+              "Germania": "Germany",
+              "Australia": "Australia",
+              "India": "India",
+              "Paesi Bassi": "Netherlands",
+              "Spagna": "Spain",
+              "Italia": "Italy",
+              "Brasile": "Brazil",
+              "Sudafrica": "South Africa",
+              "Arabia Saudita": "Saudi Arabia",
+              "Messico": "Mexico",
+              "Emirati Arabi Uniti": "United Arab Emirates",
+              "Malesia": "Malaysia",
+              "Thailandia": "Thailand",
+              "Turchia": "Turkey",
+              "Indonesia": "Indonesia",
+              "Kuwait": "Kuwait",
+              "Cile": "Chile",
+              "Qatar": "Qatar",
+              "Singapore": "Singapore",
+              "Polonia": "Poland",
+              "Israele": "Israel",
+              "Danimarca": "Denmark",
+              "Svezia": "Sweden",
+              "Norvegia": "Norway",
+              "Finlandia": "Finland",
+              "Belgio": "Belgium",
+              "Irlanda": "Ireland",
+              "Austria": "Austria",
+              "Nuova Zelanda": "New Zealand",
+              "Portogallo": "Portugal",
+              "Grecia": "Greece",
+              "Filippine": "Philippines",
+              "Vietnam": "Vietnam",
+              "Egitto": "Egypt",
+              "Marocco": "Morocco",
+              "Colombia": "Colombia",
+              "Perù": "Peru",
+              "Argentina": "Argentina",
+              "Repubblica Ceca": "Czech Republic",
+              "Ungheria": "Hungary",
+          }
+
+          OUTPUT = Path(
+              "public/data/country-exposure.json"
+          )
+
+          SESSION = requests.Session()
+          SESSION.headers.update({
+              "User-Agent": (
+                  "Mozilla/5.0 "
+                  "(compatible; Northstar/1.0; "
+                  "personal portfolio dashboard)"
+              ),
+              "Accept-Language": "it-IT,it;q=0.9",
+          })
+
+          def download(url):
+              last_error = None
+
+              for attempt in range(1, 4):
+                  try:
+                      response = SESSION.get(
+                          url,
+                          timeout=(15, 45)
+                      )
+
+                      response.raise_for_status()
+
+                      if len(response.content) < 10000:
+                          raise ValueError(
+                              "Unexpectedly short issuer response"
+                          )
+
+                      return response.text
+
+                  except Exception as exc:
+                      last_error = exc
+
+                      print(
+                          f"Download attempt {attempt}/3: {exc}",
+                          flush=True
+                      )
+
+                      if attempt < 3:
+                          time.sleep(attempt * 5)
+
+              raise RuntimeError(
+                  f"Vanguard source unavailable: {last_error}"
+              )
+
+          def parse_date(text):
+              match = re.search(
+                  r"(\d{1,2})\s+([a-zA-Zàé]+)\s+(\d{4})",
+                  text.lower()
+              )
+
+              if not match:
+                  raise ValueError(
+                      f"Unrecognized disclosure date: {text}"
+                  )
+
+              day = int(match.group(1))
+              month_text = match.group(2)[:3]
+              year = int(match.group(3))
+
+              if month_text not in MONTHS:
+                  raise ValueError(
+                      f"Unknown month: {month_text}"
+                  )
+
+              disclosure = date(
+                  year,
+                  MONTHS[month_text],
+                  day
+              )
+
+              if disclosure > date.today():
+                  raise ValueError(
+                      "Disclosure date is in the future"
+                  )
+
+              if date.today() - disclosure > timedelta(
+                  days=90
+              ):
+                  raise ValueError(
+                      "Vanguard disclosure is over 90 days old"
+                  )
+
+              return disclosure.isoformat()
+
+          def parse_percentage(text):
+              cleaned = (
+                  text.replace("\u00a0", "")
+                  .replace("%", "")
+                  .replace(",", ".")
+                  .strip()
+              )
+
+              return float(cleaned)
+
+          def read_fund(asset, url):
+              html = download(url)
+
+              soup = BeautifulSoup(
+                  html,
+                  "html.parser"
+              )
+
+              container = soup.find(
+                  "europe-core-market-allocation"
+              )
+
+              if container is None:
+                  raise RuntimeError(
+                      f"{asset}: market allocation section missing"
+                  )
+
+              date_element = container.select_one(
+                  ".as-of-date"
+              )
+
+              if date_element is None:
+                  raise RuntimeError(
+                      f"{asset}: disclosure date missing"
+                  )
+
+              as_of = parse_date(
+                  date_element.get_text(
+                      " ",
+                      strip=True
+                  )
+              )
+
+              table = container.select_one(
+                  '[aria-label="Market Allocation Table"] table'
+              )
+
+              if table is None:
+                  raise RuntimeError(
+                      f"{asset}: country allocation table missing"
+                  )
+
+              countries = {}
+
+              for row in table.select("tbody tr"):
+                  cells = row.find_all(
+                      ["th", "td"],
+                      recursive=False
+                  )
+
+                  # Country / Region / Fund / Benchmark / Variance
+                  if len(cells) < 3:
+                      continue
+
+                  original_name = cells[0].get_text(
+                      " ",
+                      strip=True
+                  )
+
+                  if original_name not in COUNTRY_NAMES:
+                      raise RuntimeError(
+                          f"{asset}: unrecognized country "
+                          f"{original_name!r}. "
+                          "Refusing to publish an incorrect mapping."
+                      )
+
+                  english_name = COUNTRY_NAMES[
+                      original_name
+                  ]
+
+                  weight = parse_percentage(
+                      cells[2].get_text(
+                          " ",
+                          strip=True
+                      )
+                  )
+
+                  if not 0 <= weight <= 100:
+                      raise ValueError(
+                          f"{asset}: invalid country weight"
+                      )
+
+                  if english_name in countries:
+                      raise ValueError(
+                          f"{asset}: duplicate country"
+                      )
+
+                  countries[english_name] = weight
+
+              total = sum(countries.values())
+
+              if len(countries) < 10:
+                  raise ValueError(
+                      f"{asset}: insufficient country data"
+                  )
+
+              if not 80 <= total <= 100.3:
+                  raise ValueError(
+                      f"{asset}: invalid listed total {total}"
+                  )
+
+              print(
+                  f"{asset}: as of {as_of}; "
+                  f"{len(countries)} listed markets; "
+                  f"{total:.2f}% itemized",
+                  flush=True
+              )
+
+              return {
+                  "asOf": as_of,
+                  "countries": countries
+              }
+
+          funds = {}
+
+          for asset, url in FUNDS.items():
+              funds[asset] = read_fund(
+                  asset,
+                  url
+              )
+
+          existing = None
+
+          if OUTPUT.exists():
+              existing = json.loads(
+                  OUTPUT.read_text(
+                      encoding="utf-8"
+                  )
+              )
+
+          if existing:
+              old_funds = existing.get(
+                  "funds",
+                  {}
+              )
+
+              for asset in FUNDS:
+                  previous = old_funds.get(
+                      asset,
+                      {}
+                  ).get("asOf")
+
+                  if (
+                      previous and
+                      funds[asset]["asOf"] < previous
+                  ):
+                      raise ValueError(
+                          f"{asset}: refusing disclosure date regression"
+                      )
+
+              if old_funds == funds:
+                  print(
+                      "Country allocations unchanged. "
+                      "Existing snapshot preserved."
+                  )
+                  raise SystemExit(0)
+
+          payload = {
+              "source": (
+                  "Vanguard official ETF "
+                  "market allocation tables"
+              ),
+              "updatedAt": datetime.now(
+                  timezone.utc
+              ).isoformat(
+                  timespec="seconds"
+              ),
+              "funds": funds
+          }
+
+          OUTPUT.parent.mkdir(
+              parents=True,
+              exist_ok=True
+          )
+
+          OUTPUT.write_text(
+              json.dumps(
+                  payload,
+                  indent=2,
+                  ensure_ascii=False
+              ) + "\n",
+              encoding="utf-8"
+          )
+
+          print(
+              f"Saved {OUTPUT}",
+              flush=True
+          )
+          PY
+
+      - name: Commit verified country data
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add public/data/country-exposure.json
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Northstar ETF country exposures"
+            git push origin HEAD:main
+          else
+            echo "No new Vanguard country allocations"
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Northstar website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+      - name: Publish Northstar
+        id: deployment
+        uses: actions/deploy-pages@v4
