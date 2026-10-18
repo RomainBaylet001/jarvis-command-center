@@ -297,59 +297,6 @@
         });
     });
 
-    const links = [
-      ...document.querySelectorAll(".nav a")
-    ];
-
-    function activateLink(activeLink) {
-      links.forEach(link => {
-        const active = link === activeLink;
-
-        link.classList.toggle("active", active);
-
-        if (active) {
-          link.setAttribute("aria-current", "location");
-        } else {
-          link.removeAttribute("aria-current");
-        }
-      });
-    }
-
-    links.forEach(link => {
-      link.addEventListener("click", () => {
-        activateLink(link);
-      });
-    });
-
-    const sections = [
-      document.querySelector(".observatory"),
-      $("pf-chart").closest("section"),
-      $("pf-holdings").closest("section"),
-      $("pf-trades").closest("section")
-    ];
-
-    const navObserver = new IntersectionObserver(entries => {
-      const visible = entries
-        .filter(entry => entry.isIntersecting)
-        .sort(
-          (first, second) =>
-            second.intersectionRatio - first.intersectionRatio
-        );
-
-      if (!visible.length) return;
-
-      const index = sections.indexOf(visible[0].target);
-
-      activateLink(links[index]);
-    }, {
-      rootMargin: "-90px 0px -40% 0px",
-      threshold: [0, 0.2, 0.5]
-    });
-
-    sections.forEach(section => {
-      navObserver.observe(section);
-    });
-
     const reveal = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
