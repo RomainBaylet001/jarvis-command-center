@@ -557,8 +557,8 @@ main {
 }
 
 #view-investments #pf-root .pf-sub {
-  font-size: 11px;
-  color: #90a0b0;
+  font-size: 13px;
+  color: #a2b1c0;
   line-height: 1.8;
 }
 
@@ -567,8 +567,8 @@ main {
   border-radius: 4px;
   background: #0a1420;
   color: #aebdce;
-  min-height: 40px;
-  font-size: 11px;
+  min-height: 44px;
+  font-size: 13px;
   padding: 10px 14px;
   transition: color .2s, background .2s, border-color .2s;
 }
@@ -589,8 +589,8 @@ main {
 
 #view-investments #pf-root .pf-modes {
   border-bottom: 1px solid var(--line);
-  padding-bottom: 15px;
-  margin-top: 20px;
+  padding-bottom: 6px;
+  margin: 4px 0 8px;
 }
 
 #view-investments #pf-root .pf-modes button {
@@ -598,7 +598,7 @@ main {
   background: transparent;
   padding-left: 0;
   padding-right: 24px;
-  color: #7890a6;
+  color: #9bafc1;
 }
 
 #view-investments #pf-root .pf-modes button.active {
@@ -607,16 +607,30 @@ main {
 
 /* PERFORMANCE CHART */
 
+/* One shared control row on tablets; stacked controls on narrow screens. */
+
+#view-investments #pf-root > section.pf-panel:first-of-type {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 16px;
+}
+
+#view-investments #pf-root > section.pf-panel:first-of-type > :not(#pf-legend):not(#pf-periods) {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
 #pf-legend {
-  float: left;
-  margin-bottom: 8px !important;
+  float: none;
+  margin: 0 !important;
+  align-items: center;
 }
 
 #view-investments #pf-root #pf-legend button {
   border: 0 !important;
   background: none;
-  padding: 10px 14px 10px 0;
-  color: #718092;
+  padding: 10px 12px 10px 0;
+  color: #98a9ba;
   font-weight: 400;
 }
 
@@ -640,14 +654,16 @@ main {
 #view-investments #pf-root #pf-periods {
   justify-content: flex-end;
   gap: 3px;
+  margin: 0;
+  align-items: center;
 }
 
 #view-investments #pf-root #pf-periods button {
   border: 0;
-  min-width: 38px;
+  min-width: 44px;
   padding: 8px;
   background: transparent;
-  font: 10px var(--mono);
+  font: 12px var(--mono);
 }
 
 #view-investments #pf-root #pf-periods button.active {
@@ -660,15 +676,16 @@ main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 24px;
-  min-height: 60px;
-  padding: 10px 0 16px;
-  font-size: 10px;
-  color: #90a5b9;
+  gap: 10px 20px;
+  min-height: 52px;
+  padding: 12px 0;
+  font-size: 13px;
+  color: #a9bdce;
+  font-variant-numeric: tabular-nums;
 }
 
 .pf-readout time {
-  font: 10px var(--mono);
+  font: 12px var(--mono);
   margin-right: 8px;
 }
 
@@ -685,7 +702,7 @@ main {
 }
 
 .pf-readout b {
-  font: 12px var(--mono);
+  font: 14px var(--mono);
   font-weight: 400;
   color: #dae8f4;
 }
@@ -702,6 +719,11 @@ main {
   -webkit-user-select: none;
 }
 
+#pf-chart svg text {
+  font-size: 11px;
+  fill: #a9bdce;
+}
+
 .chart-line {
   animation: trace 1.2s cubic-bezier(.2, .7, .3, 1) both;
 }
@@ -709,16 +731,17 @@ main {
 .chart-scrub {
   width: 100%;
   accent-color: #97d5e8;
-  height: 24px;
+  min-height: 44px;
+  margin: 0;
   cursor: ew-resize;
-  opacity: .75;
+  opacity: 1;
 }
 
 .scrub-hint {
   display: block;
   text-align: right;
-  font: 8px var(--mono);
-  color: #8295a8;
+  font: 11px/1.6 var(--mono);
+  color: #a0b3c4;
   margin-top: 4px;
 }
 
@@ -1078,6 +1101,18 @@ body.motion-paused .core-tilt {
 
 /* MOBILE */
 
+@media (max-width: 740px) {
+  #view-investments #pf-root > section.pf-panel:first-of-type {
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 0;
+  }
+
+  #view-investments #pf-root #pf-periods {
+    justify-content: flex-start;
+    margin: 2px 0 4px;
+  }
+}
+
 @media (max-width: 620px) {
   html { scroll-padding-top: 80px; }
   .masthead { height: 70px; padding: 0 20px; }
@@ -1186,10 +1221,10 @@ body.motion-paused .core-tilt {
     margin: 0 0 4px;
   }
 
-  .pf-readout { gap: 10px 15px; min-height: 90px; }
-  .pf-readout time { width: 100%; font-size: 9px; }
-  .pf-readout b { font-size: 10px; }
-  .pf-readout span { font-size: 9px; }
+  .pf-readout { gap: 10px 15px; min-height: 104px; }
+  .pf-readout time { width: 100%; font-size: 12px; }
+  .pf-readout b { font-size: 13px; }
+  .pf-readout span { font-size: 12px; }
 
   #view-investments #pf-root .pf-prices {
     grid-template-columns: 1fr;
@@ -1220,7 +1255,7 @@ body.motion-paused .core-tilt {
     font-size: 8px;
   }
 
-  .scrub-hint { font-size: 7px; text-align: left; }
+  .scrub-hint { font-size: 11px; text-align: left; }
   footer { flex-wrap: wrap; padding: 25px 0; gap: 10px; }
   footer > span { display: none; }
   footer p { font-size: 9px; }
