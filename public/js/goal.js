@@ -29,7 +29,7 @@
 
   const nav = document.querySelector('.nav');
 
-  if (!nav || document.getElementById('goal-dialog')) return;
+  if (!nav || document.getElementById('goal-section')) return;
 
   let target = 1000000;
   let summary = null;
@@ -96,72 +96,51 @@
       color: #ebdec5;
     }
 
-    #goal-dialog {
+    #goal-section {
       box-sizing: border-box;
-      width: min(820px, 94vw);
-      max-height: 90dvh;
-      overflow: auto;
-      overscroll-behavior: contain;
-      padding: 34px;
+      width: 100%;
+      padding: 32px;
       border: 1px solid #bcac8150;
-      border-radius: 6px;
+      border-radius: 4px;
       background: #0c121c;
       color: #edf0f3;
-      box-shadow: 0 35px 100px #0009;
+      scroll-margin-top: 106px;
     }
 
-    #goal-dialog::backdrop {
-      background: #020509d9;
-      backdrop-filter: blur(7px);
-    }
-
-    body:has(#goal-dialog[open]) {
-      overflow: hidden;
-    }
-
-    #goal-dialog .goal-heading {
+    #goal-section .goal-heading {
       display: flex;
       justify-content: space-between;
       align-items: start;
       gap: 20px;
     }
 
-    #goal-dialog h2 {
+    #goal-section h2 {
       font: normal clamp(28px, 4vw, 40px)/1.15 Georgia, serif;
       letter-spacing: -.035em;
       margin: 14px 0 0;
     }
 
-    #goal-dialog button {
+    #goal-section button {
       min-height: 44px;
       cursor: pointer;
       font-family: inherit;
     }
 
-    #goal-dialog .goal-close {
-      padding: 10px 14px;
-      border: 1px solid #bdaf8e48;
-      border-radius: 3px;
-      background: transparent;
-      color: #e4d7bd;
-      flex-shrink: 0;
-    }
-
-    #goal-dialog .goal-description {
+    #goal-section .goal-description {
       color: #b4c0cd;
       font-size: 13px;
       line-height: 1.8;
       margin: 22px 0 28px;
     }
 
-    #goal-dialog .goal-kicker {
+    #goal-section .goal-kicker {
       display: block;
       color: #aab9c8;
       font: 9px/1.7 var(--mono);
       letter-spacing: .12em;
     }
 
-    #goal-dialog .goal-target {
+    #goal-section .goal-target {
       display: block;
       margin: 10px 0 26px;
       font-size: clamp(30px, 5vw, 52px);
@@ -171,25 +150,25 @@
       overflow-wrap: anywhere;
     }
 
-    #goal-dialog .goal-progress-heading {
+    #goal-section .goal-progress-heading {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
       gap: 15px;
     }
 
-    #goal-dialog .goal-progress-heading strong {
+    #goal-section .goal-progress-heading strong {
       font-size: 24px;
       font-weight: 400;
       color: #99dce4;
     }
 
-    #goal-dialog .goal-progress-heading span {
+    #goal-section .goal-progress-heading span {
       font-size: 11px;
       color: #b4c0cd;
     }
 
-    #goal-dialog .goal-track {
+    #goal-section .goal-track {
       height: 6px;
       border-radius: 3px;
       background: #a3b9cf1c;
@@ -197,27 +176,27 @@
       margin: 14px 0 24px;
     }
 
-    #goal-dialog .goal-fill {
+    #goal-section .goal-fill {
       height: 100%;
       width: 0;
       background: #99dce4;
       border-radius: 3px;
     }
 
-    #goal-dialog .goal-metrics {
+    #goal-section .goal-metrics {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 24px;
       margin: 0;
     }
 
-    #goal-dialog .goal-metrics dt {
+    #goal-section .goal-metrics dt {
       color: #aab9c8;
       font-size: 11px;
       margin-bottom: 10px;
     }
 
-    #goal-dialog .goal-metrics dd {
+    #goal-section .goal-metrics dd {
       margin: 0;
       font-size: clamp(20px, 3vw, 29px);
       letter-spacing: -.025em;
@@ -225,34 +204,35 @@
       overflow-wrap: anywhere;
     }
 
-    #goal-dialog .goal-market {
+    #goal-section .goal-market {
       color: #a6b8c8;
       font: 10px/1.8 var(--mono);
       margin: 23px 0 28px;
     }
 
-    #goal-dialog .goal-market[data-warning=true] {
+    #goal-section .goal-market[data-warning=true] {
       color: #dec18d;
     }
 
-    #goal-dialog form {
+    #goal-section form {
       border-top: 1px solid #a4b5c522;
       padding-top: 24px;
+      max-width: 620px;
     }
 
-    #goal-dialog label {
+    #goal-section label {
       display: block;
       font-size: 12px;
       color: #d9e2e9;
       margin-bottom: 10px;
     }
 
-    #goal-dialog .goal-form-row {
+    #goal-section .goal-form-row {
       display: flex;
       gap: 12px;
     }
 
-    #goal-dialog input {
+    #goal-section input {
       box-sizing: border-box;
       min-width: 0;
       width: 100%;
@@ -266,7 +246,7 @@
       font-size: 18px;
     }
 
-    #goal-dialog .goal-save {
+    #goal-section .goal-save {
       padding: 10px 20px;
       white-space: nowrap;
       border: 1px solid #dccba5;
@@ -275,11 +255,11 @@
       color: #151a1d;
     }
 
-    #goal-dialog .goal-save:hover {
+    #goal-section .goal-save:hover {
       background: #e8d9b9;
     }
 
-    #goal-dialog .goal-storage {
+    #goal-section .goal-storage {
       min-height: 1.8em;
       color: #a8b9c9;
       font-size: 11px;
@@ -287,7 +267,7 @@
       margin: 12px 0;
     }
 
-    #goal-dialog .goal-footnote {
+    #goal-section .goal-footnote {
       border-top: 1px solid #a4b5c522;
       margin: 22px 0 0;
       padding-top: 18px;
@@ -296,7 +276,7 @@
       line-height: 1.8;
     }
 
-    #goal-dialog :focus-visible,
+    #goal-section :focus-visible,
     .nav .goal-nav:focus-visible {
       outline: 2px solid #99dce4;
       outline-offset: 4px;
@@ -304,6 +284,69 @@
 
     footer .motion-toggle {
       flex-shrink: 0;
+    }
+
+    #view-investments #pf-root #goal-section {
+      scroll-margin-top: 106px;
+    }
+
+    #ledger-dialog {
+      width: min(1080px, 95vw);
+      max-height: 90dvh;
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding: 25px;
+      border: 1px solid #bcac8150;
+      border-radius: 6px;
+      background: #0c121c;
+      color: #edf0f3;
+      box-shadow: 0 35px 100px #0009;
+    }
+
+    #ledger-dialog::backdrop {
+      background: #020509d9;
+      backdrop-filter: blur(7px);
+    }
+
+    body:has(#ledger-dialog[open]) {
+      overflow: hidden;
+    }
+
+    #ledger-dialog .ledger-dialog-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    #ledger-dialog button {
+      min-height: 44px;
+    }
+
+    #view-investments #pf-root #ledger-dialog > .pf-panel {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      animation: none;
+      transform: none;
+      opacity: 1;
+    }
+
+    #view-investments #pf-root #ledger-dialog > .pf-panel:before {
+      display: none;
+    }
+
+    #ledger-dialog .pf-table {
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    #ledger-dialog :focus-visible {
+      outline: 2px solid #99dce4;
+      outline-offset: 4px;
     }
 
     @media(max-width: 1100px) {
@@ -319,6 +362,11 @@
     }
 
     @media(max-width: 620px) {
+      #ledger-dialog {
+        padding: 20px;
+        max-height: 92dvh;
+      }
+
       .nav .goal-nav {
         font-size: 10px;
       }
@@ -328,35 +376,33 @@
         font-size: 7px;
       }
 
-      #goal-dialog {
+      #goal-section {
         padding: 23px;
-        width: 95vw;
-        max-height: 92dvh;
       }
 
-      #goal-dialog .goal-heading {
+      #goal-section .goal-heading {
         gap: 12px;
       }
 
-      #goal-dialog .goal-metrics {
+      #goal-section .goal-metrics {
         gap: 16px;
       }
 
-      #goal-dialog .goal-form-row {
+      #goal-section .goal-form-row {
         flex-wrap: wrap;
       }
 
-      #goal-dialog .goal-save {
+      #goal-section .goal-save {
         width: 100%;
       }
 
-      #goal-dialog .goal-target {
+      #goal-section .goal-target {
         font-size: 36px;
       }
     }
 
     @media(max-width: 380px) {
-      #goal-dialog .goal-metrics {
+      #goal-section .goal-metrics {
         grid-template-columns: 1fr;
       }
     }
@@ -364,23 +410,50 @@
 
   document.head.append(style);
 
-  const trigger = document.createElement('button');
+  const trigger = document.createElement('a');
 
-  trigger.type = 'button';
-  trigger.className = 'goal-nav';
+  trigger.href = '#goal-section';
+  trigger.innerHTML = '<span>03</span> Goal';
 
-  trigger.innerHTML =
-    '<span aria-hidden="true">05</span> Goal';
+  nav.querySelector('a[href="#pf-chart"]')?.after(trigger);
 
-  trigger.setAttribute('aria-haspopup', 'dialog');
-  trigger.setAttribute('aria-controls', 'goal-dialog');
-  trigger.setAttribute('aria-expanded', 'false');
+  const holdingsLink = nav.querySelector(
+    'a[href="#pf-holdings"]'
+  );
 
-  nav.append(trigger);
+  if (holdingsLink) {
+    holdingsLink.innerHTML = '<span>04</span> Holdings';
+  }
 
-  const dialog = document.createElement('dialog');
+  const ledgerButton = document.createElement('button');
 
-  dialog.id = 'goal-dialog';
+  ledgerButton.type = 'button';
+  ledgerButton.className = 'goal-nav';
+
+  ledgerButton.innerHTML =
+    '<span aria-hidden="true">05</span> Ledger';
+
+  ledgerButton.setAttribute('aria-haspopup', 'dialog');
+  ledgerButton.setAttribute('aria-controls', 'ledger-dialog');
+  ledgerButton.setAttribute('aria-expanded', 'false');
+
+  ledgerButton.disabled = true;
+
+  const oldLedgerLink = nav.querySelector(
+    'a[href="#pf-trades"]'
+  );
+
+  if (oldLedgerLink) {
+    oldLedgerLink.replaceWith(ledgerButton);
+  } else {
+    nav.append(ledgerButton);
+  }
+
+  const dialog = document.createElement('section');
+
+  dialog.className = 'pf-panel';
+  dialog.id = 'goal-section';
+
   dialog.setAttribute('aria-labelledby', 'goal-title');
   dialog.setAttribute('aria-describedby', 'goal-help');
 
@@ -393,15 +466,6 @@
 
         <h2 id="goal-title">Your goal. In sight.</h2>
       </div>
-
-      <button
-        type="button"
-        class="goal-close"
-        aria-label="Close goal"
-        autofocus
-      >
-        Close ×
-      </button>
     </div>
 
     <p id="goal-help" class="goal-description">
@@ -417,6 +481,7 @@
 
     <div class="goal-progress-heading">
       <strong id="goal-percent">—</strong>
+
       <span id="goal-progress-label">
         Awaiting portfolio data
       </span>
@@ -487,7 +552,7 @@
     </p>
   `;
 
-  document.body.append(dialog);
+  document.querySelector('#view-investments').after(dialog);
 
   const get = id => dialog.querySelector('#' + id);
   const input = get('goal-input');
@@ -626,28 +691,145 @@
     render();
   });
 
-  trigger.addEventListener('click', () => {
-    render();
+  document.addEventListener('northstar:ready', () => {
+    const chart = document.getElementById('pf-chart')
+      ?.closest('section');
 
-    if (!dialog.open) dialog.showModal();
+    const ledger = document.getElementById('pf-trades')
+      ?.closest('section');
 
-    trigger.setAttribute('aria-expanded', 'true');
-  });
+    const root = document.getElementById('pf-root');
 
-  dialog.querySelector('.goal-close')
-    .addEventListener('click', () => {
-      dialog.close();
+    if (chart) chart.after(dialog);
+
+    /*
+      Existing navigation holds references to these sections.
+      Update the labels without replacing those sections.
+    */
+    [
+      [chart, '02 / PERFORMANCE'],
+      [dialog, '03 / GOAL'],
+      [
+        document.getElementById('pf-holdings')
+          ?.closest('section'),
+        '04 / HOLDINGS'
+      ]
+    ].forEach(([section, title]) => {
+      if (!section) return;
+
+      let label = section.querySelector(
+        '.section-coordinate'
+      );
+
+      if (!label) {
+        label = document.createElement('div');
+        label.className = 'section-coordinate';
+        section.prepend(label);
+      }
+
+      label.textContent = title;
     });
 
-  dialog.addEventListener('close', () => {
-    trigger.setAttribute('aria-expanded', 'false');
-    trigger.focus({preventScroll: true});
-  });
+    if (!ledger || !root) return;
+
+    const ledgerDialog = document.createElement('dialog');
+
+    ledgerDialog.id = 'ledger-dialog';
+
+    ledgerDialog.setAttribute(
+      'aria-labelledby',
+      'ledger-title'
+    );
+
+    const title = ledger.querySelector('h2');
+
+    if (title) title.id = 'ledger-title';
+
+    const heading = document.createElement('div');
+    heading.className = 'ledger-dialog-heading';
+
+    heading.innerHTML =
+      '<span class="eyebrow">' +
+      'NORTHSTAR / PRIVATE LEDGER' +
+      '</span>';
+
+    const close = document.createElement('button');
+
+    close.type = 'button';
+    close.textContent = 'Close ×';
+
+    close.setAttribute(
+      'aria-label',
+      'Close transaction history'
+    );
+
+    close.setAttribute('autofocus', '');
+
+    heading.append(close);
+    ledgerDialog.append(heading, ledger);
+    root.append(ledgerDialog);
+
+    /*
+      Move existing elements, retaining their IDs and
+      the financial engine's event handlers.
+    */
+    function openLedger() {
+      if (!ledgerDialog.open) {
+        ledgerDialog.showModal();
+      }
+
+      ledgerButton.setAttribute('aria-expanded', 'true');
+    }
+
+    ledgerButton.disabled = false;
+
+    ledgerButton.addEventListener('click', openLedger);
+
+    close.addEventListener('click', () => {
+      ledgerDialog.close();
+    });
+
+    ledgerDialog.addEventListener('close', () => {
+      ledgerButton.setAttribute('aria-expanded', 'false');
+      ledgerButton.focus({preventScroll: true});
+    });
+
+    document.addEventListener('click', event => {
+      const link = event.target.closest?.(
+        'a[href="#pf-trades"]'
+      );
+
+      if (
+        !link ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      openLedger();
+    });
+
+    const followLedgerHash = () => {
+      if (location.hash === '#pf-trades') {
+        openLedger();
+      }
+    };
+
+    addEventListener('hashchange', followLedgerHash);
+
+    requestAnimationFrame(() => {
+      followLedgerHash();
+      dispatchEvent(new Event('scroll'));
+    });
+  }, {once: true});
 
   document.addEventListener('northstar:summary', event => {
     summary = event.detail;
-
-    if (dialog.open) render();
+    render();
   });
 
   const motion = document.getElementById('motion-toggle');
