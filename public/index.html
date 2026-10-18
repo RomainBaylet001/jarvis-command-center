@@ -31,6 +31,7 @@
   <script defer src="./js/finance-utils.js"></script>
   <script defer src="./js/observatory.js"></script>
   <script defer src="./js/celestial.js"></script>
+  <script defer src="./js/goal.js"></script>
   <script defer src="./js/portfolio-observatory.js"></script>
 </head>
 
@@ -133,6 +134,7 @@
             <span>CONTRIBUTED</span>
             <strong id="core-contributed">—</strong>
           </div>
+
           <div>
             <span>WORLD / EMERGING</span>
             <strong id="core-allocation">—</strong>
@@ -148,6 +150,7 @@
             aria-controls="core-dialog"
           >
             Portfolio in focus
+
             <svg
               width="13"
               height="13"
@@ -210,7 +213,6 @@
             <span>CELESTIAL REFERENCE SYSTEM</span>
           </div>
 
-          <!-- SVG structure retained for presentation compatibility. -->
           <div class="core-tilt" id="core-tilt">
 
             <svg
@@ -240,7 +242,10 @@
                 </linearGradient>
 
                 <linearGradient id="arc-light">
-                  <stop stop-color="#4bbedb" stop-opacity="0"/>
+                  <stop
+                    stop-color="#4bbedb"
+                    stop-opacity="0"
+                  />
                   <stop offset="1" stop-color="#d6f9ff"/>
                 </linearGradient>
               </defs>
