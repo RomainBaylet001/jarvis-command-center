@@ -1,0 +1,1777 @@
+
+/*
+  NORTHSTAR — PORTFOLIO X-RAY
+  Dedicated geographic intelligence page.
+
+  Extends the existing Observatory and Celestial
+  design systems without changing the homepage.
+*/
+
+/* ==========================================
+   DESIGN TOKENS
+   ========================================== */
+
+body.xray-page {
+  --xr-bg: #070b11;
+  --xr-panel: #0c131d;
+  --xr-panel-deep: #0a1019;
+  --xr-panel-soft: #101924;
+
+  --xr-text: #edf0f3;
+  --xr-muted: #9aa8b7;
+  --xr-dim: #647486;
+
+  --xr-line: #a4b5c524;
+  --xr-line-strong: #a4b5c53c;
+
+  --xr-cyan: #99dce4;
+  --xr-gold: #cdb78c;
+
+  --xr-serif: Georgia, "Times New Roman", serif;
+  --xr-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+
+  min-height: 100vh;
+  background: var(--xr-bg);
+  color: var(--xr-text);
+}
+
+/* ==========================================
+   SHARED PAGE STRUCTURE
+   ========================================== */
+
+.xray-page *,
+.xray-page *::before,
+.xray-page *::after {
+  box-sizing: border-box;
+}
+
+.xray-page button {
+  font: inherit;
+}
+
+.xray-page button:focus-visible,
+.xray-page a:focus-visible,
+.xray-page [tabindex="0"]:focus-visible {
+  outline: 2px solid var(--xr-cyan);
+  outline-offset: 4px;
+}
+
+.xray-page .masthead {
+  background: #070b11ed;
+}
+
+.xray-page .nav a.active {
+  color: #ebdec5;
+}
+
+.xray-page .nav .nav-beacon {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--xr-gold),
+    transparent
+  );
+}
+
+.xray-page .atmosphere {
+  display: none;
+}
+
+.xray-shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 0 clamp(22px, 4.5vw, 80px);
+}
+
+.xray-overline,
+.xray-small-label {
+  display: block;
+  font: 9px/1.6 var(--xr-mono);
+  letter-spacing: 0.17em;
+  color: var(--xr-gold);
+}
+
+.xray-page h1,
+.xray-page h2,
+.xray-page h3,
+.xray-page p {
+  overflow-wrap: break-word;
+}
+
+.xray-status-dot,
+.xray-panel-dot,
+.xray-interaction-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: var(--xr-cyan);
+}
+
+.xray-status-dot {
+  box-shadow: 0 0 12px #99dce455;
+}
+
+/* ==========================================
+   INTRODUCTION
+   ========================================== */
+
+.xray-intro {
+  padding: 35px 0 34px;
+}
+
+.xray-coordinate {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  padding: 0 0 19px;
+
+  color: var(--xr-dim);
+  border-bottom: 1px solid var(--xr-line);
+
+  font: 8px/1.6 var(--xr-mono);
+  letter-spacing: 0.17em;
+}
+
+.xray-intro-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+  align-items: center;
+  gap: clamp(30px, 6vw, 95px);
+
+  padding: clamp(35px, 5.5vw, 75px) 0 25px;
+}
+
+.xray-intro-copy {
+  min-width: 0;
+}
+
+.xray-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  color: var(--xr-gold);
+  font: 9px/1.7 var(--xr-mono);
+  letter-spacing: 0.19em;
+}
+
+.xray-intro h1 {
+  margin: 23px 0 28px;
+
+  font-family: var(--xr-serif);
+  font-size: clamp(43px, 5.1vw, 78px);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 1.1;
+
+  color: var(--xr-text);
+}
+
+.xray-intro h1 em {
+  color: #a5b3c2;
+  font-weight: 400;
+}
+
+.xray-intro-description {
+  max-width: 510px;
+  margin: 0;
+
+  color: #a7b4c0;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.xray-intro-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 11px 23px;
+
+  margin-top: 34px;
+}
+
+.xray-intro-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+
+  color: var(--xr-dim);
+  font: 8px/1.6 var(--xr-mono);
+  letter-spacing: 0.09em;
+}
+
+.xray-meta-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.xray-cyan {
+  background: var(--xr-cyan);
+}
+
+.xray-gold {
+  background: var(--xr-gold);
+}
+
+/* ==========================================
+   ISSUER SNAPSHOT
+   ========================================== */
+
+.xray-snapshot {
+  position: relative;
+  min-height: 245px;
+
+  border: 1px solid var(--xr-line-strong);
+  background: linear-gradient(
+    145deg,
+    #101a26e8,
+    #0a101ae8 80%
+  );
+
+  overflow: hidden;
+}
+
+.xray-snapshot::before {
+  content: "";
+  position: absolute;
+  top: -120px;
+  right: -110px;
+
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+
+  border: 1px solid #cdb78c16;
+  box-shadow:
+    0 0 0 39px #cdb78c05,
+    0 0 0 78px #cdb78c04;
+
+  pointer-events: none;
+}
+
+.xray-snapshot-top,
+.xray-snapshot-bottom {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+
+  padding: 17px 22px;
+
+  color: var(--xr-dim);
+  font: 8px/1.5 var(--xr-mono);
+  letter-spacing: 0.11em;
+}
+
+.xray-snapshot-top {
+  border-bottom: 1px solid var(--xr-line);
+}
+
+.xray-snapshot-body {
+  position: relative;
+  padding: 29px 23px;
+}
+
+.xray-snapshot-body > strong {
+  display: block;
+  margin-top: 9px;
+
+  font-family: var(--xr-serif);
+  font-size: clamp(29px, 2.5vw, 39px);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+
+  color: #e8e1d2;
+}
+
+.xray-snapshot-rule {
+  width: 38px;
+  height: 1px;
+  margin: 22px 0;
+  background: var(--xr-gold);
+  opacity: 0.65;
+}
+
+.xray-snapshot-body p {
+  margin: 8px 0 0;
+  color: #a0afbc;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.xray-snapshot-bottom {
+  justify-content: flex-start;
+  border-top: 1px solid var(--xr-line);
+  color: #8fa6a9;
+}
+
+/* ==========================================
+   PORTFOLIO METRICS
+   ========================================== */
+
+.xray-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  border: 1px solid var(--xr-line-strong);
+  background: #0b121be0;
+}
+
+.xray-metric {
+  min-width: 0;
+  padding: 25px clamp(15px, 2.3vw, 34px);
+}
+
+.xray-metric + .xray-metric {
+  border-left: 1px solid var(--xr-line);
+}
+
+.xray-metric > span {
+  display: block;
+
+  color: var(--xr-muted);
+  font: 9px/1.7 var(--xr-mono);
+  letter-spacing: 0.12em;
+}
+
+.xray-metric > strong {
+  display: block;
+  margin: 14px 0 9px;
+
+  color: var(--xr-text);
+  font-family: var(--xr-serif);
+  font-size: clamp(23px, 2.7vw, 41px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.xray-metric:nth-child(2) > strong {
+  color: #d7c5a0;
+}
+
+.xray-metric > small {
+  display: block;
+  color: var(--xr-dim);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+/* ==========================================
+   SECTION HEADINGS
+   ========================================== */
+
+.xray-atlas {
+  padding-top: clamp(60px, 6vw, 95px);
+}
+
+.xray-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 30px;
+  margin-bottom: 27px;
+}
+
+.xray-section-header h2,
+.xray-detail-heading h2 {
+  margin: 13px 0;
+
+  font-family: var(--xr-serif);
+  font-size: clamp(29px, 3vw, 43px);
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -0.045em;
+
+  color: var(--xr-text);
+}
+
+.xray-section-header h2 > span,
+.xray-detail-heading h2 > span {
+  color: var(--xr-gold);
+}
+
+.xray-section-header p,
+.xray-detail-heading p {
+  margin: 0;
+  color: var(--xr-muted);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.xray-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px 19px;
+  padding-bottom: 5px;
+}
+
+.xray-map-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  white-space: nowrap;
+
+  color: var(--xr-muted);
+  font: 8px/1.5 var(--xr-mono);
+  letter-spacing: 0.05em;
+}
+
+.xray-map-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.xray-legend-world {
+  background: var(--xr-cyan);
+}
+
+.xray-legend-emerging {
+  background: var(--xr-gold);
+}
+
+.xray-legend-other {
+  background: #293643;
+  border: 1px solid #627486;
+}
+
+/* ==========================================
+   WORLD ATLAS GRID
+   ========================================== */
+
+.xray-atlas-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.78fr)
+    minmax(275px, 0.72fr);
+
+  gap: 14px;
+  align-items: stretch;
+}
+
+.xray-map-panel,
+.xray-inspector,
+.xray-ranking-panel,
+.xray-region-panel {
+  min-width: 0;
+
+  border: 1px solid var(--xr-line-strong);
+  background: #0b121ce8;
+}
+
+.xray-map-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.xray-panel-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 17px;
+
+  padding: 17px 22px;
+  border-bottom: 1px solid var(--xr-line);
+}
+
+.xray-panel-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  color: #aab9c5;
+  font: 9px/1.6 var(--xr-mono);
+  letter-spacing: 0.09em;
+}
+
+.xray-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+
+  padding: 4px;
+  border: 1px solid var(--xr-line);
+  background: #070d15;
+}
+
+.xray-filters button {
+  min-height: 34px;
+  padding: 7px 14px;
+
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+
+  color: #8594a4;
+  font: 10px/1.4 var(--xr-mono);
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.xray-filters button:hover {
+  color: #e2ebf0;
+}
+
+.xray-filters button.active {
+  background: #273441;
+  color: #f4eee1;
+}
+
+/* ==========================================
+   INTERACTIVE MAP
+   ========================================== */
+
+.xray-map-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+
+  min-height: 495px;
+  padding: 15px 12px;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      ellipse at 49% 52%,
+      #152c3b80 0%,
+      #0d1b2a55 40%,
+      #09131e20 74%,
+      transparent 100%
+    );
+}
+
+.xray-map-gridlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  opacity: 0.16;
+
+  background-image:
+    linear-gradient(
+      to right,
+      #9fb8cc24 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      #9fb8cc24 1px,
+      transparent 1px
+    );
+
+  background-size: 72px 72px;
+
+  mask-image: radial-gradient(
+    ellipse at center,
+    #000 18%,
+    transparent 78%
+  );
+}
+
+#xray-map {
+  position: relative;
+  z-index: 1;
+
+  display: block;
+  width: 100%;
+  height: auto;
+
+  max-height: 620px;
+
+  overflow: visible;
+}
+
+.xray-sphere {
+  fill: #0f2030;
+  stroke: #3653656b;
+  stroke-width: 1;
+}
+
+.xray-graticule {
+  fill: none;
+  stroke: #81a6bd1d;
+  stroke-width: 0.7;
+  pointer-events: none;
+}
+
+.xray-country {
+  fill: #25323f;
+
+  stroke: #101924;
+  stroke-width: 0.9;
+
+  cursor: pointer;
+  outline: none;
+
+  transition:
+    fill 0.18s ease,
+    stroke 0.18s ease,
+    opacity 0.18s ease;
+
+  vector-effect: non-scaling-stroke;
+}
+
+.xray-country:hover,
+.xray-country:focus {
+  stroke: #e2edf1;
+  stroke-width: 1.45;
+}
+
+.xray-country.is-selected {
+  stroke: #f5e8ce;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 4px #cdb78c55);
+}
+
+.xray-country.is-unreported {
+  fill: #263441;
+}
+
+.xray-map-tooltip {
+  position: absolute;
+  z-index: 5;
+
+  min-width: 150px;
+  max-width: 225px;
+
+  padding: 12px 15px;
+  border: 1px solid #b0c4d34f;
+
+  background: #101b27f5;
+  box-shadow: 0 14px 35px #00000055;
+
+  pointer-events: none;
+}
+
+.xray-map-tooltip strong {
+  display: block;
+
+  font-family: var(--xr-serif);
+  font-size: 18px;
+  font-weight: 400;
+
+  color: #eaf1f3;
+}
+
+.xray-map-tooltip span {
+  display: block;
+  margin-top: 6px;
+
+  color: var(--xr-cyan);
+  font: 11px/1.5 var(--xr-mono);
+}
+
+.xray-map-tooltip small {
+  display: block;
+  margin-top: 6px;
+
+  color: var(--xr-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.xray-map-tooltip[hidden] {
+  display: none;
+}
+
+.xray-map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+
+  color: var(--xr-muted);
+  background: #0b141ff0;
+
+  font: 9px/1.5 var(--xr-mono);
+  letter-spacing: 0.13em;
+  text-align: center;
+}
+
+.xray-map-loading[hidden] {
+  display: none;
+}
+
+.xray-loading-orbit {
+  display: block;
+  width: 52px;
+  height: 52px;
+  border: 1px solid #cdb78c33;
+  border-top-color: var(--xr-gold);
+  border-radius: 50%;
+  animation: xray-orbit 2.5s linear infinite;
+}
+
+@keyframes xray-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.xray-map-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px 20px;
+
+  padding: 17px 22px;
+  border-top: 1px solid var(--xr-line);
+
+  color: var(--xr-dim);
+  font: 8px/1.6 var(--xr-mono);
+  letter-spacing: 0.045em;
+}
+
+.xray-map-bottom > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  white-space: nowrap;
+}
+
+.xray-interaction-dot {
+  background: var(--xr-gold);
+}
+
+/* ==========================================
+   COUNTRY INSPECTOR
+   ========================================== */
+
+.xray-inspector {
+  display: flex;
+  flex-direction: column;
+
+  min-height: 565px;
+  overflow: hidden;
+
+  background: linear-gradient(
+    155deg,
+    #111c28e8,
+    #0a111be8 85%
+  );
+}
+
+.xray-inspector-header,
+.xray-inspector-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+
+  padding: 20px 22px;
+
+  color: var(--xr-dim);
+  font: 8px/1.6 var(--xr-mono);
+  letter-spacing: 0.09em;
+}
+
+.xray-inspector-header {
+  border-bottom: 1px solid var(--xr-line);
+}
+
+.xray-inspector-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--xr-line);
+}
+
+.xray-inspector-content {
+  flex: 1;
+  padding: 25px 24px;
+}
+
+.xray-inspector-placeholder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 345px;
+}
+
+.xray-compass {
+  display: grid;
+  place-items: center;
+
+  width: 64px;
+  height: 64px;
+  margin-bottom: 29px;
+
+  color: var(--xr-gold);
+  border: 1px solid #cdb78c56;
+  border-radius: 50%;
+
+  font-size: 31px;
+  font-weight: 300;
+}
+
+.xray-inspector-placeholder h3,
+.xray-inspector-country h3 {
+  margin: 0;
+
+  font-family: var(--xr-serif);
+  font-size: 33px;
+  font-weight: 400;
+  letter-spacing: -0.045em;
+
+  color: var(--xr-text);
+}
+
+.xray-inspector-placeholder p {
+  max-width: 230px;
+  margin: 15px 0;
+
+  color: var(--xr-muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.xray-inspector-country h3 {
+  margin: 12px 0 6px;
+  font-size: clamp(29px, 2.8vw, 40px);
+}
+
+.xray-inspector-country > p {
+  margin: 0;
+  color: var(--xr-muted);
+  font-size: 11px;
+  line-height: 1.75;
+}
+
+.xray-inspector-big {
+  padding: 26px 0;
+  margin-top: 23px;
+
+  border-top: 1px solid var(--xr-line);
+  border-bottom: 1px solid var(--xr-line);
+}
+
+.xray-inspector-big strong {
+  display: block;
+
+  color: var(--xr-cyan);
+  font-family: var(--xr-serif);
+  font-size: clamp(42px, 4vw, 58px);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.06em;
+
+  font-variant-numeric: tabular-nums;
+}
+
+.xray-inspector-big span {
+  display: block;
+  margin-top: 8px;
+
+  color: var(--xr-muted);
+  font-size: 11px;
+}
+
+.xray-inspector-eur {
+  padding: 24px 0 13px;
+}
+
+.xray-inspector-eur > span,
+.xray-inspector-breakdown h4 {
+  display: block;
+
+  color: var(--xr-dim);
+  font: 9px/1.6 var(--xr-mono);
+  letter-spacing: 0.09em;
+}
+
+.xray-inspector-eur > strong {
+  display: block;
+  margin-top: 8px;
+
+  color: #e5ded0;
+  font-family: var(--xr-serif);
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.xray-inspector-breakdown {
+  margin-top: 16px;
+}
+
+.xray-inspector-breakdown h4 {
+  margin: 0 0 17px;
+}
+
+.xray-inspector-fund {
+  margin: 15px 0;
+}
+
+.xray-inspector-fund > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+
+  color: var(--xr-muted);
+  font: 11px/1.5 var(--xr-mono);
+}
+
+.xray-inspector-fund strong {
+  color: #e9eef1;
+  font-weight: 500;
+}
+
+.xray-inspector-fund .xray-fund-bar {
+  height: 4px;
+  margin-top: 9px;
+  background: #24313d;
+}
+
+.xray-fund-bar > span {
+  display: block;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.xray-fund-bar.world > span {
+  background: var(--xr-cyan);
+}
+
+.xray-fund-bar.emerging > span {
+  background: var(--xr-gold);
+}
+
+.xray-inspector-notice {
+  margin-top: 22px;
+  padding-top: 16px;
+
+  color: var(--xr-dim);
+  border-top: 1px solid var(--xr-line);
+
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+/* ==========================================
+   COUNTRY & REGION PANELS
+   ========================================== */
+
+.xray-details {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.12fr)
+    minmax(320px, 0.88fr);
+
+  gap: 14px;
+
+  margin-top: 14px;
+}
+
+.xray-ranking-panel,
+.xray-region-panel {
+  padding: clamp(20px, 2.6vw, 35px);
+}
+
+.xray-detail-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 18px;
+
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--xr-line);
+}
+
+.xray-detail-heading h2 {
+  font-size: clamp(26px, 2.4vw, 35px);
+}
+
+.xray-detail-heading p {
+  max-width: 410px;
+}
+
+.xray-export-button {
+  flex: 0 0 auto;
+  min-height: 37px;
+
+  padding: 9px 12px;
+  border: 1px solid var(--xr-line-strong);
+
+  background: transparent;
+  color: #c3d0d9;
+
+  font: 9px/1.5 var(--xr-mono) !important;
+  white-space: nowrap;
+
+  cursor: pointer;
+}
+
+.xray-export-button:hover {
+  border-color: var(--xr-gold);
+  color: #f0e3c8;
+}
+
+.xray-ranking-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+
+  padding: 23px 2px 13px;
+  border-bottom: 1px solid var(--xr-line);
+
+  color: var(--xr-dim);
+  font: 8px/1.6 var(--xr-mono);
+  letter-spacing: 0.12em;
+}
+
+.xray-country-list {
+  display: grid;
+}
+
+.xray-list-loading {
+  padding: 30px 0;
+  color: var(--xr-muted);
+  font-size: 12px;
+}
+
+.xray-country-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(85px, 0.7fr)
+    auto;
+
+  align-items: center;
+  gap: 18px;
+
+  width: 100%;
+  min-height: 66px;
+  padding: 12px 3px;
+
+  border: 0;
+  border-bottom: 1px solid var(--xr-line);
+
+  background: transparent;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.xray-country-row:hover,
+.xray-country-row.is-selected {
+  background: #b8d4e708;
+}
+
+.xray-rank-name {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+
+  min-width: 0;
+
+  color: #dce5eb;
+  font-size: 12px;
+}
+
+.xray-rank-name > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.xray-rank-index {
+  color: var(--xr-dim);
+  font: 9px var(--xr-mono);
+}
+
+.xray-rank-bar {
+  height: 4px;
+  background: #26333f;
+}
+
+.xray-rank-bar > span {
+  display: block;
+  height: 100%;
+
+  background: linear-gradient(
+    90deg,
+    #5eaab7,
+    #a5dbe0
+  );
+
+  transition: width 0.3s ease;
+}
+
+.xray-country-row[data-dominant="VFEA"] .xray-rank-bar > span {
+  background: linear-gradient(
+    90deg,
+    #937b57,
+    #d1bb91
+  );
+}
+
+.xray-rank-value {
+  text-align: right;
+  min-width: 67px;
+}
+
+.xray-rank-value strong {
+  display: block;
+
+  color: #edf0f3;
+  font: 11px/1.5 var(--xr-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.xray-rank-value small {
+  display: block;
+  margin-top: 3px;
+
+  color: var(--xr-dim);
+  font: 9px/1.5 var(--xr-mono);
+}
+
+.xray-show-all {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 20px;
+
+  border: 1px solid var(--xr-line-strong);
+  background: #101b26;
+
+  color: #c3d6dd;
+  font: 9px/1.5 var(--xr-mono) !important;
+  letter-spacing: 0.11em;
+
+  cursor: pointer;
+}
+
+.xray-show-all:hover {
+  border-color: var(--xr-cyan);
+}
+
+/* ==========================================
+   REGIONAL DONUT
+   ========================================== */
+
+.xray-ring-wrap {
+  display: grid;
+  place-items: center;
+  padding: 37px 0 29px;
+}
+
+.xray-region-ring {
+  position: relative;
+
+  display: grid;
+  place-items: center;
+
+  width: min(235px, 75%);
+  aspect-ratio: 1;
+
+  border-radius: 50%;
+
+  background: conic-gradient(
+    #334451 0% 100%
+  );
+}
+
+.xray-region-ring::before {
+  content: "";
+  position: absolute;
+  inset: 25px;
+
+  border-radius: 50%;
+  background: #0c151f;
+  border: 1px solid #a4b5c518;
+}
+
+.xray-ring-center {
+  position: relative;
+  z-index: 1;
+
+  text-align: center;
+}
+
+.xray-ring-center span {
+  display: block;
+
+  color: var(--xr-dim);
+  font: 8px/1.6 var(--xr-mono);
+  letter-spacing: 0.12em;
+}
+
+.xray-ring-center strong {
+  display: block;
+  margin-top: 8px;
+
+  color: #e4ded1;
+  font-family: var(--xr-serif);
+  font-size: 23px;
+  font-weight: 400;
+}
+
+.xray-region-list {
+  display: grid;
+  gap: 15px;
+}
+
+.xray-region-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px 14px;
+  align-items: center;
+}
+
+.xray-region-row-name {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  color: #b5c2cb;
+  font-size: 11px;
+}
+
+.xray-region-row-name i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 2px;
+}
+
+.xray-region-row strong {
+  color: #e7edf0;
+  font: 11px var(--xr-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.xray-region-track {
+  grid-column: 1 / -1;
+  height: 3px;
+  background: #273541;
+}
+
+.xray-region-track span {
+  display: block;
+  height: 100%;
+}
+
+.xray-region-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  margin-top: 35px;
+  padding: 18px;
+
+  color: var(--xr-muted);
+  border: 1px solid var(--xr-line);
+  background: #101b25;
+
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.xray-note-symbol {
+  color: var(--xr-gold);
+  font-size: 19px;
+  line-height: 1;
+}
+
+/* ==========================================
+   METHODOLOGY
+   ========================================== */
+
+.xray-methodology {
+  margin-top: clamp(65px, 7vw, 105px);
+  border-top: 1px solid var(--xr-line-strong);
+  border-bottom: 1px solid var(--xr-line-strong);
+}
+
+.xray-methodology-heading {
+  padding: 32px 0 10px;
+}
+
+.xray-methodology-heading h2 {
+  margin: 11px 0 0;
+
+  font-family: var(--xr-serif);
+  font-size: clamp(27px, 3vw, 40px);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+
+.xray-methodology-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 35px;
+
+  padding: 36px 0 39px;
+}
+
+.xray-methodology-grid > div {
+  padding-right: 25px;
+}
+
+.xray-methodology-grid > div + div {
+  border-left: 1px solid var(--xr-line);
+  padding-left: 28px;
+}
+
+.xray-method-number {
+  display: block;
+  color: var(--xr-gold);
+  font: 10px var(--xr-mono);
+}
+
+.xray-methodology-grid h3 {
+  margin: 13px 0 10px;
+
+  font-family: var(--xr-serif);
+  font-size: 21px;
+  font-weight: 400;
+
+  color: #e2e9ed;
+}
+
+.xray-methodology-grid p {
+  max-width: 350px;
+  margin: 0;
+
+  color: var(--xr-muted);
+  font-size: 11px;
+  line-height: 1.9;
+}
+
+.xray-source-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+
+  padding: 23px 0;
+  border-top: 1px solid var(--xr-line);
+
+  color: var(--xr-dim);
+  font: 9px/1.7 var(--xr-mono);
+}
+
+.xray-source-links {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+}
+
+.xray-source-links a,
+.xray-return {
+  color: #c3b291;
+  font: 9px/1.6 var(--xr-mono);
+  letter-spacing: 0.065em;
+  text-decoration: none;
+}
+
+.xray-source-links a:hover,
+.xray-return:hover {
+  color: #f0dec0;
+}
+
+/* ==========================================
+   FOOTER
+   ========================================== */
+
+.xray-page .xray-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 25px;
+
+  margin-top: 45px;
+  padding: 38px 0 55px;
+
+  border-top: 0;
+}
+
+.xray-footer p {
+  color: var(--xr-dim);
+  font-size: 10px;
+  line-height: 1.9;
+}
+
+/* ==========================================
+   TABLET
+   ========================================== */
+
+@media (max-width: 1150px) {
+
+  .xray-intro-grid {
+    gap: 35px;
+  }
+
+  .xray-atlas-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .xray-inspector {
+    min-height: 0;
+  }
+
+  .xray-inspector-content {
+    padding: 25px;
+  }
+
+  .xray-inspector-placeholder {
+    min-height: 180px;
+  }
+
+  .xray-details {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.85fr);
+  }
+
+  .xray-map-stage {
+    min-height: 460px;
+  }
+}
+
+/* ==========================================
+   SMALL TABLET / IPAD PORTRAIT
+   ========================================== */
+
+@media (max-width: 850px) {
+
+  .xray-intro-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+  }
+
+  .xray-intro h1 {
+    font-size: clamp(42px, 7vw, 60px);
+  }
+
+  .xray-snapshot {
+    min-height: 0;
+  }
+
+  .xray-snapshot-body {
+    padding: 24px;
+  }
+
+  .xray-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .xray-metric:nth-child(3) {
+    border-left: 0;
+  }
+
+  .xray-metric:nth-child(n + 3) {
+    border-top: 1px solid var(--xr-line);
+  }
+
+  .xray-section-header {
+    display: block;
+  }
+
+  .xray-map-legend {
+    justify-content: flex-start;
+    margin-top: 22px;
+  }
+
+  .xray-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .xray-region-panel {
+    display: block;
+  }
+
+  .xray-region-ring {
+    width: min(230px, 65%);
+  }
+}
+
+/* ==========================================
+   MOBILE
+   ========================================== */
+
+@media (max-width: 620px) {
+
+  .xray-page .masthead {
+    height: 70px;
+  }
+
+  .xray-page .nav {
+    gap: 3px;
+  }
+
+  .xray-page .nav a {
+    font-size: 10px;
+  }
+
+  .xray-page .nav a span {
+    display: none;
+  }
+
+  .xray-page .nav-beacon {
+    display: none;
+  }
+
+  .xray-page .nav a.active {
+    color: #f1dfbe;
+  }
+
+  .xray-shell {
+    padding: 0 18px calc(75px + env(safe-area-inset-bottom));
+  }
+
+  .xray-coordinate {
+    font-size: 7px;
+  }
+
+  .xray-coordinate span:last-child {
+    text-align: right;
+  }
+
+  .xray-intro {
+    padding-top: 22px;
+  }
+
+  .xray-intro-grid {
+    padding-top: 31px;
+  }
+
+  .xray-intro h1 {
+    font-size: clamp(38px, 10vw, 52px);
+    margin: 19px 0 24px;
+  }
+
+  .xray-intro-description {
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  .xray-intro-meta {
+    margin-top: 25px;
+    gap: 11px 15px;
+  }
+
+  .xray-snapshot-top,
+  .xray-snapshot-bottom {
+    padding: 15px 17px;
+  }
+
+  .xray-snapshot-body {
+    padding: 22px 18px;
+  }
+
+  .xray-snapshot-body > strong {
+    font-size: 32px;
+  }
+
+  .xray-metric {
+    padding: 21px 16px;
+  }
+
+  .xray-metric > span {
+    font-size: 7px;
+  }
+
+  .xray-metric > strong {
+    font-size: clamp(24px, 6.2vw, 33px);
+  }
+
+  .xray-atlas {
+    padding-top: 60px;
+  }
+
+  .xray-section-header h2 {
+    font-size: 32px;
+  }
+
+  .xray-map-legend {
+    gap: 10px 16px;
+  }
+
+  .xray-map-legend > span {
+    font-size: 7px;
+  }
+
+  .xray-panel-toolbar {
+    padding: 16px;
+  }
+
+  .xray-panel-label {
+    font-size: 8px;
+  }
+
+  .xray-filters {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .xray-filters button {
+    padding: 8px 5px;
+    font-size: 10px;
+  }
+
+  .xray-map-stage {
+    min-height: 285px;
+    padding: 8px 0;
+  }
+
+  #xray-map {
+    width: 100%;
+    max-height: none;
+  }
+
+  .xray-map-bottom {
+    display: block;
+    padding: 15px 16px;
+  }
+
+  .xray-map-bottom > span:last-child {
+    display: block;
+    margin-top: 10px;
+  }
+
+  .xray-map-tooltip {
+    padding: 9px 11px;
+    min-width: 110px;
+  }
+
+  .xray-inspector-header,
+  .xray-inspector-footer {
+    padding: 17px;
+  }
+
+  .xray-inspector-content {
+    padding: 22px 18px;
+  }
+
+  .xray-inspector-placeholder {
+    min-height: 150px;
+  }
+
+  .xray-inspector-big strong {
+    font-size: 48px;
+  }
+
+  .xray-ranking-panel,
+  .xray-region-panel {
+    padding: 19px 16px;
+  }
+
+  .xray-detail-heading {
+    display: block;
+  }
+
+  .xray-detail-heading h2 {
+    font-size: 28px;
+  }
+
+  .xray-export-button {
+    margin-top: 18px;
+  }
+
+  .xray-country-row {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(50px, 0.5fr)
+      auto;
+
+    gap: 8px;
+    min-height: 65px;
+  }
+
+  .xray-rank-name {
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .xray-rank-value {
+    min-width: 56px;
+  }
+
+  .xray-rank-value strong {
+    font-size: 10px;
+  }
+
+  .xray-methodology {
+    margin-top: 62px;
+  }
+
+  .xray-methodology-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .xray-methodology-grid > div,
+  .xray-methodology-grid > div + div {
+    padding: 0;
+    border-left: 0;
+  }
+
+  .xray-methodology-grid > div + div {
+    padding-top: 23px;
+    border-top: 1px solid var(--xr-line);
+  }
+
+  .xray-source-links {
+    flex-wrap: wrap;
+    gap: 12px 22px;
+  }
+
+  .xray-page .xray-footer {
+    display: block;
+    padding-top: 26px;
+  }
+
+  .xray-footer p {
+    margin: 21px 0;
+  }
+}
+
+/* ==========================================
+   ACCESSIBILITY & MOTION
+   ========================================== */
+
+body.xray-page.tab-hidden *,
+body.xray-page.tab-hidden *::before,
+body.xray-page.tab-hidden *::after {
+  animation-play-state: paused !important;
+}
+
+body.xray-page.motion-paused *,
+body.xray-page.motion-paused *::before,
+body.xray-page.motion-paused *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .xray-page *,
+  .xray-page *::before,
+  .xray-page *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
