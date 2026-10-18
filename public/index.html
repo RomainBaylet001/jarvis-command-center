@@ -111,8 +111,8 @@
         </div>
 
         <h1 id="hero-title">
-          A fixed star.<br>
-          <em>In a world in motion.</em>
+          Your investments.<br>
+          <em>Clearly understood.</em>
         </h1>
 
         <div class="hero-valuation">
@@ -140,8 +140,14 @@
         </div>
 
         <div class="hero-actions">
-          <a class="primary-link" href="#pf-chart">
-            Explore performance
+          <button
+            class="primary-link"
+            id="explore-core"
+            type="button"
+            aria-haspopup="dialog"
+            aria-controls="core-dialog"
+          >
+            Portfolio in focus
             <svg
               width="13"
               height="13"
@@ -155,7 +161,7 @@
                 stroke-width="1.3"
               />
             </svg>
-          </a>
+          </button>
 
           <a class="quiet-link" href="#pf-trades">
             Portfolio ledger <span>→</span>
@@ -204,7 +210,7 @@
             <span>CELESTIAL REFERENCE SYSTEM</span>
           </div>
 
-          <!-- SVG fallback when Canvas is unavailable. -->
+          <!-- SVG structure retained for presentation compatibility. -->
           <div class="core-tilt" id="core-tilt">
 
             <svg
@@ -456,18 +462,6 @@
 
         </div>
 
-        <div class="core-controls">
-          <span>AN ORRERY FOR YOUR CAPITAL</span>
-
-          <button
-            id="explore-core"
-            type="button"
-            aria-haspopup="dialog"
-          >
-            Explore core <span>↗</span>
-          </button>
-        </div>
-
         <p class="orbit-disclaimer">
           Orbital motion is decorative · not a measure of returns
         </p>
@@ -543,7 +537,7 @@
       <button
         id="close-core"
         type="button"
-        aria-label="Close celestial atlas"
+        aria-label="Close portfolio in focus"
         autofocus
       >
         Close ×
