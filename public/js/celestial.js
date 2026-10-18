@@ -1,210 +1,184 @@
-/* NORTHSTAR: a local, decorative celestial renderer.
-   No financial storage access. */
+/* NORTHSTAR / celestial depth.
+   Presentation only; no portfolio storage access. */
 (() => {
   'use strict';
 
   const $ = id => document.getElementById(id);
+  const hero = document.querySelector('.observatory');
+  const space = document.querySelector('.core-space');
   const canvas = $('celestial-core');
-  const map = $('celestial-map');
   const dialog = $('core-dialog');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const TAU = Math.PI * 2;
+
+  hero.prepend(canvas);
+
+  const ctx = canvas.getContext('2d');
 
   let summary;
   let selected = 'VWCE';
   let visible = true;
   let frame = 0;
-  let time = 0;
   let last = 0;
+  let time = 0;
+  let lastPaint = -Infinity;
   let yaw = 0;
   let pitch = 0;
   let targetYaw = 0;
   let targetPitch = 0;
   let drag = null;
-  let rect;
-
-  const activationStart = performance.now();
+  let bounds;
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+  let anchorX = 0;
+  let anchorY = 0;
+  let scale = 1;
 
   const paused = () =>
     reduced.matches ||
     document.body.classList.contains('motion-paused');
 
   const active = () =>
-    !document.hidden && (visible || dialog.open);
+    !!ctx && visible && !document.hidden;
 
-  const views = [canvas, map].map(c => ({
-    c,
-    ctx: c.getContext('2d'),
-    size: 0
-  }));
-
-  const clamp = n => Math.max(0, Math.min(1, n));
-
-  const ease = n => {
-    n = clamp(n);
-    return n * n * (3 - 2 * n);
-  };
-
-  let seed = 1487;
+  let seed = 7341;
 
   const random = () => {
-    seed = (seed * 16807) % 2147483647;
+    seed = seed * 16807 % 2147483647;
     return (seed - 1) / 2147483646;
   };
 
-  /* Nebula and distant stars are painted once, then reused. */
-  const sky = document.createElement('canvas');
-  sky.width = sky.height = 1000;
-  const skyContext = sky.getContext('2d');
+  const stars = Array.from({length:54}, (_, i) => ({
+    x: random(),
+    y: random(),
+    depth: i % 3,
+    radius: .35 + random() * .65,
+    light: .18 + random() * .46,
+    phase: random() * TAU
+  }));
 
-  if (skyContext) {
-    skyContext.scale(1000 / 600, 1000 / 600);
-    skyContext.translate(300, 300);
+  /* Cached irregular dust with transparent edges. */
+  const dust = document.createElement('canvas');
+  dust.width = 900;
+  dust.height = 600;
 
-    for (let i = 0; i < 34; i++) {
-      const x = (random() - .5) * 430;
-      const y = (random() - .5) * 350;
-      const radius = 50 + random() * 100;
+  const dustContext = dust.getContext('2d');
 
-      const gradient = skyContext.createRadialGradient(
-        x, y, 0, x, y, radius
+  if (dustContext) {
+    for (let i = 0; i < 16; i++) {
+      const x = 190 + random() * 500;
+      const y = 130 + random() * 300;
+      const r = 65 + random() * 130;
+
+      const glow = dustContext.createRadialGradient(
+        x, y, 0, x, y, r
       );
 
-      gradient.addColorStop(0, i % 3 ? '#254aa61a' : '#8559b324');
-      gradient.addColorStop(1, '#07102100');
-
-      skyContext.fillStyle = gradient;
-      skyContext.fillRect(
-        x - radius,
-        y - radius,
-        radius * 2,
-        radius * 2
-      );
-    }
-
-    for (let i = 0; i < 430; i++) {
-      const x = (random() - .5) * 590;
-      const y = (random() - .5) * 570;
-
-      skyContext.globalAlpha = .12 + random() * .65;
-      skyContext.fillStyle = i % 4 ? '#b9cfe9' : '#e7d6b5';
-      skyContext.beginPath();
-      skyContext.arc(x, y, random() * .8 + .15, 0, TAU);
-      skyContext.fill();
-    }
-
-    skyContext.globalAlpha = 1;
-  }
-
-  /* Reusable light sprite avoids per-particle blur filters. */
-  const spark = document.createElement('canvas');
-  spark.width = spark.height = 64;
-  const sparkContext = spark.getContext('2d');
-
-  if (sparkContext) {
-    const gradient = sparkContext.createRadialGradient(
-      32, 32, 0, 32, 32, 32
-    );
-
-    gradient.addColorStop(0, '#f4ffff');
-    gradient.addColorStop(.09, '#c3f8ff');
-    gradient.addColorStop(.25, '#69caf47c');
-    gradient.addColorStop(1, '#4b9cff00');
-
-    sparkContext.fillStyle = gradient;
-    sparkContext.fillRect(0, 0, 64, 64);
-  }
-
-  /* A deterministic spherical star map. Decorative, not market data. */
-  const stars = Array.from({length:112}, (_, i) => {
-    const y = 1 - (i + .5) / 112 * 2;
-    const r = Math.sqrt(1 - y * y);
-    const a = i * 2.399963;
-
-    return [
-      Math.cos(a) * r * 151,
-      y * 151,
-      Math.sin(a) * r * 151
-    ];
-  });
-
-  const connections = [];
-
-  stars.forEach((p, i) => {
-    if (i % 4) return;
-
-    let nearest = -1;
-    let distance = Infinity;
-
-    stars.forEach((q, j) => {
-      const d = Math.hypot(
-        p[0] - q[0],
-        p[1] - q[1],
-        p[2] - q[2]
+      glow.addColorStop(
+        0,
+        i % 3
+          ? 'rgba(113,137,151,.027)'
+          : 'rgba(151,139,117,.019)'
       );
 
-      if (j > i && d < distance) {
-        distance = d;
-        nearest = j;
-      }
-    });
+      glow.addColorStop(1, 'rgba(90,110,130,0)');
 
-    if (nearest >= 0 && distance < 65) {
-      connections.push([i, nearest]);
+      dustContext.fillStyle = glow;
+      dustContext.fillRect(x - r, y - r, r * 2, r * 2);
     }
-  });
-
-  const phi = (1 + Math.sqrt(5)) / 2;
-
-  const vertices = [
-    [-1,phi,0], [1,phi,0], [-1,-phi,0], [1,-phi,0],
-    [0,-1,phi], [0,1,phi], [0,-1,-phi], [0,1,-phi],
-    [phi,0,-1], [phi,0,1], [-phi,0,-1], [-phi,0,1]
-  ];
-
-  const faces = [
-    [0,11,5], [0,5,1], [0,1,7], [0,7,10], [0,10,11],
-    [1,5,9], [5,11,4], [11,10,2], [10,7,6], [7,1,8],
-    [3,9,4], [3,4,2], [3,2,6], [3,6,8], [3,8,9],
-    [4,9,5], [2,4,11], [6,2,10], [8,6,7], [9,8,1]
-  ];
-
-  const rings = [
-    {r:232,x:1.13,y:.18,s:.026,c:'#94cee9'},
-    {r:199,x:.42,y:-.66,s:-.042,c:'#74dfed'},
-    {r:181,x:1.32,y:.82,s:.055,c:'#dfbe88'},
-    {r:169,x:-.63,y:1.02,s:-.038,c:'#b4a4ef'}
-  ];
-
-  function resize(v) {
-    const box = v.c.getBoundingClientRect();
-    const dpr = Math.min(devicePixelRatio || 1, 1.65);
-
-    v.size = Math.min(box.width, box.height);
-    v.dpr = dpr;
-    v.c.width = Math.round(box.width * dpr);
-    v.c.height = Math.round(box.height * dpr);
   }
 
-  new ResizeObserver(() => {
-    views.forEach(resize);
+  const arcs = [
+    {
+      r:188, rx:.82, ry:-.24,
+      start:-2.7, length:2.85,
+      speed:.12, color:'#9ab5c3'
+    },
+    {
+      r:228, rx:-.44, ry:.68,
+      start:.18, length:2.12,
+      speed:-.085, color:'#b1b5ad'
+    },
+    {
+      r:156, rx:1.12, ry:.40,
+      start:2.1, length:1.65,
+      speed:.067, color:'#85a7ba'
+    }
+  ];
+
+  /* A finished, simple emblem when Canvas is unavailable. */
+  const fallback = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    'svg'
+  );
+
+  fallback.setAttribute('viewBox', '0 0 200 200');
+  fallback.setAttribute('aria-hidden', 'true');
+  fallback.classList.add('celestial-fallback');
+
+  fallback.innerHTML = `
+    <defs>
+      <linearGradient id="quiet-metal" x2="1" y2="1">
+        <stop stop-color="#f3eee1"/>
+        <stop offset=".48" stop-color="#cbdfe5"/>
+        <stop offset=".5" stop-color="#628895"/>
+        <stop offset="1" stop-color="#d7e2e0"/>
+      </linearGradient>
+    </defs>
+    <path
+      d="M100 22L117 83L173 100L117 117L100 178L83 117L27 100L83 83Z"
+      fill="url(#quiet-metal)"
+      stroke="#e1edef"
+      stroke-width=".7"
+    />
+    <path
+      d="M100 84L116 100L100 116L84 100Z"
+      fill="#0b1820"
+    />
+    <circle cx="100" cy="100" r="2" fill="#d9f4f5"/>
+  `;
+
+  space.append(fallback);
+
+  if (!ctx) {
+    canvas.hidden = true;
+    document.body.classList.add('canvas-fallback');
+  }
+
+  function resize() {
+    bounds = hero.getBoundingClientRect();
+    const core = space.getBoundingClientRect();
+
+    width = bounds.width;
+    height = bounds.height;
+    dpr = Math.min(devicePixelRatio || 1, 1.5);
+
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+
+    anchorX = core.left - bounds.left + core.width / 2;
+    anchorY = core.top - bounds.top + core.height / 2;
+    scale = Math.min(core.width, core.height) / 500;
+
+    lastPaint = -Infinity;
     wake();
-  }).observe(canvas);
+  }
 
-  new ResizeObserver(() => {
-    resize(views[1]);
-    wake();
-  }).observe(map);
+  new ResizeObserver(resize).observe(hero);
+  new ResizeObserver(resize).observe(space);
 
-  function project(x, y, z, rx = 0, ry = 0, rz = 0) {
-    [x,y] = [
-      x * Math.cos(rz) - y * Math.sin(rz),
-      x * Math.sin(rz) + y * Math.cos(rz)
-    ];
+  function project(angle, arc, radius = arc.r) {
+    let x = Math.cos(angle) * radius;
+    let y = Math.sin(angle) * radius;
+    let z = 0;
+
+    const rx = arc.rx + pitch * .18;
+    const ry = arc.ry + yaw * .22;
 
     [y,z] = [
-      y * Math.cos(rx) - z * Math.sin(rx),
-      y * Math.sin(rx) + z * Math.cos(rx)
+      y * Math.cos(rx),
+      y * Math.sin(rx)
     ];
 
     [x,z] = [
@@ -212,419 +186,209 @@
       -x * Math.sin(ry) + z * Math.cos(ry)
     ];
 
-    [x,z] = [
-      x * Math.cos(yaw) + z * Math.sin(yaw),
-      -x * Math.sin(yaw) + z * Math.cos(yaw)
-    ];
+    const p = 900 / (900 - z);
 
-    [y,z] = [
-      y * Math.cos(pitch) - z * Math.sin(pitch),
-      y * Math.sin(pitch) + z * Math.cos(pitch)
-    ];
-
-    const perspective = 850 / (850 - z);
-
-    return {
-      x: x * perspective,
-      y: y * perspective,
-      z
-    };
+    return {x:x * p, y:y * p, z};
   }
 
-  const orbit = (a, r, rx, ry) =>
-    project(Math.cos(a) * r, Math.sin(a) * r, 0, rx, ry);
+  function paint() {
+    if (!ctx || !width) return;
 
-  function line(c, p, q, color, alpha, width = .6) {
-    c.globalAlpha = alpha;
-    c.strokeStyle = color;
-    c.lineWidth = width;
-    c.beginPath();
-    c.moveTo(p.x, p.y);
-    c.lineTo(q.x, q.y);
-    c.stroke();
-  }
+    const c = ctx;
 
-  function draw(v) {
-    if (!v.ctx || !v.size) return;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, width, height);
 
-    const c = v.ctx;
-    const w = v.c.width / v.dpr;
-    const h = v.c.height / v.dpr;
-    const age = (performance.now() - activationStart) / 1000;
+    if (dustContext) {
+      c.globalAlpha = .8;
 
-    const ceremonial =
-      document.body.classList.contains('intro') && !paused();
-
-    const phase = ceremonial ? ease(age / 2.5) : 1;
-
-    c.setTransform(v.dpr, 0, 0, v.dpr, 0, 0);
-    c.clearRect(0, 0, w, h);
-    c.translate(w / 2, h / 2);
-    c.scale(v.size / 600, v.size / 600);
-
-    c.globalAlpha = .85;
-
-    if (skyContext) {
-      c.drawImage(sky, -300, -300, 600, 600);
-    }
-
-    const halo = c.createRadialGradient(0, 0, 15, 0, 0, 255);
-    halo.addColorStop(0, '#67c6ff20');
-    halo.addColorStop(.55, '#30519c1b');
-    halo.addColorStop(1, '#10205000');
-
-    c.globalAlpha = 1;
-    c.fillStyle = halo;
-    c.fillRect(-280, -280, 560, 560);
-
-    /* Projection plinth: no distance or radius encodes performance. */
-    c.save();
-    c.translate(0, 218);
-    c.scale(1, .22);
-
-    const plinth = c.createRadialGradient(0, 0, 10, 0, 0, 190);
-    plinth.addColorStop(0, '#72d8f525');
-    plinth.addColorStop(.7, '#3765bf15');
-    plinth.addColorStop(1, '#223b7300');
-
-    c.fillStyle = plinth;
-    c.fillRect(-200, -200, 400, 400);
-
-    [110,155,186].forEach((r, i) => {
-      c.globalAlpha = .2 + phase * .12;
-      c.strokeStyle = i === 1 ? '#c8b587' : '#89d6ee';
-      c.lineWidth = 1.2;
-      c.beginPath();
-      c.arc(0, 0, r, 0, TAU);
-      c.stroke();
-    });
-
-    c.restore();
-
-    const beam = c.createLinearGradient(0, 90, 0, 218);
-    beam.addColorStop(0, '#79cfff00');
-    beam.addColorStop(1, '#79cfff10');
-
-    c.globalAlpha = phase;
-    c.fillStyle = beam;
-    c.beginPath();
-    c.moveTo(-90, 100);
-    c.lineTo(-24, 218);
-    c.lineTo(24, 218);
-    c.lineTo(90, 100);
-    c.closePath();
-    c.fill();
-
-    /* Fixed calibration marks. */
-    for (let i = 0; i < 120; i++) {
-      const a = i * TAU / 120;
-      const outer = 263;
-      const inner = i % 10 === 0 ? 252 : i % 5 === 0 ? 257 : 260;
-
-      line(
-        c,
-        {x:Math.cos(a) * inner, y:Math.sin(a) * inner},
-        {x:Math.cos(a) * outer, y:Math.sin(a) * outer},
-        '#a3bcd2',
-        i % 5 === 0 ? .42 : .15
+      c.drawImage(
+        dust,
+        anchorX - width * .59 + Math.sin(time * .023) * 9,
+        anchorY - height * .6 + Math.cos(time * .018) * 7,
+        width * .98,
+        height * 1.18
       );
     }
 
-    c.globalAlpha = .62;
-    c.fillStyle = '#a6c5d7';
-    c.textAlign = 'center';
-    c.font = '8px ui-monospace,monospace';
+    stars.forEach(star => {
+      const depth = (star.depth + 1) / 3;
 
-    ['N','E','S','W'].forEach((text, i) => {
-      const a = (i - 1) * TAU / 4;
-      c.fillText(text, Math.cos(a) * 277, Math.sin(a) * 277 + 3);
+      const x =
+        star.x * width +
+        Math.sin(time * .015 + star.phase) * depth * 8 +
+        yaw * depth * 12;
+
+      const y =
+        star.y * height +
+        Math.cos(time * .012 + star.phase) * depth * 5 +
+        pitch * depth * 9;
+
+      const calm = Math.max(
+        .05,
+        Math.min(1, (x / width - .36) / .3)
+      );
+
+      const edge = Math.max(
+        0,
+        Math.min(
+          1,
+          x / 35,
+          (width - x) / 35,
+          y / 35,
+          (height - y) / 35
+        )
+      );
+
+      c.globalAlpha = star.light * calm * edge;
+      c.fillStyle = star.depth === 2 ? '#d5e4e8' : '#94a8b9';
+      c.beginPath();
+      c.arc(x, y, star.radius, 0, TAU);
+      c.fill();
     });
 
-    c.font = '6px ui-monospace,monospace';
-    c.fillStyle = '#d2bd92';
-    c.fillText('LUMEN / ORBIS / MEMORIA', 0, -246);
+    c.save();
+    c.translate(anchorX, anchorY);
+    c.scale(scale, scale);
 
     const primitives = [];
 
-    const addLine = (p, q, color, alpha, width = .6) => {
-      primitives.push({
-        z: (p.z + q.z) / 2,
-        paint: () => line(c, p, q, color, alpha, width)
-      });
-    };
+    arcs.forEach((arc, index) => {
+      /* Axes stay composed; the light follows its path. */
+      const drift = Math.sin(time * .018 + index) * .055;
 
-    /* Translucent globe. */
-    primitives.push({
-      z: -160,
-      paint() {
-        const glass = c.createRadialGradient(-58, -68, 5, 0, 0, 155);
-        glass.addColorStop(0, '#87dfff0d');
-        glass.addColorStop(.68, '#132d5622');
-        glass.addColorStop(.94, '#5b9ce61b');
-        glass.addColorStop(1, '#b8e5ff38');
+      for (let i = 0; i < 58; i++) {
+        const t = i / 58;
+        const angle = arc.start + t * arc.length + drift;
+        const p = project(angle, arc);
+        const q = project(angle + arc.length / 58, arc);
+        const fade = Math.pow(Math.sin(t * Math.PI), 1.7);
 
-        c.globalAlpha = phase;
-        c.fillStyle = glass;
-        c.beginPath();
-        c.arc(0, 0, 155, 0, TAU);
-        c.fill();
-
-        c.strokeStyle = '#a6d4ee65';
-        c.lineWidth = .8;
-        c.stroke();
-      }
-    });
-
-    /* Meridians rotate together as one sphere. */
-    for (let band = 0; band < 7; band++) {
-      for (let i = 0; i < 72; i++) {
-        const a = i * TAU / 72;
-        const ry = time * .026 + band * Math.PI / 7;
-        const p = orbit(a, 155, .15, ry);
-        const q = orbit(a + TAU / 72, 155, .15, ry);
-
-        addLine(
-          p, q, '#83b7e5',
-          (p.z < 0 ? .10 : .29) * phase,
-          .45
+        const passage = Math.max(
+          0,
+          Math.cos(time * TAU / 32 - index * .55)
         );
+
+        const alpha =
+          fade *
+          (p.z < 0 ? .08 : .21) *
+          (1 + Math.pow(passage, 24) * .45);
+
+        primitives.push({
+          z: (p.z + q.z) / 2,
+          paint() {
+            c.globalAlpha = alpha;
+            c.strokeStyle = arc.color;
+            c.lineWidth = .65;
+            c.beginPath();
+            c.moveTo(p.x, p.y);
+            c.lineTo(q.x, q.y);
+            c.stroke();
+          }
+        });
       }
-    }
 
-    [-.7,-.35,.35,.7].forEach(latitude => {
-      const radius = Math.sqrt(1 - latitude * latitude) * 155;
-
-      for (let i = 0; i < 64; i++) {
-        const a = i * TAU / 64;
-        const b = a + TAU / 64;
+      if (index < 2) {
+        const phase =
+          ((time * arc.speed * .075 + index * .43) % 1 + 1) % 1;
 
         const p = project(
-          Math.cos(a) * radius,
-          latitude * 155,
-          Math.sin(a) * radius,
-          .15,
-          time * .026
+          arc.start + phase * arc.length + drift,
+          arc
         );
 
-        const q = project(
-          Math.cos(b) * radius,
-          latitude * 155,
-          Math.sin(b) * radius,
-          .15,
-          time * .026
-        );
-
-        addLine(
-          p, q, '#8dbbdd',
-          (p.z < 0 ? .08 : .23) * phase,
-          .45
-        );
-      }
-    });
-
-    const projected = stars.map(p => project(...p, .15, time * .026));
-
-    connections.forEach(([a, b]) => {
-      addLine(
-        projected[a],
-        projected[b],
-        '#d8d6af',
-        (projected[a].z < 0 ? .08 : .38) * phase,
-        .65
-      );
-    });
-
-    projected.forEach((p, i) => {
-      primitives.push({
-        z: p.z,
-        paint() {
-          c.globalAlpha =
-            (p.z < 0 ? .16 : .45 + (i % 5) * .1) * phase;
-
-          if (i % 9 === 0 && sparkContext) {
-            c.drawImage(spark, p.x - 7, p.y - 7, 14, 14);
-          }
-
-          c.fillStyle = i % 8 ? '#cbe8ff' : '#f3d8a4';
-          c.beginPath();
-          c.arc(p.x, p.y, i % 9 === 0 ? 1.6 : .65, 0, TAU);
-          c.fill();
-        }
-      });
-    });
-
-    rings.forEach((ring, index) => {
-      const assembly = ceremonial
-        ? ease((age - .18 - index * .22) / 1.3)
-        : 1;
-
-      const r = ring.r * (.72 + .28 * assembly);
-
-      const alignment = Math.pow(
-        Math.max(0, Math.cos(time * TAU / 96 + Math.PI)),
-        28
-      );
-
-      const rx = ring.x * (1 - alignment) + .85 * alignment;
-
-      const ry =
-        (ring.y + Math.sin(time * .022) * .12) *
-        (1 - alignment) +
-        .3 * alignment;
-
-      const emphasis =
-        v.c === map &&
-        index > 0 &&
-        index !== {VWCE:1,VFEA:2,SXR8:3}[selected]
-          ? .35
-          : 1;
-
-      for (let i = 0; i < 128; i++) {
-        const a = i * TAU / 128 + time * ring.s;
-        const p = orbit(a, r, rx, ry);
-        const q = orbit(a + TAU / 128, r, rx, ry);
-
-        const pulse =
-          (i + Math.floor(time * 9) + index * 23) % 128 < 5;
-
-        addLine(
-          p,
-          q,
-          ring.c,
-          (p.z < 0 ? .22 : .78) * assembly * emphasis,
-          pulse ? 2.3 : i % 16 < 11 ? 1.1 : .35
-        );
-
-        if (i % 4 === 0) {
-          const tick = orbit(
-            a,
-            r - (i % 16 === 0 ? 8 : 3),
-            rx,
-            ry
-          );
-
-          addLine(p, tick, ring.c, .5 * assembly * emphasis, .7);
-        }
-      }
-
-      for (let n = 0; n < 2; n++) {
-        const p = orbit(
-          time * ring.s * 3 + n * Math.PI + index,
-          r,
-          rx,
-          ry
-        );
+        const fade = Math.sin(phase * Math.PI);
 
         primitives.push({
           z: p.z,
           paint() {
-            c.globalAlpha =
-              (p.z < 0 ? .3 : 1) * assembly * emphasis;
+            const glow = c.createRadialGradient(
+              p.x, p.y, 0, p.x, p.y, 7
+            );
 
-            if (sparkContext) {
-              c.drawImage(spark, p.x - 11, p.y - 11, 22, 22);
-            }
+            glow.addColorStop(0, '#dcecef99');
+            glow.addColorStop(.2, '#b6d6df55');
+            glow.addColorStop(1, '#9bc6d300');
 
-            c.fillStyle = ring.c;
+            c.globalAlpha = fade * (p.z < 0 ? .35 : .8);
+            c.fillStyle = glow;
+            c.fillRect(p.x - 7, p.y - 7, 14, 14);
+
+            c.fillStyle = '#d9e8e9';
             c.beginPath();
-            c.arc(p.x, p.y, 2, 0, TAU);
+            c.arc(p.x, p.y, 1.25, 0, TAU);
             c.fill();
           }
         });
       }
     });
 
-    /* Rotating crystalline seed. */
-    const core = vertices.map(p =>
-      project(
-        p[0] * 39,
-        p[1] * 39,
-        p[2] * 39,
-        .42,
-        time * .085 + .3,
-        time * .035
-      )
-    );
-
-    faces.forEach((face, i) => {
-      const points = face.map(index => core[index]);
-      const z = points.reduce((sum, p) => sum + p.z, 0) / 3;
-
-      primitives.push({
-        z,
-        paint() {
-          c.globalAlpha = 1;
-          c.beginPath();
-
-          points.forEach((p, j) => {
-            if (j) c.lineTo(p.x, p.y);
-            else c.moveTo(p.x, p.y);
-          });
-
-          c.closePath();
-
-          c.fillStyle = i % 3
-            ? `rgba(42,91,122,${z > 0 ? .22 : .08})`
-            : `rgba(189,148,80,${z > 0 ? .23 : .06})`;
-
-          c.fill();
-
-          c.strokeStyle = z > 0 ? '#dfd6aa88' : '#85accc35';
-          c.lineWidth = z > 0 ? .9 : .5;
-          c.stroke();
-        }
-      });
-    });
-
-    /* NORTHSTAR remains recognizable at the centre. */
+    /* The emblem stays visually stable while the space around it drifts. */
     primitives.push({
-      z: 5,
+      z: 0,
       paint() {
+        c.save();
+        c.translate(yaw * 3, pitch * 3);
         c.globalAlpha = 1;
 
-        const aura = c.createRadialGradient(0, 0, 1, 0, 0, 83);
-        aura.addColorStop(0, '#c7f6ff70');
-        aura.addColorStop(.23, '#5fcaff35');
-        aura.addColorStop(1, '#629dff00');
+        const light = c.createRadialGradient(0, 0, 5, 0, 0, 100);
+        light.addColorStop(0, '#b8e1e117');
+        light.addColorStop(.48, '#8ebac10b');
+        light.addColorStop(1, '#8ebac100');
 
-        c.fillStyle = aura;
-        c.fillRect(-85, -85, 170, 170);
+        c.fillStyle = light;
+        c.fillRect(-105, -105, 210, 210);
 
-        const metal = c.createLinearGradient(-40, -55, 40, 55);
-        metal.addColorStop(0, '#fff4d7');
-        metal.addColorStop(.48, '#d5f7ff');
-        metal.addColorStop(.5, '#498298');
-        metal.addColorStop(1, '#d5d5b4');
+        const metal = c.createLinearGradient(-50, -78, 55, 78);
+        metal.addColorStop(0, '#f0e9d7');
+        metal.addColorStop(.46, '#c8e0e5');
+        metal.addColorStop(.49, '#eff6f3');
+        metal.addColorStop(.51, '#628791');
+        metal.addColorStop(1, '#c1d8d9');
 
-        c.fillStyle = metal;
         c.beginPath();
 
         [
-          [0,-53], [10,-10], [44,0], [10,10],
-          [0,53], [-10,10], [-44,0], [-10,-10]
+          [0,-78], [17,-17], [73,0], [17,17],
+          [0,78], [-17,17], [-73,0], [-17,-17]
         ].forEach((p, i) => {
           if (i) c.lineTo(...p);
           else c.moveTo(...p);
         });
 
         c.closePath();
+        c.fillStyle = metal;
         c.fill();
-        c.strokeStyle = '#e6ffff';
-        c.lineWidth = .7;
+        c.strokeStyle = '#dbe8e5';
+        c.lineWidth = .65;
         c.stroke();
 
-        c.fillStyle = '#142d45';
+        c.globalAlpha = .24;
+        c.strokeStyle = '#f1f5eb';
+        c.lineWidth = .6;
         c.beginPath();
-        c.moveTo(0, -11);
-        c.lineTo(11, 0);
-        c.lineTo(0, 11);
-        c.lineTo(-11, 0);
+        c.moveTo(0, -78);
+        c.lineTo(0, 78);
+        c.moveTo(-73, 0);
+        c.lineTo(73, 0);
+        c.stroke();
+
+        c.globalAlpha = 1;
+        c.fillStyle = '#0b1820';
+        c.beginPath();
+        c.moveTo(0, -16);
+        c.lineTo(16, 0);
+        c.lineTo(0, 16);
+        c.lineTo(-16, 0);
         c.closePath();
         c.fill();
 
-        if (sparkContext) {
-          c.drawImage(spark, -11, -11, 22, 22);
-        }
+        c.fillStyle = '#d8eff0';
+        c.beginPath();
+        c.arc(0, 0, 2.2, 0, TAU);
+        c.fill();
+
+        c.restore();
       }
     });
 
@@ -632,24 +396,7 @@
       .sort((a, b) => a.z - b.z)
       .forEach(p => p.paint());
 
-    c.globalAlpha = .35 * phase;
-    c.strokeStyle = '#d9efff';
-    c.lineWidth = 1.2;
-    c.beginPath();
-    c.arc(-2, -1, 150, 3.65, 4.7);
-    c.stroke();
-
-    if (ceremonial && age > .65 && age < 2.6) {
-      const pulse = ease((age - .65) / 1.95);
-
-      c.globalAlpha = Math.sin(pulse * Math.PI) * .35;
-      c.strokeStyle = '#b6e9ff';
-      c.lineWidth = 1;
-      c.beginPath();
-      c.arc(0, 0, 30 + pulse * 220, 0, TAU);
-      c.stroke();
-    }
-
+    c.restore();
     c.globalAlpha = 1;
   }
 
@@ -666,12 +413,15 @@
 
     if (!paused()) time += dt;
 
-    const easing = 1 - Math.exp(-Math.max(dt, 1 / 120) * 9);
+    const easing = 1 - Math.exp(-Math.max(dt, 1 / 120) * 8);
 
     yaw += (targetYaw - yaw) * easing;
     pitch += (targetPitch - pitch) * easing;
 
-    draw(views[dialog.open ? 1 : 0]);
+    if (now - lastPaint >= 1000 / 30 || paused()) {
+      paint();
+      lastPaint = now;
+    }
 
     if (
       !paused() ||
@@ -692,7 +442,14 @@
   new IntersectionObserver(entries => {
     visible = entries[0].isIntersecting;
     wake();
-  }).observe($('instrument'));
+  }).observe(hero);
+
+  document.addEventListener('visibilitychange', wake);
+
+  new MutationObserver(wake).observe(document.body, {
+    attributes: true,
+    attributeFilter: ['class']
+  });
 
   function syncMotionPreference() {
     const button = $('motion-toggle');
@@ -715,33 +472,149 @@
     wake();
   }
 
-  document.addEventListener('visibilitychange', wake);
   reduced.addEventListener('change', syncMotionPreference);
   syncMotionPreference();
 
-  new MutationObserver(wake).observe(document.body, {
-    attributes: true,
-    attributeFilter: ['class']
-  });
-
-  canvas.addEventListener('pointermove', e => {
-    if (e.pointerType !== 'mouse' || paused()) return;
-
-    const b = canvas.getBoundingClientRect();
+  hero.addEventListener('pointermove', event => {
+    if (paused() || event.pointerType !== 'mouse' || !bounds) return;
 
     targetYaw =
-      (e.clientX - b.left - b.width / 2) / b.width * .4;
+      (event.clientX - bounds.left - bounds.width * .7) /
+      bounds.width * .5;
 
     targetPitch =
-      (e.clientY - b.top - b.height / 2) / b.height * .25;
+      (event.clientY - bounds.top - bounds.height * .5) /
+      bounds.height * .3;
 
     wake();
   }, {passive:true});
 
-  canvas.addEventListener('pointerleave', () => {
+  function settle() {
+    drag = null;
     targetYaw = targetPitch = 0;
     wake();
+  }
+
+  hero.addEventListener('pointerleave', settle);
+
+  space.addEventListener('pointerdown', event => {
+    if (event.isPrimary && event.pointerType === 'touch') {
+      drag = {x:event.clientX, y:event.clientY};
+    }
+  }, {passive:true});
+
+  space.addEventListener('pointermove', event => {
+    if (!drag || paused()) return;
+
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+
+    if (Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(dy) * 2) {
+      targetYaw = Math.max(
+        -.3,
+        Math.min(.3, dx / space.clientWidth)
+      );
+      wake();
+    }
+  }, {passive:true});
+
+  ['pointerup','pointercancel'].forEach(name => {
+    space.addEventListener(name, settle);
   });
+
+  /* A useful financial detail view replaces the enlarged illustration. */
+  $('explore-core').textContent = 'Portfolio in focus ↗';
+  $('map-title').textContent = 'Your portfolio, in focus.';
+
+  document.querySelector('.map-heading .eyebrow').textContent =
+    'NORTHSTAR / PORTFOLIO';
+
+  $('map-help').textContent =
+    'Actual holdings and allocation. Price status is shown below. ' +
+    'SXR8 is a benchmark only and is excluded from your allocation.';
+
+  const focus = document.createElement('div');
+  focus.id = 'allocation-focus';
+
+  focus.innerHTML = `
+    <div class="focus-total">
+      <span>TOTAL PORTFOLIO VALUE</span>
+      <strong id="focus-total">—</strong>
+      <small id="focus-date">Daily closing prices</small>
+    </div>
+
+    <div
+      class="focus-allocation"
+      role="img"
+      aria-label="No asset allocation"
+    >
+      <span></span><span></span>
+    </div>
+
+    <div class="focus-legend">
+      <div>
+        <span><i></i>VWCE / World</span>
+        <strong id="focus-world">—</strong>
+      </div>
+      <div>
+        <span><i></i>VFEA / Emerging</span>
+        <strong id="focus-emerging">—</strong>
+      </div>
+    </div>
+
+    <p class="focus-note" id="focus-basis">
+      No purchases saved in this browser.
+    </p>
+  `;
+
+  $('celestial-map').replaceWith(focus);
+  $('reset-core').remove();
+
+  document.querySelector('.map-bottom>span').textContent =
+    'Market data status shown above · private browser storage';
+
+  function updateFocus() {
+    if (!summary) return;
+
+    const euro = value => new Intl.NumberFormat('en-IE', {
+      style:'currency',
+      currency:'EUR'
+    }).format(value);
+
+    $('focus-total').textContent =
+      summary.value === null ? '—' : euro(summary.value);
+
+    $('focus-date').textContent = $('hero-date').textContent;
+
+    const allocation = summary.count ? summary.allocation : 0;
+    const bar = document.querySelector('.focus-allocation');
+
+    bar.children[0].style.width = `${allocation}%`;
+    bar.children[1].style.width = summary.count
+      ? `${100 - allocation}%`
+      : '0%';
+
+    bar.setAttribute(
+      'aria-label',
+      summary.count
+        ? `${summary.allocationBasis} allocation: ` +
+          `VWCE ${allocation.toFixed(1)}%, ` +
+          `VFEA ${(100 - allocation).toFixed(1)}%.`
+        : 'No asset allocation'
+    );
+
+    $('focus-world').textContent = summary.count
+      ? `${allocation.toFixed(1)}%`
+      : '—';
+
+    $('focus-emerging').textContent = summary.count
+      ? `${(100 - allocation).toFixed(1)}%`
+      : '—';
+
+    $('focus-basis').textContent = summary.count
+      ? `${summary.allocationBasis} allocation · benchmark excluded`
+      : 'No purchases saved in this browser.';
+  }
 
   function details() {
     const holding = selected !== 'SXR8';
@@ -778,7 +651,8 @@
       ? index
         ? 'Emerging markets · holding'
         : 'Global equities · holding'
-      : 'S&P 500 reference · benchmark only. Excluded from your holdings and allocation.';
+      : 'S&P 500 reference · benchmark only. ' +
+        'Excluded from your holdings and allocation.';
 
     box.append(description);
 
@@ -790,7 +664,7 @@
         'Asset',
         'Invested',
         'Shares',
-        'Latest close',
+        summary?.status === 'warning' ? 'Price snapshot' : 'Latest close',
         'Market value',
         'Unrealized P/L'
       ].forEach((label, i) => {
@@ -834,8 +708,8 @@
     );
   }
 
-  document.addEventListener('northstar:summary', e => {
-    summary = e.detail;
+  document.addEventListener('northstar:summary', event => {
+    summary = event.detail;
 
     $('core-contributed').textContent = summary.count
       ? new Intl.NumberFormat('en-IE', {
@@ -853,53 +727,56 @@
     $('core-allocation').parentElement.querySelector('span').textContent =
       summary.allocationBasis.toUpperCase() + ' / WORLD : EMERGING';
 
-    if (dialog.open) details();
+    if (dialog.open) {
+      updateFocus();
+      details();
+    }
   });
 
   $('explore-core').addEventListener('click', () => {
-    dialog.showModal();
+    updateFocus();
     details();
-    views.forEach(resize);
-    wake();
+    dialog.showModal();
   });
 
-  function close() {
+  function closeFocus() {
     dialog.close();
-    targetYaw = targetPitch = 0;
-    $('explore-core').focus();
-    wake();
+    $('explore-core').focus({preventScroll:true});
   }
 
-  $('close-core').addEventListener('click', close);
+  $('close-core').addEventListener('click', closeFocus);
 
-  dialog.addEventListener('cancel', e => {
-    e.preventDefault();
-    close();
+  dialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    closeFocus();
   });
 
-  dialog.addEventListener('keydown', e => {
-    if (e.key !== 'Tab') return;
+  dialog.addEventListener('close', () => {
+    if (
+      document.activeElement === document.body ||
+      dialog.contains(document.activeElement)
+    ) {
+      $('explore-core').focus({preventScroll:true});
+    }
+  });
+
+  dialog.addEventListener('keydown', event => {
+    if (event.key !== 'Tab') return;
 
     const controls = [
-      ...dialog.querySelectorAll('button:not(:disabled),[tabindex="0"]')
+      ...dialog.querySelectorAll('button:not(:disabled)')
     ];
 
     const first = controls[0];
     const last = controls.at(-1);
 
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
       last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
       first.focus();
     }
-  });
-
-  dialog.addEventListener('close', () => {
-    targetYaw = targetPitch = 0;
-    $('explore-core').focus();
-    wake();
   });
 
   document.querySelectorAll('[data-asset]').forEach(button => {
@@ -911,89 +788,10 @@
       });
 
       details();
-      wake();
     });
   });
 
-  const reset = () => {
-    targetYaw = targetPitch = 0;
-    wake();
-  };
-
-  $('reset-core').addEventListener('click', reset);
-
-  map.addEventListener('pointerdown', e => {
-    if (!e.isPrimary) return;
-
-    rect = map.getBoundingClientRect();
-
-    drag = {
-      id: e.pointerId,
-      x: e.clientX,
-      y: e.clientY,
-      yaw: targetYaw,
-      pitch: targetPitch
-    };
-
-    map.setPointerCapture(e.pointerId);
-  });
-
-  map.addEventListener('pointermove', e => {
-    if (!drag || e.pointerId !== drag.id) return;
-
-    targetYaw =
-      drag.yaw + (e.clientX - drag.x) / rect.width * 2;
-
-    targetPitch = Math.max(
-      -.8,
-      Math.min(
-        .8,
-        drag.pitch + (e.clientY - drag.y) / rect.height * 2
-      )
-    );
-
-    wake();
-  });
-
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(name => {
-    map.addEventListener(name, () => {
-      drag = null;
-      reset();
-    });
-  });
-
-  map.addEventListener('keydown', e => {
-    if (
-      !['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home'].includes(e.key)
-    ) {
-      return;
-    }
-
-    e.preventDefault();
-
-    if (e.key === 'Home') {
-      reset();
-    } else {
-      targetYaw +=
-        e.key === 'ArrowLeft' ? -.12 :
-        e.key === 'ArrowRight' ? .12 : 0;
-
-      targetPitch = Math.max(
-        -.8,
-        Math.min(
-          .8,
-          targetPitch + (
-            e.key === 'ArrowUp' ? -.12 :
-            e.key === 'ArrowDown' ? .12 : 0
-          )
-        )
-      );
-
-      wake();
-    }
-  });
-
-  /* Section links retain ordinary URLs and browser history. */
+  /* Ordinary section URLs and browser history are retained. */
   document.addEventListener('northstar:ready', () => {
     const nav = document.querySelector('.nav');
     const links = [...nav.querySelectorAll('a')];
@@ -1003,9 +801,7 @@
     );
 
     const sections = targets.map((target, i) =>
-      i
-        ? target.closest('section')
-        : document.querySelector('.observatory')
+      i ? target.closest('section') : hero
     );
 
     let current = -1;
@@ -1027,7 +823,6 @@
       const label = document.createElement('div');
       label.className = 'section-coordinate';
       label.textContent = `0${i + 1} / ${section.dataset.destination}`;
-
       section.prepend(label);
     });
 
@@ -1042,12 +837,12 @@
         }
       });
 
-      const bounds = nav.getBoundingClientRect();
+      const navBounds = nav.getBoundingClientRect();
       const position = links[index].getBoundingClientRect();
 
       nav.style.setProperty(
         '--beacon-x',
-        `${position.left - bounds.left}px`
+        `${position.left - navBounds.left}px`
       );
 
       nav.style.setProperty(
@@ -1129,16 +924,19 @@
         destination = i;
         activate(i, true);
 
+        const distance = i
+          ? sections[i].getBoundingClientRect().top
+          : -scrollY;
+
+        const behavior =
+          paused() || Math.abs(distance) > innerHeight * .8
+            ? 'instant'
+            : 'smooth';
+
         if (i === 0) {
-          scrollTo({
-            top:0,
-            behavior:paused() ? 'instant' : 'smooth'
-          });
+          scrollTo({top:0, behavior});
         } else {
-          targets[i].scrollIntoView({
-            behavior:paused() ? 'instant' : 'smooth',
-            block:'start'
-          });
+          sections[i].scrollIntoView({behavior, block:'start'});
         }
 
         clearTimeout(destinationTimer);
@@ -1170,7 +968,7 @@
         if (index === 0) {
           scrollTo({top:0, behavior:'instant'});
         } else {
-          targets[index].scrollIntoView({
+          sections[index].scrollIntoView({
             behavior:'instant',
             block:'start'
           });
@@ -1191,12 +989,5 @@
     });
   });
 
-  if (!views[0].ctx) {
-    canvas.hidden = true;
-    document.body.classList.add('canvas-fallback');
-  }
-
-  if (!views[1].ctx) map.hidden = true;
-
-  wake();
+  resize();
 })();
