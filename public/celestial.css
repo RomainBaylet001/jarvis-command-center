@@ -1,9 +1,9 @@
-/* NORTHSTAR / one observatory, with a quiet celestial field. */
+/* NORTHSTAR / a page-wide celestial field, with a quiet luminous anchor. */
 :root { --bg:#070b11; --ink:#edf0f3; --muted:#9daab8; --cyan:#99dce4; --gold:#cdb78c; --line:#a4b5c522; }
-body { background:var(--bg); }
-main,.masthead { position:relative; }
+body { background:var(--bg); isolation:isolate; }
+main { position:relative; z-index:1; }
 .atmosphere { display:none; }
-.masthead { position:sticky; height:86px; background:#070b11ed; border-bottom-color:#a4b5c51c; }
+.masthead { position:sticky; z-index:10; height:86px; background:#070b11ed; border-bottom-color:#a4b5c51c; }
 .identity { font-size:13px; letter-spacing:.27em; font-weight:500; }
 .identity img { filter:none; }
 .identity small { font-size:7px; letter-spacing:.2em; color:#95a3b4; }
@@ -17,8 +17,8 @@ main,.masthead { position:relative; }
 .nav a:hover,.nav a:focus-visible { color:#f3ead8; background:linear-gradient(0deg,#dac59609,transparent); }
 .nav-beacon { position:absolute; pointer-events:none; bottom:0; left:0; width:var(--beacon-width,0px); height:2px; transform:translateX(var(--beacon-x,0px)); background:linear-gradient(90deg,transparent,#dec99e,transparent); transition:transform .24s cubic-bezier(.2,.8,.2,1),width .24s; }
 
-.observatory { isolation:isolate; grid-template-columns:.9fr 1.1fr; gap:25px; min-height:640px; padding:44px 0 42px; }
-#celestial-core { position:absolute; inset:0; z-index:0; display:block; width:100%; height:100%; pointer-events:none; }
+.observatory { grid-template-columns:1.2fr .8fr; gap:25px; min-height:610px; padding:44px 0 42px; }
+#celestial-core { position:fixed; inset:0; z-index:0; display:block; width:100%; height:100%; pointer-events:none; }
 .hero-copy { position:relative; z-index:1; min-width:0; padding-bottom:8px; }
 .hero-copy h1 { font-family:Georgia,'Times New Roman',serif; font-size:clamp(40px,4.1vw,64px); font-weight:400; letter-spacing:-.055em; line-height:1.1; margin:27px 0 32px; text-wrap:balance; }
 .hero-copy h1 em { color:#a5b3c2; font-style:italic; font-weight:400; }
@@ -40,12 +40,13 @@ main,.masthead { position:relative; }
 .data-status { color:#9baab9; line-height:1.8; }
 .data-status button { border-color:#9baece2b; background:transparent; color:#b4c9d2; flex-shrink:0; }
 
-.instrument { position:relative; z-index:1; width:100%; isolation:auto; }
-.core-space { position:relative; height:450px; max-height:none; aspect-ratio:auto; background:none; overflow:visible; perspective:none; touch-action:pan-y; }
+.instrument { position:relative; z-index:1; width:100%; max-width:290px; justify-self:center; align-self:center; isolation:auto; }
+.core-space { position:relative; height:220px; max-height:none; aspect-ratio:auto; background:none; overflow:visible; perspective:none; touch-action:pan-y; }
 .instrument-heading,.instrument-footer,.core-coordinate,.core-halo,.orbit-tag,.gyro,.core-controls>span,.orbit-disclaimer { display:none!important; }
 .core-tilt { display:none!important; }
-.celestial-fallback { display:none; position:absolute; left:50%; top:50%; width:146px; height:156px; transform:translate(-50%,-50%); }
-.canvas-fallback .celestial-fallback { display:block; }
+.northstar-anchor { position:absolute; left:50%; top:50%; display:block; width:90px; height:90px; transform:translate(-50%,-50%) translate(var(--star-x,0px),var(--star-y,0px)); overflow:visible; filter:drop-shadow(0 0 3px #bce3e929) drop-shadow(0 0 15px #bce3e90b); pointer-events:none; }
+.star-glint { opacity:.025; animation:star-light 24s ease-in-out infinite; }
+.celestial-fallback { display:none; }
 .core-controls { display:flex; justify-content:center; align-items:center; margin:8px 0 0; }
 .core-controls button,#core-dialog button { min-height:44px; border:1px solid #bdaf8e48; border-radius:3px; background:#d2bd8e05; color:#e4d7bd; padding:10px 15px; font:11px var(--mono); transition:background .18s,border-color .18s,transform .18s; }
 .core-controls button:hover,#core-dialog button:hover { background:#bfceea0d; border-color:#c6b796; }
@@ -54,7 +55,7 @@ main,.masthead { position:relative; }
 .section-divider { color:#a5b2bf; border-color:#a7b9df24; }
 .section-divider span:last-child { color:#92a2b3; }
 .section-coordinate { margin:0 0 18px; color:#baa886; font:8px var(--mono); letter-spacing:.17em; }
-#view-investments #pf-root .pf-panel { border-radius:4px; background:linear-gradient(135deg,#111923ed,#0a1019ed); border-color:#9baec927; box-shadow:0 15px 45px #00000014; transition:border-color .22s; scroll-margin-top:0; }
+#view-investments #pf-root .pf-panel { border-radius:4px; background:linear-gradient(135deg,#111923e8,#0a1019f2); border-color:#9baec927; box-shadow:0 15px 45px #00000014; transition:border-color .22s; scroll-margin-top:0; }
 #view-investments #pf-root .pf-panel:before { background:linear-gradient(90deg,#c6b48480,#8facd728,transparent); }
 #view-investments #pf-root .section-current { border-color:#b9ad895c; }
 #view-investments #pf-root .section-current:before { width:35%; transition:width .25s; }
@@ -113,16 +114,21 @@ body:has(#core-dialog[open]) { overflow:hidden; }
   to { opacity:1; transform:none; }
 }
 
+@keyframes star-light {
+  0%,58%,100% { opacity:.025; }
+  72% { opacity:.11; }
+  86% { opacity:.025; }
+}
+
 @media(min-width:1500px) {
-  .observatory { min-height:690px; gap:45px; }
-  .core-space { height:485px; }
+  .observatory { min-height:650px; gap:45px; }
 }
 
 @media(max-width:1100px) {
   .masthead { height:80px; }
   .nav { gap:20px; }
-  .observatory { min-height:585px; gap:16px; }
-  .core-space { height:390px; }
+  .observatory { min-height:560px; gap:16px; }
+  .core-space { height:200px; }
   .hero-copy h1 { font-size:43px; }
   .hero-valuation>strong { font-size:54px; }
   .hero-facts { gap:17px; }
@@ -130,8 +136,8 @@ body:has(#core-dialog[open]) { overflow:hidden; }
 }
 
 @media(max-width:850px) {
-  .observatory { grid-template-columns:1fr 1fr; min-height:545px; gap:8px; }
-  .core-space { height:340px; }
+  .observatory { grid-template-columns:1.2fr .8fr; min-height:530px; gap:8px; }
+  .core-space { height:180px; }
   .hero-copy h1 { font-size:34px; margin:23px 0 27px; }
   .hero-valuation>strong { font-size:46px; }
   .hero-facts { padding-left:0; gap:18px; }
@@ -158,8 +164,9 @@ body:has(#core-dialog[open]) { overflow:hidden; }
   .hero-facts { padding-left:23px; margin-top:20px; gap:23px; }
   .hero-actions { margin:24px 0 17px; gap:18px; }
   .primary-link { padding-inline:16px; }
-  .instrument { order:1; max-width:none; margin:12px 0 0; }
-  .core-space { height:245px; }
+  .instrument { order:1; max-width:240px; margin:8px auto 0; }
+  .core-space { height:120px; }
+  .northstar-anchor { width:54px; height:54px; }
   .core-controls { margin:0; }
   .section-coordinate { font-size:8px; }
   #view-investments #pf-root h2 { font-size:22px; }
@@ -182,14 +189,9 @@ body:has(#core-dialog[open]) { overflow:hidden; }
 @media(max-width:360px) {
   .hero-copy h1 { font-size:32px; }
   .hero-valuation>strong { font-size:47px; }
-  .core-space { height:220px; }
 }
 
-body.tab-hidden *,
-body.offscreen #celestial-core {
-  animation-play-state:paused!important;
-}
-
+body.tab-hidden * { animation-play-state:paused!important; }
 html:has(body.motion-paused) { scroll-behavior:auto; }
 
 body.motion-paused *,
