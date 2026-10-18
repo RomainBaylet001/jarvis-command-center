@@ -1,0 +1,682 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta name="theme-color" content="#070b11">
+
+  <meta
+    name="description"
+    content="NORTHSTAR Portfolio X-Ray — explore the geographic exposure behind your investments."
+  >
+
+  <title>Portfolio X-Ray — NORTHSTAR</title>
+
+  <link
+    rel="icon"
+    href="./assets/northstar-mark.svg"
+    type="image/svg+xml"
+  >
+
+  <link rel="manifest" href="./manifest.webmanifest">
+
+  <!-- Existing Northstar design system -->
+  <link rel="stylesheet" href="./portfolio.css">
+  <link rel="stylesheet" href="./observatory.css">
+  <link rel="stylesheet" href="./celestial.css">
+
+  <!-- Dedicated X-Ray design -->
+  <link rel="stylesheet" href="./xray-page.css">
+
+  <!-- Geographic map libraries -->
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"
+  ></script>
+
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"
+  ></script>
+
+  <!-- Portfolio X-Ray engine -->
+  <script defer src="./js/xray-page.js"></script>
+</head>
+
+<body class="xray-page">
+
+  <a class="skip" href="#xray-main">
+    Skip to Portfolio X-Ray
+  </a>
+
+  <!-- Same celestial background structure as the homepage -->
+  <div class="atmosphere" aria-hidden="true">
+    <div class="ambient-light"></div>
+    <div class="starfield"></div>
+  </div>
+
+  <!-- Animated Northstar sky -->
+  <canvas
+    id="celestial-core"
+    aria-hidden="true"
+  ></canvas>
+
+  <!-- HEADER -->
+  <header class="masthead" id="top">
+
+    <a
+      class="identity"
+      href="./index.html"
+      aria-label="Return to Northstar overview"
+    >
+      <img
+        src="./assets/northstar-mark.svg"
+        width="38"
+        height="38"
+        alt=""
+      >
+
+      <span>
+        NORTHSTAR
+        <small>WEALTH OBSERVATORY</small>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="Northstar navigation">
+
+      <span class="nav-beacon" aria-hidden="true"></span>
+
+      <a href="./index.html#top">
+        <span>01</span> Overview
+      </a>
+
+      <a href="./index.html#pf-chart">
+        <span>02</span> Performance
+      </a>
+
+      <a
+        href="./xray.html"
+        class="active"
+        aria-current="page"
+      >
+        <span>03</span> X-Ray
+      </a>
+
+      <a href="./index.html#pf-holdings">
+        <span>04</span> Holdings
+      </a>
+
+    </nav>
+
+    <button
+      class="motion-toggle"
+      id="motion-toggle"
+      type="button"
+      aria-label="Pause ambient motion"
+      aria-pressed="false"
+    >
+      Motion <span>ON</span>
+    </button>
+
+  </header>
+
+  <!-- MAIN -->
+  <main id="xray-main" class="xray-shell">
+
+    <!-- INTRODUCTION -->
+    <section class="xray-intro">
+
+      <div class="xray-coordinate">
+        <span>
+          NORTHSTAR / INVESTMENT INTELLIGENCE
+        </span>
+
+        <span>
+          003 — GEOGRAPHIC EXPOSURE
+        </span>
+      </div>
+
+      <div class="xray-intro-grid">
+
+        <div class="xray-intro-copy">
+
+          <div class="xray-eyebrow">
+            <span class="xray-status-dot"></span>
+            THE PORTFOLIO X-RAY
+          </div>
+
+          <h1>
+            Your portfolio.<br>
+            <em>Across the world.</em>
+          </h1>
+
+          <p class="xray-intro-description">
+            Go beyond the ETF names. Discover where your
+            capital is actually invested, country by
+            country, through your underlying holdings.
+          </p>
+
+          <div class="xray-intro-meta">
+
+            <span>
+              <i class="xray-meta-dot xray-cyan"></i>
+              VWCE / WORLD
+            </span>
+
+            <span>
+              <i class="xray-meta-dot xray-gold"></i>
+              VFEA / EMERGING
+            </span>
+
+            <span>
+              SXR8 / BENCHMARK EXCLUDED
+            </span>
+
+          </div>
+
+        </div>
+
+        <aside class="xray-snapshot">
+
+          <div class="xray-snapshot-top">
+            <span>GEOGRAPHIC INTELLIGENCE</span>
+            <span>LIVE MODEL / 01</span>
+          </div>
+
+          <div class="xray-snapshot-body">
+
+            <span class="xray-small-label">
+              COUNTRY HOLDINGS AS OF
+            </span>
+
+            <strong id="xray-asof">
+              Loading…
+            </strong>
+
+            <div class="xray-snapshot-rule"></div>
+
+            <span class="xray-small-label">
+              DATA CONNECTION
+            </span>
+
+            <p id="xray-data-status" aria-live="polite">
+              Connecting to Vanguard country allocations…
+            </p>
+
+          </div>
+
+          <div class="xray-snapshot-bottom">
+            <span class="xray-status-dot"></span>
+            AUTOMATED ISSUER DATA
+          </div>
+
+        </aside>
+
+      </div>
+
+    </section>
+
+    <!-- SUMMARY -->
+    <section
+      class="xray-metrics"
+      aria-label="Geographic exposure summary"
+    >
+
+      <div class="xray-metric">
+        <span>PORTFOLIO ANALYSED</span>
+        <strong id="xray-value">—</strong>
+        <small id="xray-value-note">
+          Awaiting holdings
+        </small>
+      </div>
+
+      <div class="xray-metric">
+        <span>LARGEST COUNTRY EXPOSURE</span>
+        <strong id="xray-top-country">—</strong>
+        <small id="xray-top-percent">
+          —
+        </small>
+      </div>
+
+      <div class="xray-metric">
+        <span>COUNTRIES IDENTIFIED</span>
+        <strong id="xray-country-count">—</strong>
+        <small>
+          Across both ETF disclosures
+        </small>
+      </div>
+
+      <div class="xray-metric">
+        <span>OTHER MARKETS</span>
+        <strong id="xray-other">—</strong>
+        <small>
+          Not individually disclosed
+        </small>
+      </div>
+
+    </section>
+
+    <!-- MAP SECTION -->
+    <section
+      class="xray-atlas"
+      aria-labelledby="xray-atlas-title"
+    >
+
+      <div class="xray-section-header">
+
+        <div>
+          <span class="xray-overline">
+            01 / THE GLOBAL ATLAS
+          </span>
+
+          <h2 id="xray-atlas-title">
+            The geography of your wealth<span>.</span>
+          </h2>
+
+          <p>
+            Select a country to reveal its contribution
+            to your portfolio.
+          </p>
+        </div>
+
+        <div class="xray-map-legend">
+          <span>
+            <i class="xray-legend-world"></i>
+            WORLD EXPOSURE
+          </span>
+
+          <span>
+            <i class="xray-legend-emerging"></i>
+            EMERGING EXPOSURE
+          </span>
+
+          <span>
+            <i class="xray-legend-other"></i>
+            NOT REPORTED
+          </span>
+        </div>
+
+      </div>
+
+      <div class="xray-atlas-grid">
+
+        <!-- INTERACTIVE WORLD MAP -->
+        <div class="xray-map-panel">
+
+          <div class="xray-panel-toolbar">
+
+            <div class="xray-panel-label">
+              <span class="xray-panel-dot"></span>
+              WORLD MAP / COUNTRY EXPOSURE
+            </div>
+
+            <div
+              class="xray-filters"
+              id="xray-filters"
+              role="group"
+              aria-label="Choose portfolio or ETF exposure"
+            >
+
+              <button
+                type="button"
+                class="active"
+                data-xray-mode="ALL"
+                aria-pressed="true"
+              >
+                Portfolio
+              </button>
+
+              <button
+                type="button"
+                data-xray-mode="VWCE"
+                aria-pressed="false"
+              >
+                VWCE
+              </button>
+
+              <button
+                type="button"
+                data-xray-mode="VFEA"
+                aria-pressed="false"
+              >
+                VFEA
+              </button>
+
+            </div>
+
+          </div>
+
+          <div
+            class="xray-map-stage"
+            id="xray-map-stage"
+          >
+
+            <div class="xray-map-gridlines" aria-hidden="true"></div>
+
+            <svg
+              id="xray-map"
+              viewBox="0 0 1000 555"
+              role="group"
+              aria-label="Interactive world map showing country exposures"
+            ></svg>
+
+            <div
+              class="xray-map-tooltip"
+              id="xray-tooltip"
+              role="status"
+              hidden
+            ></div>
+
+            <div
+              class="xray-map-loading"
+              id="xray-map-loading"
+              role="status"
+            >
+              <span class="xray-loading-orbit"></span>
+              <span>CALIBRATING WORLD ATLAS…</span>
+            </div>
+
+          </div>
+
+          <div class="xray-map-bottom">
+
+            <span>
+              <i class="xray-interaction-dot"></i>
+              HOVER OR TAP TO EXPLORE
+            </span>
+
+            <span id="xray-map-footnote">
+              Reported countries highlighted · Other markets excluded from shading
+            </span>
+
+          </div>
+
+        </div>
+
+        <!-- COUNTRY INSPECTOR -->
+        <aside
+          class="xray-inspector"
+          aria-labelledby="xray-inspector-title"
+        >
+
+          <div class="xray-inspector-header">
+            <span>GEOGRAPHIC INSPECTOR</span>
+            <span>DETAIL / 01</span>
+          </div>
+
+          <div class="xray-inspector-content" id="xray-inspector-content">
+
+            <div class="xray-inspector-placeholder">
+
+              <span class="xray-compass">
+                ✧
+              </span>
+
+              <h3 id="xray-inspector-title">
+                Select a country
+              </h3>
+
+              <p>
+                Explore the map or country ranking to
+                uncover where your investments are
+                concentrated.
+              </p>
+
+            </div>
+
+          </div>
+
+          <div class="xray-inspector-footer">
+            <span>LOOK THROUGH / ETF ALLOCATION</span>
+            <span>EUR</span>
+          </div>
+
+        </aside>
+
+      </div>
+
+    </section>
+
+    <!-- DETAILED BREAKDOWNS -->
+    <section
+      class="xray-details"
+      aria-label="Detailed country and regional exposures"
+    >
+
+      <!-- COUNTRY RANKING -->
+      <div class="xray-ranking-panel">
+
+        <div class="xray-detail-heading">
+
+          <div>
+            <span class="xray-overline">
+              02 / EXPOSURE RANKING
+            </span>
+
+            <h2>Where your capital goes<span>.</span></h2>
+
+            <p>
+              Countries ranked by their share of the selected portfolio or ETF.
+            </p>
+          </div>
+
+          <button
+            id="xray-export"
+            type="button"
+            class="xray-export-button"
+          >
+            Export CSV ↓
+          </button>
+
+        </div>
+
+        <div class="xray-ranking-head">
+          <span>COUNTRY</span>
+          <span>PORTFOLIO WEIGHT</span>
+        </div>
+
+        <div
+          id="xray-country-list"
+          class="xray-country-list"
+        >
+          <div class="xray-list-loading">
+            Preparing country exposures…
+          </div>
+        </div>
+
+        <button
+          type="button"
+          id="xray-show-all"
+          class="xray-show-all"
+          aria-expanded="false"
+        >
+          EXPLORE ALL COUNTRIES ↓
+        </button>
+
+      </div>
+
+      <!-- REGIONAL COMPOSITION -->
+      <aside class="xray-region-panel">
+
+        <div class="xray-detail-heading">
+
+          <div>
+            <span class="xray-overline">
+              03 / REGIONAL COMPOSITION
+            </span>
+
+            <h2>One world. Many markets<span>.</span></h2>
+
+            <p>
+              A broader view of the regions represented
+              in your investments.
+            </p>
+          </div>
+
+        </div>
+
+        <div class="xray-ring-wrap">
+
+          <div
+            id="xray-region-ring"
+            class="xray-region-ring"
+            role="img"
+            aria-label="Regional allocation chart"
+          >
+
+            <div class="xray-ring-center">
+              <span>YOUR EXPOSURE</span>
+              <strong>GLOBAL</strong>
+            </div>
+
+          </div>
+
+        </div>
+
+        <div
+          id="xray-region-list"
+          class="xray-region-list"
+        ></div>
+
+        <div class="xray-region-note">
+          <span class="xray-note-symbol">✧</span>
+          Countries not individually disclosed by the
+          ETF issuer remain grouped under “Other markets”.
+        </div>
+
+      </aside>
+
+    </section>
+
+    <!-- METHODOLOGY -->
+    <section
+      class="xray-methodology"
+      aria-labelledby="xray-methodology-title"
+    >
+
+      <div class="xray-methodology-heading">
+
+        <span class="xray-overline">
+          METHODOLOGY / TRANSPARENCY
+        </span>
+
+        <h2 id="xray-methodology-title">
+          Every percentage has a source.
+        </h2>
+
+      </div>
+
+      <div class="xray-methodology-grid">
+
+        <div>
+
+          <span class="xray-method-number">01</span>
+
+          <h3>Your portfolio</h3>
+
+          <p>
+            Your locally saved VWCE and VFEA purchases
+            determine each ETF's weight in your portfolio.
+            Available EUR closing prices are used for
+            current valuation.
+          </p>
+
+        </div>
+
+        <div>
+
+          <span class="xray-method-number">02</span>
+
+          <h3>Inside each ETF</h3>
+
+          <p>
+            Official Vanguard country allocations are
+            applied to each ETF. These are dated issuer
+            disclosures, not intraday geographic updates.
+          </p>
+
+        </div>
+
+        <div>
+
+          <span class="xray-method-number">03</span>
+
+          <h3>Combined exposure</h3>
+
+          <p>
+            Each country's portfolio exposure equals
+            its allocation within each ETF, multiplied
+            by that ETF's portfolio weight. SXR8 is
+            excluded because it is your benchmark.
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="xray-source-line">
+
+        <span id="xray-method-status">
+          Checking the latest available country snapshot…
+        </span>
+
+        <div class="xray-source-links">
+
+          <a
+            href="https://global.vanguard.com/it-it/investment-products/etf/equities/9679/ftse-all-world-ucits-etf-usd-accumulating-usd-accumulating"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            VWCE SOURCE ↗
+          </a>
+
+          <a
+            href="https://global.vanguard.com/it-it/investment-products/etf/equities/9678/ftse-emerging-markets-ucits-etf-usd-accumulating"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            VFEA SOURCE ↗
+          </a>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="xray-footer">
+
+      <a
+        class="identity footer-identity"
+        href="./index.html"
+      >
+        NORTHSTAR <span>✧</span>
+      </a>
+
+      <p>
+        Perspective, without speculation.<br>
+        Issuer country snapshots · delayed market prices ·
+        private browser storage.
+      </p>
+
+      <a
+        class="xray-return"
+        href="./index.html"
+      >
+        RETURN TO OBSERVATORY ↗
+      </a>
+
+    </footer>
+
+  </main>
+
+</body>
+</html>
