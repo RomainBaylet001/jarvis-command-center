@@ -26,9 +26,11 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./portfolio.css">
   <link rel="stylesheet" href="./observatory.css">
+  <link rel="stylesheet" href="./celestial.css">
 
   <script defer src="./js/finance-utils.js"></script>
   <script defer src="./js/observatory.js"></script>
+  <script defer src="./js/celestial.js"></script>
   <script defer src="./js/portfolio-observatory.js"></script>
 </head>
 
@@ -63,6 +65,8 @@
     </a>
 
     <nav aria-label="Portfolio sections" class="nav">
+      <span class="nav-beacon" aria-hidden="true"></span>
+
       <a class="active" href="#top" aria-current="page">
         <span>01</span> Overview
       </a>
@@ -103,12 +107,12 @@
 
         <div class="eyebrow">
           <span class="status-dot"></span>
-          PRIVATE CAPITAL / CLEAR PERSPECTIVE
+          THE PRIVATE WEALTH OBSERVATORY
         </div>
 
         <h1 id="hero-title">
-          Your wealth.<br>
-          <em>A wider perspective.</em>
+          A fixed star.<br>
+          <em>In a world in motion.</em>
         </h1>
 
         <div class="hero-valuation">
@@ -124,9 +128,33 @@
           </div>
         </div>
 
+        <div class="hero-facts" aria-label="Portfolio context">
+          <div>
+            <span>CONTRIBUTED</span>
+            <strong id="core-contributed">—</strong>
+          </div>
+          <div>
+            <span>WORLD / EMERGING</span>
+            <strong id="core-allocation">—</strong>
+          </div>
+        </div>
+
         <div class="hero-actions">
           <a class="primary-link" href="#pf-chart">
-            Explore performance <span>↗</span>
+            Explore performance
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 13L13 3M3 3h10v10"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.3"
+              />
+            </svg>
           </a>
 
           <a class="quiet-link" href="#pf-trades">
@@ -153,8 +181,8 @@
       <div
         class="instrument"
         id="instrument"
-        role="img"
-        aria-label="Northstar compass: animated orbital instrument"
+        role="region"
+        aria-label="Northstar celestial instrument"
       >
 
         <div class="instrument-heading">
@@ -166,6 +194,17 @@
 
           <div class="core-halo"></div>
 
+          <canvas
+            id="celestial-core"
+            aria-hidden="true"
+          ></canvas>
+
+          <div class="core-coordinate" aria-hidden="true">
+            N / 00°
+            <span>CELESTIAL REFERENCE SYSTEM</span>
+          </div>
+
+          <!-- SVG fallback when Canvas is unavailable. -->
           <div class="core-tilt" id="core-tilt">
 
             <svg
@@ -195,10 +234,7 @@
                 </linearGradient>
 
                 <linearGradient id="arc-light">
-                  <stop
-                    stop-color="#4bbedb"
-                    stop-opacity="0"
-                  />
+                  <stop stop-color="#4bbedb" stop-opacity="0"/>
                   <stop offset="1" stop-color="#d6f9ff"/>
                 </linearGradient>
               </defs>
@@ -210,7 +246,6 @@
                 opacity=".2"
               >
                 <path d="M250 8V492M8 250H492"/>
-
                 <circle cx="250" cy="250" r="230"/>
 
                 <circle
@@ -421,6 +456,22 @@
 
         </div>
 
+        <div class="core-controls">
+          <span>AN ORRERY FOR YOUR CAPITAL</span>
+
+          <button
+            id="explore-core"
+            type="button"
+            aria-haspopup="dialog"
+          >
+            Explore core <span>↗</span>
+          </button>
+        </div>
+
+        <p class="orbit-disclaimer">
+          Orbital motion is decorative · not a measure of returns
+        </p>
+
         <div class="instrument-footer">
           <span>
             <i class="status-dot"></i>
@@ -471,6 +522,104 @@
     </footer>
 
   </main>
+
+  <dialog
+    id="core-dialog"
+    aria-labelledby="map-title"
+    aria-describedby="map-help"
+  >
+
+    <div class="map-heading">
+      <div>
+        <span class="eyebrow">
+          NORTHSTAR / CELESTIAL ATLAS
+        </span>
+
+        <h2 id="map-title">
+          Your capital. In constellation.
+        </h2>
+      </div>
+
+      <button
+        id="close-core"
+        type="button"
+        aria-label="Close celestial atlas"
+        autofocus
+      >
+        Close ×
+      </button>
+    </div>
+
+    <p id="map-help">
+      Drag the instrument to rotate. Use arrow keys when focused.
+      Orbits are decorative; financial values below come from your portfolio.
+    </p>
+
+    <div class="map-layout">
+
+      <canvas
+        id="celestial-map"
+        tabindex="0"
+        role="img"
+        aria-label="Interactive celestial instrument. Arrow keys rotate; Home resets. Drag to rotate."
+      ></canvas>
+
+      <div class="map-information">
+
+        <span class="eyebrow">SELECT A REFERENCE</span>
+
+        <div
+          class="asset-selector"
+          role="group"
+          aria-label="Asset details"
+        >
+          <button
+            type="button"
+            data-asset="VWCE"
+            aria-pressed="true"
+          >
+            VWCE <small>WORLD</small>
+          </button>
+
+          <button
+            type="button"
+            data-asset="VFEA"
+            aria-pressed="false"
+          >
+            VFEA <small>EMERGING</small>
+          </button>
+
+          <button
+            type="button"
+            data-asset="SXR8"
+            aria-pressed="false"
+          >
+            SXR8 <small>BENCHMARK ONLY</small>
+          </button>
+        </div>
+
+        <div id="asset-detail" aria-live="polite"></div>
+
+        <p class="map-privacy">
+          PRIVATE BY DESIGN<br>
+          Purchases stay in this browser. No brokerage connection.
+        </p>
+
+      </div>
+
+    </div>
+
+    <div class="map-bottom">
+      <span>
+        VWCE / CYAN · VFEA / GOLD · SXR8 / PURPLE
+      </span>
+
+      <button id="reset-core" type="button">
+        Reset orientation ↺
+      </button>
+    </div>
+
+  </dialog>
 
 </body>
 </html>
