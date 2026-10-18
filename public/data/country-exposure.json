@@ -1,0 +1,46 @@
+{
+  "source": "Vanguard official ETF market allocation tables",
+  "updatedAt": "2026-10-18T15:33:05+00:00",
+  "funds": {
+    "VWCE": {
+      "asOf": "2026-09-30",
+      "countries": {
+        "United States": 62.24,
+        "Japan": 6.06,
+        "Taiwan": 3.54,
+        "United Kingdom": 3.12,
+        "Canada": 2.91,
+        "China": 2.67,
+        "South Korea": 2.6,
+        "France": 1.89,
+        "Switzerland": 1.88,
+        "Germany": 1.78,
+        "Australia": 1.53,
+        "India": 1.5,
+        "Netherlands": 1.18,
+        "Spain": 0.84,
+        "Italy": 0.75
+      }
+    },
+    "VFEA": {
+      "asOf": "2026-09-30",
+      "countries": {
+        "Taiwan": 35.36,
+        "China": 26.66,
+        "India": 15.07,
+        "Brazil": 4.48,
+        "South Africa": 3.66,
+        "Saudi Arabia": 3.1,
+        "Mexico": 2.07,
+        "United Arab Emirates": 1.72,
+        "Malaysia": 1.51,
+        "Thailand": 1.46,
+        "Turkey": 0.79,
+        "Indonesia": 0.68,
+        "Kuwait": 0.66,
+        "Chile": 0.65,
+        "Qatar": 0.58
+      }
+    }
+  }
+}
