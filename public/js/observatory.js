@@ -80,8 +80,7 @@
     });
   }).observe(instrument);
 
-  // Precision measurement marks around the compass.
-
+  // Calibration marks for the SVG fallback.
   const ticks = [];
 
   for (let index = 0; index < 120; index++) {
@@ -106,15 +105,11 @@
 
   $("precision-ticks").innerHTML = ticks.join("");
 
-  // Pointer-responsive perspective, limited to one update per frame.
-
   let pointerX = 0;
   let pointerY = 0;
 
   instrument.addEventListener("pointermove", event => {
-    if (paused || reduced.matches || document.hidden) {
-      return;
-    }
+    if (paused || reduced.matches || document.hidden) return;
 
     pointerX = event.clientX;
     pointerY = event.clientY;
@@ -137,12 +132,10 @@
       tilt.style.setProperty("--yaw", `${yaw}deg`);
       tilt.style.setProperty("--pitch", `${pitch}deg`);
     });
-  }, { passive: true });
+  }, {passive:true});
 
   function resetTilt() {
-    if (tiltFrame) {
-      cancelAnimationFrame(tiltFrame);
-    }
+    if (tiltFrame) cancelAnimationFrame(tiltFrame);
 
     tiltFrame = 0;
 
@@ -153,8 +146,6 @@
   instrument.addEventListener("pointerleave", resetTilt);
   instrument.addEventListener("pointerup", resetTilt);
   instrument.addEventListener("pointercancel", resetTilt);
-
-  // Market-data state drives restrained instrument feedback.
 
   document.addEventListener("northstar:state", event => {
     clearTimeout(stateTimer);
@@ -190,8 +181,7 @@
   document.addEventListener("northstar:summary", event => {
     const summary = event.detail;
 
-    // Display exact values; never animate invented intermediate totals.
-
+    // Exact values only; no invented intermediate totals.
     $("hero-value").textContent =
       summary.value === null ? "—" : currency(summary.value);
 
@@ -295,59 +285,6 @@
             colors[index]
           );
         });
-    });
-
-    const links = [
-      ...document.querySelectorAll(".nav a")
-    ];
-
-    function activateLink(activeLink) {
-      links.forEach(link => {
-        const active = link === activeLink;
-
-        link.classList.toggle("active", active);
-
-        if (active) {
-          link.setAttribute("aria-current", "location");
-        } else {
-          link.removeAttribute("aria-current");
-        }
-      });
-    }
-
-    links.forEach(link => {
-      link.addEventListener("click", () => {
-        activateLink(link);
-      });
-    });
-
-    const sections = [
-      document.querySelector(".observatory"),
-      $("pf-chart").closest("section"),
-      $("pf-holdings").closest("section"),
-      $("pf-trades").closest("section")
-    ];
-
-    const navObserver = new IntersectionObserver(entries => {
-      const visible = entries
-        .filter(entry => entry.isIntersecting)
-        .sort(
-          (first, second) =>
-            second.intersectionRatio - first.intersectionRatio
-        );
-
-      if (!visible.length) return;
-
-      const index = sections.indexOf(visible[0].target);
-
-      activateLink(links[index]);
-    }, {
-      rootMargin: "-90px 0px -40% 0px",
-      threshold: [0, 0.2, 0.5]
-    });
-
-    sections.forEach(section => {
-      navObserver.observe(section);
     });
 
     const reveal = new IntersectionObserver(entries => {
