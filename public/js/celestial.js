@@ -1,5 +1,5 @@
-/* NORTHSTAR / celestial depth.
-   Presentation only; no portfolio storage access. */
+/* NORTHSTAR / a continuous field of starlight.
+   No financial storage access. */
 (() => {
   'use strict';
 
@@ -11,36 +11,35 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const TAU = Math.PI * 2;
 
-  hero.prepend(canvas);
+  document.body.prepend(canvas);
 
   const ctx = canvas.getContext('2d');
 
   let summary;
   let selected = 'VWCE';
-  let visible = true;
   let frame = 0;
   let last = 0;
   let time = 0;
   let lastPaint = -Infinity;
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+  let stars = [];
+  let scrollOffset = scrollY;
+  let parallaxOffset = scrollY;
+  let anchorX = 0;
+  let anchorDocumentY = 0;
+  let heroVisible = true;
   let yaw = 0;
   let pitch = 0;
   let targetYaw = 0;
   let targetPitch = 0;
-  let drag = null;
-  let bounds;
-  let width = 0;
-  let height = 0;
-  let dpr = 1;
-  let anchorX = 0;
-  let anchorY = 0;
-  let scale = 1;
 
   const paused = () =>
     reduced.matches ||
     document.body.classList.contains('motion-paused');
 
-  const active = () =>
-    !!ctx && visible && !document.hidden;
+  const active = () => !!ctx && !document.hidden;
 
   let seed = 7341;
 
@@ -49,147 +48,169 @@
     return (seed - 1) / 2147483646;
   };
 
-  const stars = Array.from({length:54}, (_, i) => ({
-    x: random(),
-    y: random(),
-    depth: i % 3,
-    radius: .35 + random() * .65,
-    light: .18 + random() * .46,
-    phase: random() * TAU
-  }));
+  const wrap = (value, size) =>
+    ((value % size) + size) % size;
 
-  /* Cached irregular dust with transparent edges. */
-  const dust = document.createElement('canvas');
-  dust.width = 900;
-  dust.height = 600;
+  const smooth = n => {
+    n = Math.max(0, Math.min(1, n));
+    return n * n * (3 - 2 * n);
+  };
 
-  const dustContext = dust.getContext('2d');
-
-  if (dustContext) {
-    for (let i = 0; i < 16; i++) {
-      const x = 190 + random() * 500;
-      const y = 130 + random() * 300;
-      const r = 65 + random() * 130;
-
-      const glow = dustContext.createRadialGradient(
-        x, y, 0, x, y, r
-      );
-
-      glow.addColorStop(
-        0,
-        i % 3
-          ? 'rgba(113,137,151,.027)'
-          : 'rgba(151,139,117,.019)'
-      );
-
-      glow.addColorStop(1, 'rgba(90,110,130,0)');
-
-      dustContext.fillStyle = glow;
-      dustContext.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-  }
-
-  const arcs = [
-    {
-      r:188, rx:.82, ry:-.24,
-      start:-2.7, length:2.85,
-      speed:.12, color:'#9ab5c3'
-    },
-    {
-      r:228, rx:-.44, ry:.68,
-      start:.18, length:2.12,
-      speed:-.085, color:'#b1b5ad'
-    },
-    {
-      r:156, rx:1.12, ry:.40,
-      start:2.1, length:1.65,
-      speed:.067, color:'#85a7ba'
-    }
-  ];
-
-  /* A finished, simple emblem when Canvas is unavailable. */
-  const fallback = document.createElementNS(
+  /* A small, stable SVG anchor stays visible without Canvas. */
+  const emblem = document.createElementNS(
     'http://www.w3.org/2000/svg',
     'svg'
   );
 
-  fallback.setAttribute('viewBox', '0 0 200 200');
-  fallback.setAttribute('aria-hidden', 'true');
-  fallback.classList.add('celestial-fallback');
+  emblem.setAttribute('viewBox', '0 0 200 200');
+  emblem.setAttribute('aria-hidden', 'true');
+  emblem.classList.add('northstar-anchor');
 
-  fallback.innerHTML = `
+  emblem.innerHTML = `
     <defs>
-      <linearGradient id="quiet-metal" x2="1" y2="1">
-        <stop stop-color="#f3eee1"/>
-        <stop offset=".48" stop-color="#cbdfe5"/>
-        <stop offset=".5" stop-color="#628895"/>
-        <stop offset="1" stop-color="#d7e2e0"/>
+      <linearGradient
+        id="northstar-metal"
+        x1="0" y1="0" x2="1" y2="1"
+      >
+        <stop stop-color="#f4f4ed"/>
+        <stop offset=".48" stop-color="#cbdfe4"/>
+        <stop offset=".5" stop-color="#7d9ba4"/>
+        <stop offset="1" stop-color="#d9e8e8"/>
       </linearGradient>
     </defs>
     <path
-      d="M100 22L117 83L173 100L117 117L100 178L83 117L27 100L83 83Z"
-      fill="url(#quiet-metal)"
+      d="M100 22L112 88L173 100L112 112L100 178L88 112L27 100L88 88Z"
+      fill="url(#northstar-metal)"
       stroke="#e1edef"
-      stroke-width=".7"
+      stroke-width=".55"
     />
     <path
-      d="M100 84L116 100L100 116L84 100Z"
+      class="star-glint"
+      d="M100 22L112 88L173 100L112 112L100 178L88 112L27 100L88 88Z"
+      fill="#f4ffff"
+    />
+    <path
+      d="M100 91L109 100L100 109L91 100Z"
       fill="#0b1820"
     />
-    <circle cx="100" cy="100" r="2" fill="#d9f4f5"/>
+    <circle cx="100" cy="100" r="1.8" fill="#e2f4f4"/>
   `;
 
-  space.append(fallback);
+  space.append(emblem);
 
   if (!ctx) {
     canvas.hidden = true;
     document.body.classList.add('canvas-fallback');
   }
 
-  function resize() {
-    bounds = hero.getBoundingClientRect();
-    const core = space.getBoundingClientRect();
+  const current = Array.from({length:26}, (_, i) => ({
+    u: (i + .5) / 26,
+    offset: (random() - .5) * 18,
+    depth: .65 + random() * .35
+  }));
 
-    width = bounds.width;
-    height = bounds.height;
-    dpr = Math.min(devicePixelRatio || 1, 1.5);
+  function populate() {
+    seed = 7341;
+    stars = [];
 
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
+    const total = Math.max(
+      85,
+      Math.min(260, Math.round(width * height / 6200))
+    );
 
-    anchorX = core.left - bounds.left + core.width / 2;
-    anchorY = core.top - bounds.top + core.height / 2;
-    scale = Math.min(core.width, core.height) / 500;
+    const counts = [
+      Math.round(total * .73),
+      Math.round(total * .23)
+    ];
+
+    counts.push(total - counts[0] - counts[1]);
+
+    counts.forEach((count, layer) => {
+      for (let i = 0; i < count; i++) {
+        let x;
+        let y;
+
+        do {
+          x = random();
+          y = random();
+        } while (
+          random() >
+          .54 + .35 * Math.sin(x * 4.8 + y * 3.1 + .8) ** 2
+        );
+
+        stars.push({
+          x: x * width,
+          y: y * height,
+          layer,
+          radius:
+            layer === 0 ? .2 + random() * .26 :
+            layer === 1 ? .32 + random() * .3 :
+            .48 + random() * .3,
+          light:
+            layer === 0 ? .12 + random() * .16 :
+            layer === 1 ? .21 + random() * .2 :
+            .36 + random() * .18,
+          phase: random() * TAU,
+          change: layer === 2 && i % 3 === 0
+        });
+      }
+    });
+  }
+
+  function measureAnchor() {
+    const box = space.getBoundingClientRect();
+
+    anchorX = box.left + box.width / 2;
+    anchorDocumentY = box.top + scrollOffset + box.height / 2;
 
     lastPaint = -Infinity;
     wake();
   }
 
-  new ResizeObserver(resize).observe(hero);
-  new ResizeObserver(resize).observe(space);
+  function resize() {
+    const nextWidth = innerWidth;
+    const nextHeight = innerHeight;
+    const nextDpr = Math.min(devicePixelRatio || 1, 1.5);
 
-  function project(angle, arc, radius = arc.r) {
-    let x = Math.cos(angle) * radius;
-    let y = Math.sin(angle) * radius;
-    let z = 0;
+    if (
+      nextWidth !== width ||
+      nextHeight !== height ||
+      nextDpr !== dpr
+    ) {
+      width = nextWidth;
+      height = nextHeight;
+      dpr = nextDpr;
 
-    const rx = arc.rx + pitch * .18;
-    const ry = arc.ry + yaw * .22;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
 
-    [y,z] = [
-      y * Math.cos(rx),
-      y * Math.sin(rx)
-    ];
+      populate();
+    }
 
-    [x,z] = [
-      x * Math.cos(ry) + z * Math.sin(ry),
-      -x * Math.sin(ry) + z * Math.cos(ry)
-    ];
-
-    const p = 900 / (900 - z);
-
-    return {x:x * p, y:y * p, z};
+    scrollOffset = scrollY;
+    measureAnchor();
   }
+
+  new ResizeObserver(measureAnchor).observe(space);
+  new ResizeObserver(measureAnchor).observe(hero);
+
+  addEventListener('resize', resize, {passive:true});
+
+  addEventListener('scroll', () => {
+    scrollOffset = scrollY;
+
+    if (!paused()) {
+      parallaxOffset = scrollOffset;
+    }
+
+    lastPaint = -Infinity;
+    wake();
+  }, {passive:true});
+
+  new IntersectionObserver(entries => {
+    heroVisible = entries[0].isIntersecting;
+    wake();
+  }).observe(hero);
 
   function paint() {
     if (!ctx || !width) return;
@@ -199,204 +220,95 @@
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     c.clearRect(0, 0, width, height);
 
-    if (dustContext) {
-      c.globalAlpha = .8;
-
-      c.drawImage(
-        dust,
-        anchorX - width * .59 + Math.sin(time * .023) * 9,
-        anchorY - height * .6 + Math.cos(time * .018) * 7,
-        width * .98,
-        height * 1.18
-      );
-    }
+    const velocities = [.28, 1.35, 3.1];
 
     stars.forEach(star => {
-      const depth = (star.depth + 1) / 3;
+      const speed = velocities[star.layer];
+      const depth = (star.layer + 1) / 3;
 
-      const x =
-        star.x * width +
-        Math.sin(time * .015 + star.phase) * depth * 8 +
-        yaw * depth * 12;
-
-      const y =
-        star.y * height +
-        Math.cos(time * .012 + star.phase) * depth * 5 +
-        pitch * depth * 9;
-
-      const calm = Math.max(
-        .05,
-        Math.min(1, (x / width - .36) / .3)
+      const x = wrap(
+        star.x + time * speed + yaw * depth * 5,
+        width
       );
 
-      const edge = Math.max(
-        0,
-        Math.min(
-          1,
-          x / 35,
-          (width - x) / 35,
-          y / 35,
-          (height - y) / 35
-        )
+      const y = wrap(
+        star.y -
+        time * speed * .13 -
+        parallaxOffset * depth * .022 +
+        pitch * depth * 4,
+        height
       );
 
-      c.globalAlpha = star.light * calm * edge;
-      c.fillStyle = star.depth === 2 ? '#d5e4e8' : '#94a8b9';
+      const edge = smooth(
+        Math.min(x, width - x, y, height - y) / 22
+      );
+
+      const brightness = star.change
+        ? .88 + Math.sin(time * .23 + star.phase) * .12
+        : 1;
+
+      c.globalAlpha = star.light * edge * brightness;
+      c.fillStyle = star.layer === 2 ? '#d3e1e3' : '#a8bbc8';
       c.beginPath();
       c.arc(x, y, star.radius, 0, TAU);
       c.fill();
     });
 
-    c.save();
-    c.translate(anchorX, anchorY);
-    c.scale(scale, scale);
+    /* One open current bends around NORTHSTAR, then dissolves. */
+    const anchorY = anchorDocumentY - scrollOffset;
 
-    const primitives = [];
+    if (
+      heroVisible &&
+      anchorY > -180 &&
+      anchorY < height + 180
+    ) {
+      const span = Math.max(290, Math.min(590, width * .52));
 
-    arcs.forEach((arc, index) => {
-      /* Axes stay composed; the light follows its path. */
-      const drift = Math.sin(time * .018 + index) * .055;
+      const visibility = smooth(
+        Math.min(
+          anchorY + 180,
+          height + 180 - anchorY
+        ) / 180
+      );
 
-      for (let i = 0; i < 58; i++) {
-        const t = i / 58;
-        const angle = arc.start + t * arc.length + drift;
-        const p = project(angle, arc);
-        const q = project(angle + arc.length / 58, arc);
-        const fade = Math.pow(Math.sin(t * Math.PI), 1.7);
+      const passage = wrap(time / 24, 1);
 
-        const passage = Math.max(
-          0,
-          Math.cos(time * TAU / 32 - index * .55)
-        );
+      current.forEach(star => {
+        const u = wrap(star.u + time * .014 * star.depth, 1);
+        const bend = Math.exp(-(((u - .5) / .2) ** 2));
 
-        const alpha =
+        const x =
+          anchorX +
+          (u - .5) * span +
+          yaw * star.depth * 5;
+
+        const y =
+          anchorY +
+          26 +
+          52 * bend -
+          85 * u +
+          star.offset +
+          pitch * star.depth * 4;
+
+        const fade = Math.sin(Math.PI * u) ** 2;
+        const light = Math.exp(-(((u - passage) / .1) ** 2));
+
+        c.globalAlpha =
+          (.2 + light * .24) *
           fade *
-          (p.z < 0 ? .08 : .21) *
-          (1 + Math.pow(passage, 24) * .45);
+          visibility *
+          star.depth;
 
-        primitives.push({
-          z: (p.z + q.z) / 2,
-          paint() {
-            c.globalAlpha = alpha;
-            c.strokeStyle = arc.color;
-            c.lineWidth = .65;
-            c.beginPath();
-            c.moveTo(p.x, p.y);
-            c.lineTo(q.x, q.y);
-            c.stroke();
-          }
-        });
-      }
-
-      if (index < 2) {
-        const phase =
-          ((time * arc.speed * .075 + index * .43) % 1 + 1) % 1;
-
-        const p = project(
-          arc.start + phase * arc.length + drift,
-          arc
-        );
-
-        const fade = Math.sin(phase * Math.PI);
-
-        primitives.push({
-          z: p.z,
-          paint() {
-            const glow = c.createRadialGradient(
-              p.x, p.y, 0, p.x, p.y, 7
-            );
-
-            glow.addColorStop(0, '#dcecef99');
-            glow.addColorStop(.2, '#b6d6df55');
-            glow.addColorStop(1, '#9bc6d300');
-
-            c.globalAlpha = fade * (p.z < 0 ? .35 : .8);
-            c.fillStyle = glow;
-            c.fillRect(p.x - 7, p.y - 7, 14, 14);
-
-            c.fillStyle = '#d9e8e9';
-            c.beginPath();
-            c.arc(p.x, p.y, 1.25, 0, TAU);
-            c.fill();
-          }
-        });
-      }
-    });
-
-    /* The emblem stays visually stable while the space around it drifts. */
-    primitives.push({
-      z: 0,
-      paint() {
-        c.save();
-        c.translate(yaw * 3, pitch * 3);
-        c.globalAlpha = 1;
-
-        const light = c.createRadialGradient(0, 0, 5, 0, 0, 100);
-        light.addColorStop(0, '#b8e1e117');
-        light.addColorStop(.48, '#8ebac10b');
-        light.addColorStop(1, '#8ebac100');
-
-        c.fillStyle = light;
-        c.fillRect(-105, -105, 210, 210);
-
-        const metal = c.createLinearGradient(-50, -78, 55, 78);
-        metal.addColorStop(0, '#f0e9d7');
-        metal.addColorStop(.46, '#c8e0e5');
-        metal.addColorStop(.49, '#eff6f3');
-        metal.addColorStop(.51, '#628791');
-        metal.addColorStop(1, '#c1d8d9');
-
+        c.fillStyle = '#c4d9df';
         c.beginPath();
-
-        [
-          [0,-78], [17,-17], [73,0], [17,17],
-          [0,78], [-17,17], [-73,0], [-17,-17]
-        ].forEach((p, i) => {
-          if (i) c.lineTo(...p);
-          else c.moveTo(...p);
-        });
-
-        c.closePath();
-        c.fillStyle = metal;
+        c.arc(x, y, .48 + light * .16, 0, TAU);
         c.fill();
-        c.strokeStyle = '#dbe8e5';
-        c.lineWidth = .65;
-        c.stroke();
+      });
 
-        c.globalAlpha = .24;
-        c.strokeStyle = '#f1f5eb';
-        c.lineWidth = .6;
-        c.beginPath();
-        c.moveTo(0, -78);
-        c.lineTo(0, 78);
-        c.moveTo(-73, 0);
-        c.lineTo(73, 0);
-        c.stroke();
+      emblem.style.setProperty('--star-x', `${yaw * 1.4}px`);
+      emblem.style.setProperty('--star-y', `${pitch * 1.4}px`);
+    }
 
-        c.globalAlpha = 1;
-        c.fillStyle = '#0b1820';
-        c.beginPath();
-        c.moveTo(0, -16);
-        c.lineTo(16, 0);
-        c.lineTo(0, 16);
-        c.lineTo(-16, 0);
-        c.closePath();
-        c.fill();
-
-        c.fillStyle = '#d8eff0';
-        c.beginPath();
-        c.arc(0, 0, 2.2, 0, TAU);
-        c.fill();
-
-        c.restore();
-      }
-    });
-
-    primitives
-      .sort((a, b) => a.z - b.z)
-      .forEach(p => p.paint());
-
-    c.restore();
     c.globalAlpha = 1;
   }
 
@@ -411,7 +323,9 @@
     const dt = last ? Math.min((now - last) / 1000, .05) : 0;
     last = now;
 
-    if (!paused()) time += dt;
+    if (!paused()) {
+      time += dt;
+    }
 
     const easing = 1 - Math.exp(-Math.max(dt, 1 / 120) * 8);
 
@@ -439,14 +353,9 @@
     }
   }
 
-  new IntersectionObserver(entries => {
-    visible = entries[0].isIntersecting;
-    wake();
-  }).observe(hero);
-
   document.addEventListener('visibilitychange', wake);
 
-  new MutationObserver(wake).observe(document.body, {
+  new MutationObserver(syncMotionPreference).observe(document.body, {
     attributes: true,
     attributeFilter: ['class']
   });
@@ -460,7 +369,10 @@
       : '';
 
     if (reduced.matches) {
-      document.body.classList.add('motion-paused');
+      if (!document.body.classList.contains('motion-paused')) {
+        document.body.classList.add('motion-paused');
+      }
+
       button.setAttribute('aria-pressed', 'true');
       button.setAttribute(
         'aria-label',
@@ -475,54 +387,24 @@
   reduced.addEventListener('change', syncMotionPreference);
   syncMotionPreference();
 
-  hero.addEventListener('pointermove', event => {
-    if (paused() || event.pointerType !== 'mouse' || !bounds) return;
+  addEventListener('pointermove', event => {
+    if (paused() || event.pointerType !== 'mouse') return;
 
     targetYaw =
-      (event.clientX - bounds.left - bounds.width * .7) /
-      bounds.width * .5;
+      (event.clientX / Math.max(1, width) - .5) * .5;
 
     targetPitch =
-      (event.clientY - bounds.top - bounds.height * .5) /
-      bounds.height * .3;
+      (event.clientY / Math.max(1, height) - .5) * .3;
 
     wake();
   }, {passive:true});
 
-  function settle() {
-    drag = null;
+  document.documentElement.addEventListener('pointerleave', () => {
     targetYaw = targetPitch = 0;
     wake();
-  }
-
-  hero.addEventListener('pointerleave', settle);
-
-  space.addEventListener('pointerdown', event => {
-    if (event.isPrimary && event.pointerType === 'touch') {
-      drag = {x:event.clientX, y:event.clientY};
-    }
-  }, {passive:true});
-
-  space.addEventListener('pointermove', event => {
-    if (!drag || paused()) return;
-
-    const dx = event.clientX - drag.x;
-    const dy = event.clientY - drag.y;
-
-    if (Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(dy) * 2) {
-      targetYaw = Math.max(
-        -.3,
-        Math.min(.3, dx / space.clientWidth)
-      );
-      wake();
-    }
-  }, {passive:true});
-
-  ['pointerup','pointercancel'].forEach(name => {
-    space.addEventListener(name, settle);
   });
 
-  /* A useful financial detail view replaces the enlarged illustration. */
+  /* The optional panel shows real financial detail. */
   $('explore-core').textContent = 'Portfolio in focus ↗';
   $('map-title').textContent = 'Your portfolio, in focus.';
 
@@ -791,7 +673,7 @@
     });
   });
 
-  /* Ordinary section URLs and browser history are retained. */
+  /* Keep ordinary section URLs and browser history. */
   document.addEventListener('northstar:ready', () => {
     const nav = document.querySelector('.nav');
     const links = [...nav.querySelectorAll('a')];
@@ -804,7 +686,7 @@
       i ? target.closest('section') : hero
     );
 
-    let current = -1;
+    let currentSection = -1;
     let navigationFrame = 0;
     let feedbackTimer;
     let destination = null;
@@ -850,12 +732,12 @@
         `${position.width}px`
       );
 
-      if (index !== current) {
+      if (index !== currentSection) {
         sections.forEach((section, i) => {
           section.classList.toggle('section-current', i === index);
         });
 
-        current = index;
+        currentSection = index;
       }
 
       if (feedback) {
