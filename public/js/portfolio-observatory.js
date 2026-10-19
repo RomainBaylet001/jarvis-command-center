@@ -1,6 +1,6 @@
 /*
   NORTHSTAR portfolio engine
-  Hourly delayed EUR quotes / completed daily closing history
+  Hourly delayed EUR quotes / completed daily history
   VWCE + VFEA holdings / SXR8 benchmark
 */
 (() => {
@@ -8,6 +8,10 @@
 
   const STORAGE_KEY = "jarvis-private-portfolio-v1";
   const DATA_URL = "./data/etf-history.json";
+
+  const ENGINE_URL = document.currentScript?.src ||
+    new URL("./js/portfolio-observatory.js", document.baseURI).href;
+
   const OWNED = ["VWCE", "VFEA"];
   const SYMBOLS = ["VWCE", "VFEA", "SXR8"];
 
@@ -271,7 +275,7 @@
     } : null;
   }
 
-  // Xetra regular-session calendar.
+  // XETRA CALENDAR AND TIMESTAMPS
 
   function berlinDate(timestamp = Date.now()) {
     const parts = new Intl.DateTimeFormat("en-GB", {
@@ -884,7 +888,6 @@
   }
 
   // MATCHED-CONTRIBUTION BENCHMARK
-  // Cumulative gain / contributions, not time-weighted return.
 
   function seriesData() {
     if (!feed || !account.trades.length) return [];
@@ -1391,6 +1394,122 @@
         "includes only costs in saved purchase amounts. No intraday valuation is assumed.";
   }
 
+  // TRANSACTION EDITOR CONNECTION
+
+  document.addEventListener("northstar:save-transactions", event => {
+    const request = event.detail;
+
+    if (
+      !request ||
+      typeof request.success !== "function" ||
+      typeof request.error !== "function"
+    ) {
+      return;
+    }
+
+    let raw;
+
+    try {
+      raw = localStorage.getItem(STORAGE_KEY);
+
+      if (raw !== request.expectedRaw) {
+        throw Error(
+          "Purchases changed in another tab or import. " +
+          "Cancel and reopen the form before saving."
+        );
+      }
+
+      const existing = raw === null
+        ? account
+        : JSON.parse(raw);
+
+      if (!existing || !Array.isArray(existing.trades)) {
+        throw Error(
+          "Saved purchases could not be read. " +
+          "Export your JSON backup before changing anything."
+        );
+      }
+
+      const trades = NorthstarFinance.validateTrades(
+        request.trades
+      );
+
+      const next = {
+        ...existing,
+        trades
+      };
+
+      raw = JSON.stringify(next);
+
+      localStorage.setItem(STORAGE_KEY, raw);
+
+      account = next;
+
+      document.body.removeAttribute(
+        "data-storage-error"
+      );
+    } catch (error) {
+      request.error(
+        error.message || "Unable to save purchases."
+      );
+
+      return;
+    }
+
+    try {
+      render();
+    } catch (error) {
+      console.error(
+        "Purchases saved; interface refresh failed.",
+        error
+      );
+    }
+
+    request.success(raw);
+  });
+
+  document.addEventListener(
+    "northstar:reload-transactions",
+    () => {
+      loadAccount();
+      render();
+    }
+  );
+
+  addEventListener("storage", event => {
+    if (
+      (
+        event.key === STORAGE_KEY ||
+        event.key === null
+      ) &&
+      el("pf-root")
+    ) {
+      loadAccount();
+      render();
+    }
+  });
+
+  function loadTransactionEditor() {
+    if (el("northstar-transactions-script")) return;
+
+    const script = document.createElement("script");
+
+    script.id = "northstar-transactions-script";
+
+    script.src = new URL(
+      "./transactions.js",
+      ENGINE_URL
+    ).href;
+
+    script.addEventListener("error", () => {
+      el("pf-message").textContent =
+        "Purchase editor unavailable. Existing imports " +
+        "and backups are still available. Refresh to retry.";
+    });
+
+    document.head.append(script);
+  }
+
   // IMPORT AND BACKUP
 
   function importCsv() {
@@ -1865,6 +1984,7 @@
     loadAccount();
     render();
     refreshPrices();
+    loadTransactionEditor();
   }
 
   if (document.readyState === "loading") {
