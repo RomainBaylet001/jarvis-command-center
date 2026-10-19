@@ -1,25 +1,17 @@
-
 /*
-  NORTHSTAR — PORTFOLIO X-RAY
-  Interactive geographic look-through.
-
-  Read-only portfolio access.
-  VWCE + VFEA holdings.
-  SXR8 benchmark excluded.
+  NORTHSTAR — Portfolio X-Ray
+  Interactive investment atlas.
+  Read-only access to browser-local purchases.
 */
 
 (() => {
   "use strict";
 
   const $ = id => document.getElementById(id);
-
   const ASSETS = ["VWCE", "VFEA"];
-
   const STORAGE_KEY = "jarvis-private-portfolio-v1";
-
   const COUNTRY_URL = "./data/country-exposure.json";
   const PRICE_URL = "./data/etf-history.json";
-
   const WORLD_URL =
     "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json";
 
@@ -27,13 +19,6 @@
     VWCE: "#99dce4",
     VFEA: "#cdb78c"
   };
-
-  /*
-    ISO 3166-1 numeric codes for the countries currently
-    reported in Vanguard's top-15 disclosures.
-
-    Other countries use the geographic atlas names.
-  */
 
   const ISO_NAMES = {
     "840": "United States",
@@ -70,7 +55,6 @@
       "United States",
       "Canada"
     ],
-
     "Europe": [
       "United Kingdom",
       "France",
@@ -80,7 +64,6 @@
       "Spain",
       "Italy"
     ],
-
     "Asia-Pacific": [
       "Japan",
       "Taiwan",
@@ -92,13 +75,11 @@
       "Thailand",
       "Indonesia"
     ],
-
     "Latin America": [
       "Brazil",
       "Mexico",
       "Chile"
     ],
-
     "Middle East & Africa": [
       "South Africa",
       "Saudi Arabia",
@@ -119,12 +100,9 @@
   };
 
   /*
-    Verified Vanguard snapshot, 30 September 2026.
-
-    Used only when the automated country file
-    cannot be loaded.
+    Retained issuer snapshot from the existing application.
+    Used only if the automated country file is unavailable.
   */
-
   const FALLBACK = {
     funds: {
       VWCE: {
@@ -147,7 +125,6 @@
           "Italy": 0.75
         }
       },
-
       VFEA: {
         asOf: "2026-09-30",
         countries: {
@@ -224,27 +201,22 @@
 
   let issuer = null;
   let issuerStatus = "Verified issuer snapshot";
-
   let account = null;
   let accountError = "";
-
   let prices = null;
   let priceStatus = "Market prices not connected";
-
   let mode = "ALL";
   let selected = "";
   let expanded = false;
-
   let currentResult = null;
-
   let mapCountries = [];
   let mapReady = false;
 
-  let motionPaused = false;
+  let motionPaused = matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
 
-  /* ==========================================
-     DATA VALIDATION
-     ========================================== */
+  /* DATA VALIDATION */
 
   function validateCountryData(payload) {
     if (!payload || !payload.funds) {
@@ -271,9 +243,7 @@
       const countries = {};
       let total = 0;
 
-      for (const [name, raw] of Object.entries(
-        fund.countries
-      )) {
+      for (const [name, raw] of Object.entries(fund.countries)) {
         const weight = Number(raw);
 
         if (
@@ -294,8 +264,7 @@
       }
 
       if (!("Other markets" in countries)) {
-        countries["Other markets"] =
-          Math.max(0, 100 - total);
+        countries["Other markets"] = Math.max(0, 100 - total);
       }
 
       clean.funds[asset] = {
@@ -348,7 +317,6 @@
         quotes: saved.quotes || {},
         quoteDate: saved.quoteDate || ""
       };
-
     } catch (error) {
       console.warn(
         "NORTHSTAR X-Ray: portfolio could not be read",
@@ -367,9 +335,7 @@
     }
   }
 
-  /* ==========================================
-     MARKET VALUATION
-     ========================================== */
+  /* MARKET VALUATION — completed daily snapshots */
 
   function parsePrices(payload) {
     if (
@@ -434,7 +400,6 @@
   function portfolioSnapshot() {
     const trades = account?.trades || [];
     const rows = {};
-
     let totalInvested = 0;
 
     for (const asset of ASSETS) {
@@ -526,21 +491,15 @@
     };
   }
 
-  /* ==========================================
-     GEOGRAPHIC CALCULATIONS
-     ========================================== */
+  /* GEOGRAPHIC CALCULATIONS */
 
   function regionFor(country) {
     if (country === "Other markets") {
       return "Other markets";
     }
 
-    for (const [region, countries] of Object.entries(
-      REGIONS
-    )) {
-      if (countries.includes(country)) {
-        return region;
-      }
+    for (const [region, countries] of Object.entries(REGIONS)) {
+      if (countries.includes(country)) return region;
     }
 
     return "Other markets";
@@ -605,25 +564,17 @@
       regions.set(name, row);
     }
 
-    const regionRows = [...regions.values()]
-      .sort((a, b) => b.weight - a.weight);
-
-    const value = mode === "ALL"
-      ? portfolio.total
-      : portfolio.amounts[mode];
-
     return {
       countries: countryRows,
-      regions: regionRows,
-      value,
+      regions: [...regions.values()]
+        .sort((a, b) => b.weight - a.weight),
+      value: mode === "ALL"
+        ? portfolio.total
+        : portfolio.amounts[mode],
       portfolio,
       totalWeight
     };
   }
-
-  /* ==========================================
-     UI HELPERS
-     ========================================== */
 
   function findCountry(result, name) {
     const key = countryKey(name);
@@ -644,23 +595,74 @@
   }
 
   function chooseDefault(result) {
-    if (selected || !result.countries.length) {
-      return;
-    }
+    if (selected || !result.countries.length) return;
 
     selected = result.countries.find(
       row => row.name !== "Other markets"
     )?.name || "";
   }
 
-  function selectCountry(name) {
+  /* LINKED COUNTRY SELECTION */
+
+  function selectCountry(name, origin = "map") {
     selected = name;
-    render();
+
+    const result = currentResult || calculate();
+
+    const position = result.countries.findIndex(
+      row => countryKey(row.name) === countryKey(name)
+    );
+
+    if (position >= 10) expanded = true;
+
+    renderMap(result);
+    renderInspector(result);
+    renderCountryList(result);
+    updateAtlas(result);
+
+    const row = findCountry(result, name);
+
+    $("atlas-live").textContent = name + (
+      row
+        ? ": " + pct(row.weight) + " identified exposure."
+        : ": not individually disclosed."
+    );
+
+    if (origin === "ranking") {
+      const button = [
+        ...$("xray-country-list")
+          .querySelectorAll("[data-country]")
+      ].find(button =>
+        countryKey(button.dataset.country) ===
+        countryKey(name)
+      );
+
+      button?.focus({ preventScroll: true });
+    }
+
+    const target = $("xray-inspector-content");
+
+    if (!motionPaused && target.animate) {
+      target.animate(
+        [
+          {
+            opacity: 0.65,
+            transform: "translateY(5px)"
+          },
+          {
+            opacity: 1,
+            transform: "none"
+          }
+        ],
+        {
+          duration: 220,
+          easing: "ease-out"
+        }
+      );
+    }
   }
 
-  /* ==========================================
-     SUMMARY METRICS
-     ========================================== */
+  /* SUMMARY METRICS */
 
   function renderMetrics(result) {
     const top = result.countries.find(
@@ -675,19 +677,15 @@
       row => row.name !== "Other markets"
     ).length;
 
-    const meaningfulValue = result.value > 0;
-
     $("xray-value").textContent =
-      meaningfulValue ? money(result.value) : "—";
+      result.value > 0 ? money(result.value) : "—";
 
     $("xray-value-note").textContent =
-      accountError ||
-      (
+      accountError || (
         mode !== "ALL"
           ? `${mode} holding · ${result.portfolio.basis.toLowerCase()}`
           : result.portfolio.hasHoldings
-            ? result.portfolio.basis +
-              (
+            ? result.portfolio.basis + (
                 result.portfolio.priceDate
                   ? " · " + result.portfolio.priceDate
                   : " estimate"
@@ -698,10 +696,9 @@
     $("xray-top-country").textContent =
       top?.name || "—";
 
-    $("xray-top-percent").textContent =
-      top
-        ? pct(top.weight) + " of selected exposure"
-        : "Awaiting portfolio allocation";
+    $("xray-top-percent").textContent = top
+      ? pct(top.weight) + " of selected exposure"
+      : "Awaiting portfolio allocation";
 
     $("xray-country-count").textContent =
       count ? String(count) : "—";
@@ -709,8 +706,7 @@
     $("xray-other").textContent =
       other ? pct(other.weight) : "—";
 
-    $("xray-asof").textContent =
-      formatIssuerDate();
+    $("xray-asof").textContent = formatIssuerDate();
 
     const oldest = ASSETS.map(
       asset => issuer.funds[asset].asOf
@@ -723,17 +719,14 @@
       ) / 86400000
     );
 
-    const stale = age > 60;
-
     $("xray-data-status").textContent =
-      issuerStatus +
-      (stale ? " · Older than 60 days" : "");
+      issuerStatus + (
+        age > 60 ? " · Older than 60 days" : ""
+      );
 
     $("xray-method-status").textContent =
       "Country allocations as of " +
-      formatIssuerDate() +
-      " · " +
-      (
+      formatIssuerDate() + " · " + (
         result.portfolio.market
           ? "Portfolio based on EUR price snapshots."
           : "Portfolio weights use invested capital when valuation is unavailable."
@@ -746,10 +739,6 @@
         : `${mode} underlying market allocation · issuer snapshot`;
   }
 
-  /* ==========================================
-     ETF FILTERS
-     ========================================== */
-
   function renderFilters() {
     $("xray-filters")
       .querySelectorAll("[data-xray-mode]")
@@ -757,10 +746,7 @@
         const active =
           button.dataset.xrayMode === mode;
 
-        button.classList.toggle(
-          "active",
-          active
-        );
+        button.classList.toggle("active", active);
 
         button.setAttribute(
           "aria-pressed",
@@ -769,9 +755,7 @@
       });
   }
 
-  /* ==========================================
-     INTERACTIVE WORLD MAP
-     ========================================== */
+  /* INTERACTIVE MAP */
 
   function svgElement(tag, attributes = {}) {
     const node = document.createElementNS(
@@ -779,9 +763,7 @@
       tag
     );
 
-    for (const [key, value] of Object.entries(
-      attributes
-    )) {
+    for (const [key, value] of Object.entries(attributes)) {
       node.setAttribute(key, String(value));
     }
 
@@ -789,28 +771,19 @@
   }
 
   function colourFor(row, maximum) {
-    if (!row || !window.d3) {
-      return "#263441";
-    }
-
-    const worldShare = row.weight
-      ? row.parts.VWCE / row.weight
-      : 0.5;
-
-    const base = d3.interpolateRgb(
-      COLORS.VFEA,
-      COLORS.VWCE
-    )(worldShare);
+    if (!row || !window.d3) return "#263441";
 
     const strength =
-      0.29 +
-      0.71 * Math.sqrt(
-        Math.min(1, row.weight / Math.max(1, maximum))
+      0.22 + 0.78 * Math.sqrt(
+        Math.min(
+          1,
+          row.weight / Math.max(1, maximum)
+        )
       );
 
     return d3.interpolateRgb(
-      "#233644",
-      base
+      "#203542",
+      COLORS.VWCE
     )(strength);
   }
 
@@ -826,6 +799,7 @@
 
     for (const item of mapCountries) {
       const row = findCountry(result, item.name);
+
       const reported =
         !!row && row.name !== "Other markets";
 
@@ -843,21 +817,58 @@
         ? colourFor(row, maximum)
         : "#263441";
 
-      const description = reported
-        ? `${item.name}: ${pct(row.weight)} exposure`
-        : `${item.name}: not individually reported`;
-
       item.element.setAttribute(
         "aria-label",
-        description
+        reported
+          ? `${item.name}: ${pct(row.weight)} exposure`
+          : `${item.name}: not individually reported`
       );
+    }
+
+    const marker = $("atlas-map-marker");
+    const label = $("atlas-map-label");
+
+    const item = mapCountries.find(item =>
+      countryKey(item.name) === countryKey(selected)
+    );
+
+    const valid =
+      item?.center?.every(Number.isFinite);
+
+    if (marker && label) {
+      marker.setAttribute(
+        "visibility",
+        valid ? "visible" : "hidden"
+      );
+
+      label.setAttribute(
+        "visibility",
+        valid ? "visible" : "hidden"
+      );
+
+      if (valid) {
+        const [x, y] = item.center;
+
+        marker.setAttribute("cx", x);
+        marker.setAttribute("cy", y);
+
+        label.setAttribute(
+          "x",
+          Math.max(70, Math.min(900, x + 13))
+        );
+
+        label.setAttribute(
+          "y",
+          Math.max(24, y - 13)
+        );
+
+        label.textContent = item.name;
+      }
     }
   }
 
   function showTooltip(event, name) {
-    if (event.pointerType === "touch") {
-      return;
-    }
+    if (event.pointerType === "touch") return;
 
     const tooltip = $("xray-tooltip");
     const stage = $("xray-map-stage");
@@ -868,38 +879,39 @@
 
     tooltip.innerHTML = `
       <strong>${escapeHtml(name)}</strong>
-      <span>
-        ${
-          row
-            ? pct(row.weight)
-            : "Not individually reported"
-        }
-      </span>
-      <small>
-        ${
-          row
-            ? "Select to inspect allocation"
-            : "No separate country weight disclosed"
-        }
-      </small>
+
+      <span>${
+        row
+          ? pct(row.weight)
+          : "Not individually reported"
+      }</span>
+
+      <small>${
+        row
+          ? "Select to inspect allocation"
+          : "No separate country weight disclosed"
+      }</small>
     `;
 
     tooltip.hidden = false;
 
     const rect = stage.getBoundingClientRect();
 
-    const x = Math.min(
-      Math.max(12, event.clientX - rect.left + 16),
+    tooltip.style.left = Math.min(
+      Math.max(
+        12,
+        event.clientX - rect.left + 16
+      ),
       Math.max(12, rect.width - 235)
-    );
+    ) + "px";
 
-    const y = Math.min(
-      Math.max(12, event.clientY - rect.top + 12),
+    tooltip.style.top = Math.min(
+      Math.max(
+        12,
+        event.clientY - rect.top + 12
+      ),
       Math.max(12, rect.height - 100)
-    );
-
-    tooltip.style.left = x + "px";
-    tooltip.style.top = y + "px";
+    ) + "px";
   }
 
   function hideTooltip() {
@@ -907,8 +919,9 @@
   }
 
   function mapName(feature) {
-    const code = String(feature.id ?? "")
-      .padStart(3, "0");
+    const code = String(
+      feature.id ?? ""
+    ).padStart(3, "0");
 
     return ISO_NAMES[code] ||
       feature.properties?.name ||
@@ -951,19 +964,15 @@
 
       const path = d3.geoPath(projection);
 
-      const sphere = svgElement("path", {
+      svg.append(svgElement("path", {
         class: "xray-sphere",
         d: path({ type: "Sphere" })
-      });
+      }));
 
-      svg.append(sphere);
-
-      const graticule = svgElement("path", {
+      svg.append(svgElement("path", {
         class: "xray-graticule",
         d: path(d3.geoGraticule10())
-      });
-
-      svg.append(graticule);
+      }));
 
       const group = svgElement("g", {
         class: "xray-world-countries"
@@ -979,7 +988,9 @@
           d: path(feature),
           role: "button",
           tabindex: ISO_NAMES[
-            String(feature.id ?? "").padStart(3, "0")
+            String(
+              feature.id ?? ""
+            ).padStart(3, "0")
           ] ? "0" : "-1"
         });
 
@@ -998,42 +1009,51 @@
           hideTooltip
         );
 
-        country.addEventListener(
-          "click",
-          () => {
-            hideTooltip();
+        country.addEventListener("click", () => {
+          hideTooltip();
+          selectCountry(name);
+        });
+
+        country.addEventListener("keydown", event => {
+          if (
+            event.key === "Enter" ||
+            event.key === " "
+          ) {
+            event.preventDefault();
             selectCountry(name);
           }
-        );
-
-        country.addEventListener(
-          "keydown",
-          event => {
-            if (
-              event.key === "Enter" ||
-              event.key === " "
-            ) {
-              event.preventDefault();
-              selectCountry(name);
-            }
-          }
-        );
+        });
 
         group.append(country);
 
         mapCountries.push({
           name,
+          center: path.centroid(feature),
           element: country
         });
       }
 
       svg.append(group);
 
+      svg.append(svgElement("circle", {
+        id: "atlas-map-marker",
+        class: "atlas-marker",
+        r: 7,
+        visibility: "hidden",
+        "aria-hidden": "true"
+      }));
+
+      svg.append(svgElement("text", {
+        id: "atlas-map-label",
+        class: "atlas-selected-name",
+        visibility: "hidden",
+        "aria-hidden": "true"
+      }));
+
       mapReady = true;
       loading.hidden = true;
 
       render();
-
     } catch (error) {
       console.warn(
         "NORTHSTAR X-Ray: map unavailable",
@@ -1044,6 +1064,7 @@
         <span style="color:#cdb78c">
           WORLD ATLAS UNAVAILABLE
         </span>
+
         <span>
           Country rankings remain available below.
         </span>
@@ -1051,76 +1072,68 @@
     }
   }
 
-  /* ==========================================
-     COUNTRY INSPECTOR
-     ========================================== */
+  /* COUNTRY IN FOCUS */
 
   function renderInspector(result) {
     const target = $("xray-inspector-content");
+    const row = findCountry(result, selected);
 
-    if (!selected || !result.countries.length) {
-      target.innerHTML = `
-        <div class="xray-inspector-placeholder">
-          <span class="xray-compass">✧</span>
+    const sourceDates = ASSETS
+      .filter(asset =>
+        mode === "ALL" || mode === asset
+      )
+      .map(asset =>
+        "<div>" + asset + " holdings · <span>" +
+        dateLabel(issuer.funds[asset].asOf) +
+        "</span></div>"
+      )
+      .join("");
 
-          <h3 id="xray-inspector-title">
-            ${
-              mode === "ALL" && !result.portfolio.hasHoldings
-                ? "Your map awaits."
-                : "Select a country"
-            }
-          </h3>
+    const dates =
+      '<div class="atlas-dates">' +
+      sourceDates +
+      "<div>Valuation · <span>" + (
+        result.portfolio.market
+          ? dateLabel(result.portfolio.priceDate) +
+            " · daily close"
+          : "Invested capital fallback"
+      ) +
+      "</span></div></div>";
 
-          <p>
-            ${
-              accountError
-                ? escapeHtml(accountError)
-                : mode === "ALL" &&
-                  !result.portfolio.hasHoldings
-                  ? "Add your VWCE or VFEA purchases on the main dashboard, or select an ETF above to explore its geographic allocation."
-                  : "Tap a country on the world map or choose one from the ranking."
-            }
-          </p>
-        </div>
-      `;
+    if (!selected) {
+      target.innerHTML =
+        '<div class="xray-inspector-placeholder">' +
+        '<span class="xray-compass" aria-hidden="true">✧</span>' +
+        '<h3 id="xray-inspector-title">Select a country</h3>' +
+        "<p>" +
+        escapeHtml(
+          accountError ||
+          "Use the map, country finder or ranking to explore the investments behind your ETFs."
+        ) +
+        "</p></div>" +
+        dates;
 
       return;
     }
 
-    const row = findCountry(result, selected);
-
     if (!row) {
-      target.innerHTML = `
-        <div class="xray-inspector-country">
-          <span class="xray-overline">
-            COUNTRY / NOT SEPARATELY DISCLOSED
-          </span>
-
-          <h3 id="xray-inspector-title">
-            ${escapeHtml(selected)}
-          </h3>
-
-          <p>
-            This country does not have an individual
-            weight in the available Vanguard top-15
-            disclosures.
-          </p>
-        </div>
-
-        <div class="xray-inspector-big">
-          <strong>—</strong>
-          <span>
-            Exposure cannot be determined individually.
-          </span>
-        </div>
-
-        <div class="xray-inspector-notice">
-          A country without a published individual weight
-          must not be interpreted as a country with zero
-          exposure. Smaller positions are combined under
-          “Other markets”.
-        </div>
-      `;
+      target.innerHTML =
+        '<div class="xray-inspector-country">' +
+        '<span class="xray-overline">NOT SEPARATELY DISCLOSED</span>' +
+        '<h3 id="xray-inspector-title">' +
+        escapeHtml(selected) +
+        "</h3>" +
+        "<p>No individual weight is available in the active issuer snapshots.</p>" +
+        "</div>" +
+        '<div class="xray-inspector-big">' +
+        "<strong>—</strong>" +
+        "<span>Unknown exposure · this does not mean zero.</span>" +
+        "</div>" +
+        dates +
+        '<p class="atlas-disclosure">' +
+        "This country may be included in Other markets. " +
+        "No country weight has been invented." +
+        "</p>";
 
       return;
     }
@@ -1129,110 +1142,141 @@
       ? result.value * row.weight / 100
       : null;
 
-    const contributionRows = ASSETS.map(asset => {
-      const contribution = row.parts[asset];
+    const funds = ASSETS.filter(
+      asset => mode === "ALL" || mode === asset
+    );
+
+    const split = funds.map(asset => {
+      const weight =
+        issuer.funds[asset].countries[row.name];
+
+      const disclosed = Number.isFinite(weight);
+      const part = row.parts[asset];
+
+      const amount = result.value > 0
+        ? result.value * part / 100
+        : null;
 
       const share = row.weight > 0
-        ? contribution / row.weight * 100
+        ? part / row.weight * 100
         : 0;
 
-      return `
-        <div class="xray-inspector-fund">
+      const owned =
+        result.portfolio.amounts[asset] > 0;
 
-          <div>
-            <span>${asset} CONTRIBUTION</span>
-            <strong>
-              ${pct(contribution)}
-              <small>pp</small>
-            </strong>
+      return `
+        <div
+          class="atlas-fund"
+          style="--fund-color:${COLORS[asset]}"
+        >
+          <div class="atlas-fund-head">
+            <strong>${asset}</strong>
+            <span>${
+              disclosed ? money(amount) : "—"
+            }</span>
           </div>
 
-          <div class="xray-fund-bar ${
-            asset === "VWCE" ? "world" : "emerging"
-          }">
-            <span
-              style="width:${Math.max(
+          <p>${
+            disclosed
+              ? "<b>" + pct(weight) +
+                "</b> within the ETF · " +
+                percentFormatter.format(part) +
+                " percentage points of the selected " +
+                (mode === "ALL" ? "portfolio" : "ETF")
+              : "Not individually disclosed by this ETF; no zero weight is assumed."
+          }</p>
+
+          <div
+            class="atlas-fund-track"
+            aria-hidden="true"
+          >
+            <span style="width:${
+              Math.max(
                 0,
                 Math.min(100, share)
-              )}%"
-            ></span>
+              )
+            }%"></span>
           </div>
 
+          <small>${
+            disclosed
+              ? percentFormatter.format(share) +
+                "% of this country’s identified exposure"
+              : "Any undisclosed allocation remains in Other markets"
+          }${
+            mode === "ALL" && !owned
+              ? " · no holding in this ETF"
+              : ""
+          }</small>
         </div>
       `;
     }).join("");
 
-    const type = row.name === "Other markets"
-      ? "AGGREGATED MARKETS"
-      : "COUNTRY EXPOSURE";
+    const missing = funds.some(asset =>
+      result.portfolio.amounts[asset] > 0 &&
+      !Number.isFinite(
+        issuer.funds[asset].countries[row.name]
+      )
+    );
 
     target.innerHTML = `
       <div class="xray-inspector-country">
+        <span class="xray-overline">${
+          row.name === "Other markets"
+            ? "AGGREGATED MARKETS"
+            : "COUNTRY IN FOCUS"
+        }</span>
 
-        <span class="xray-overline">
-          ${type}
-        </span>
+        <h3 id="xray-inspector-title">${
+          escapeHtml(row.name)
+        }</h3>
 
-        <h3 id="xray-inspector-title">
-          ${escapeHtml(row.name)}
-        </h3>
-
-        <p>
-          ${
-            row.name === "Other markets"
-              ? "Remaining markets not individually listed by the issuer."
-              : mode === "ALL"
-                ? "Combined exposure across your VWCE and VFEA holdings."
-                : "Underlying country allocation within " + mode + "."
-          }
-        </p>
-
+        <p>${
+          mode === "ALL"
+            ? "Your combined VWCE + VFEA exposure."
+            : "Underlying country allocation within " +
+              mode + "."
+        }</p>
       </div>
 
       <div class="xray-inspector-big">
         <strong>${pct(row.weight)}</strong>
 
         <span>
-          ${
+          Identified share of ${
             mode === "ALL"
-              ? "of your analysed portfolio"
-              : "of " + mode + " underlying exposure"
+              ? "your analysed portfolio"
+              : mode
           }
         </span>
       </div>
 
       <div class="xray-inspector-eur">
-        <span>IMPLIED CAPITAL ALLOCATED</span>
+        <span>${
+          result.portfolio.market
+            ? "ESTIMATED LOOK-THROUGH VALUE"
+            : "INVESTED CAPITAL ESTIMATE"
+        }</span>
+
         <strong>${money(implied)}</strong>
       </div>
 
-      <div class="xray-inspector-breakdown">
-        <h4>
-          CONTRIBUTION TO SELECTED EXPOSURE
-        </h4>
+      ${split}
+      ${dates}
 
-        ${contributionRows}
-      </div>
-
-      <div class="xray-inspector-notice">
-        ${
-          row.name === "Other markets"
-            ? "This figure cannot be allocated to individual countries on the map."
-            : "Calculated from your ETF weighting and dated issuer allocations."
-        }
-
-        ${
-          result.portfolio.market
-            ? "EUR figures use available closing-price snapshots."
-            : "EUR figures use invested capital where current valuation is unavailable."
-        }
-      </div>
+      <p class="atlas-disclosure">${
+        row.name === "Other markets"
+          ? "Aggregated positions cannot be located individually on the map. "
+          : missing
+            ? "Only separately disclosed weights are included. Additional exposure may remain in Other markets. "
+            : "Estimated from dated ETF country allocations. "
+      }Country classifications describe fund holdings,
+      not where companies earn all their revenue.
+      SXR8 is excluded.</p>
     `;
   }
 
-  /* ==========================================
-     COUNTRY RANKING
-     ========================================== */
+  /* COUNTRY RANKING */
 
   function renderCountryList(result) {
     const list = $("xray-country-list");
@@ -1240,13 +1284,11 @@
 
     if (!result.countries.length) {
       list.innerHTML = `
-        <div class="xray-list-loading">
-          ${
-            accountError
-              ? escapeHtml(accountError)
-              : "No portfolio allocation yet. Choose VWCE or VFEA above to inspect the issuer's country weights."
-          }
-        </div>
+        <div class="xray-list-loading">${
+          accountError
+            ? escapeHtml(accountError)
+            : "No portfolio allocation yet. Choose VWCE or VFEA above to inspect the issuer's country weights."
+        }</div>
       `;
 
       showAll.hidden = true;
@@ -1266,8 +1308,10 @@
     );
 
     list.innerHTML = visible.map((row, index) => {
-      const width =
-        Math.min(100, row.weight / maximum * 100);
+      const width = Math.min(
+        100,
+        row.weight / maximum * 100
+      );
 
       const implied = result.value > 0
         ? result.value * row.weight / 100
@@ -1291,15 +1335,12 @@
           data-dominant="${dominant}"
           aria-pressed="${active}"
         >
-
           <span class="xray-rank-name">
-            <span class="xray-rank-index">
-              ${String(index + 1).padStart(2, "0")}
-            </span>
+            <span class="xray-rank-index">${
+              String(index + 1).padStart(2, "0")
+            }</span>
 
-            <span>
-              ${escapeHtml(row.name)}
-            </span>
+            <span>${escapeHtml(row.name)}</span>
           </span>
 
           <span class="xray-rank-bar">
@@ -1310,7 +1351,6 @@
             <strong>${pct(row.weight)}</strong>
             <small>${money(implied)}</small>
           </span>
-
         </button>
       `;
     }).join("");
@@ -1328,9 +1368,7 @@
       : "EXPLORE ALL COUNTRIES ↓";
   }
 
-  /* ==========================================
-     REGIONAL BREAKDOWN
-     ========================================== */
+  /* REGIONAL COMPOSITION */
 
   function renderRegions(result) {
     const ring = $("xray-region-ring");
@@ -1392,7 +1430,6 @@
 
       return `
         <div class="xray-region-row">
-
           <span class="xray-region-row-name">
             <i style="background:${colour}"></i>
             ${escapeHtml(row.name)}
@@ -1401,43 +1438,33 @@
           <strong>${pct(row.weight)}</strong>
 
           <div class="xray-region-track">
-            <span
-              style="
-                width:${Math.min(100, row.weight)}%;
-                background:${colour};
-              "
-            ></span>
+            <span style="
+              width:${Math.min(100, row.weight)}%;
+              background:${colour};
+            "></span>
           </div>
-
         </div>
       `;
     }).join("");
   }
 
-  /* ==========================================
-     CENTRAL RENDER
-     ========================================== */
-
   function render() {
     if (!$("xray-main")) return;
 
     const result = calculate();
-
     currentResult = result;
 
     chooseDefault(result);
-
     renderFilters();
     renderMetrics(result);
     renderMap(result);
     renderInspector(result);
     renderCountryList(result);
     renderRegions(result);
+    updateAtlas(result);
   }
 
-  /* ==========================================
-     CSV EXPORT
-     ========================================== */
+  /* CSV EXPORT */
 
   function csvCell(value) {
     return '"' +
@@ -1450,20 +1477,18 @@
 
     const result = currentResult;
 
-    const rows = [
-      [
-        "Country",
-        "Region",
-        "Weight (%)",
-        "Implied EUR",
-        "VWCE contribution (percentage points)",
-        "VFEA contribution (percentage points)",
-        "View",
-        "Valuation basis",
-        "VWCE issuer date",
-        "VFEA issuer date"
-      ]
-    ];
+    const rows = [[
+      "Country",
+      "Region",
+      "Weight (%)",
+      "Implied EUR",
+      "VWCE contribution (percentage points)",
+      "VFEA contribution (percentage points)",
+      "View",
+      "Valuation basis",
+      "VWCE issuer date",
+      "VFEA issuer date"
+    ]];
 
     for (const row of result.countries) {
       const implied = result.value > 0
@@ -1474,7 +1499,9 @@
         row.name,
         regionFor(row.name),
         row.weight.toFixed(6),
-        implied === "" ? "" : implied.toFixed(2),
+        implied === ""
+          ? ""
+          : implied.toFixed(2),
         row.parts.VWCE.toFixed(6),
         row.parts.VFEA.toFixed(6),
         mode === "ALL" ? "Portfolio" : mode,
@@ -1494,8 +1521,8 @@
     );
 
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement("a");
+
     link.href = url;
 
     link.download =
@@ -1515,9 +1542,7 @@
     );
   }
 
-  /* ==========================================
-     REMOTE DATA LOADING
-     ========================================== */
+  /* REMOTE DATA */
 
   async function fetchJson(url) {
     const controller = new AbortController();
@@ -1538,7 +1563,6 @@
       }
 
       return await response.json();
-
     } finally {
       clearTimeout(timeout);
     }
@@ -1546,13 +1570,12 @@
 
   async function loadIssuerData() {
     try {
-      const payload = await fetchJson(COUNTRY_URL);
-
-      issuer = validateCountryData(payload);
+      issuer = validateCountryData(
+        await fetchJson(COUNTRY_URL)
+      );
 
       issuerStatus =
         "Automated Vanguard disclosure connected";
-
     } catch (error) {
       console.warn(
         "NORTHSTAR X-Ray: using verified issuer fallback",
@@ -1568,11 +1591,12 @@
 
   async function loadPriceData() {
     try {
-      const payload = await fetchJson(PRICE_URL);
+      prices = parsePrices(
+        await fetchJson(PRICE_URL)
+      );
 
-      prices = parsePrices(payload);
-      priceStatus = "EUR closing prices connected";
-
+      priceStatus =
+        "EUR closing prices connected";
     } catch (error) {
       console.warn(
         "NORTHSTAR X-Ray: market feed unavailable",
@@ -1580,6 +1604,7 @@
       );
 
       prices = null;
+
       priceStatus =
         "Price feed unavailable; invested capital fallback";
     }
@@ -1587,17 +1612,13 @@
     render();
   }
 
-  /* ==========================================
-     SAME ANIMATED SKY AS THE HOMEPAGE
-     ========================================== */
+  /* EXISTING CELESTIAL BACKGROUND */
 
   function setupSky() {
     const canvas = $("celestial-core");
-
     if (!canvas) return;
 
     const context = canvas.getContext("2d");
-
     if (!context) return;
 
     const reduced = matchMedia(
@@ -1605,20 +1626,16 @@
     );
 
     const button = $("motion-toggle");
-
     const TAU = Math.PI * 2;
 
     let width = 0;
     let height = 0;
     let dpr = 1;
-
     let stars = [];
-
     let time = 0;
     let lastTime = 0;
     let lastPaint = 0;
     let frame = 0;
-
     let manuallyPaused = false;
 
     const wrap = (value, maximum) =>
@@ -1639,11 +1656,6 @@
 
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
-
-      /*
-        Same seed, density, star layers and speeds
-        as the Northstar celestial homepage.
-      */
 
       let seed = 7341;
 
@@ -1715,9 +1727,7 @@
         );
 
         context.globalAlpha =
-          star.alpha *
-          edge *
-          (
+          star.alpha * edge * (
             0.9 +
             0.1 * Math.sin(
               time * 0.5 + star.phase
@@ -1786,7 +1796,6 @@
 
     function updateMotion() {
       const paused = isPaused();
-
       motionPaused = paused;
 
       document.body.classList.toggle(
@@ -1835,43 +1844,33 @@
           document.hidden
         );
 
-        if (document.hidden) {
-          stop();
-        } else {
-          wake();
-        }
+        if (document.hidden) stop();
+        else wake();
       }
     );
 
-    addEventListener("resize", resize, {
-      passive: true
-    });
+    addEventListener(
+      "resize",
+      resize,
+      { passive: true }
+    );
 
     resize();
     updateMotion();
   }
 
-  /* ==========================================
-     NAVIGATION
-     ========================================== */
+  /* NAVIGATION */
 
   function setupNavigation() {
     const nav = document.querySelector(".nav");
-
     if (!nav) return;
 
     function positionBeacon() {
-      const active = nav.querySelector(
-        "a.active"
-      );
-
+      const active = nav.querySelector("a.active");
       if (!active) return;
 
-      const bounds =
-        active.getBoundingClientRect();
-
-      const parent =
-        nav.getBoundingClientRect();
+      const bounds = active.getBoundingClientRect();
+      const parent = nav.getBoundingClientRect();
 
       nav.style.setProperty(
         "--beacon-x",
@@ -1892,10 +1891,6 @@
 
     requestAnimationFrame(positionBeacon);
   }
-
-  /* ==========================================
-     INTERACTIONS
-     ========================================== */
 
   function setupEvents() {
     $("xray-filters").addEventListener(
@@ -1925,7 +1920,10 @@
 
         if (!button) return;
 
-        selectCountry(button.dataset.country);
+        selectCountry(
+          button.dataset.country,
+          "ranking"
+        );
 
         if (mapReady) {
           $("xray-map-stage").scrollIntoView({
@@ -1952,41 +1950,500 @@
     );
   }
 
-  /* ==========================================
-     INITIALIZATION
-     ========================================== */
+  /* ATLAS PRESENTATION AND COUNTRY FINDER */
+
+  function setupAtlas() {
+    const style = document.createElement("style");
+
+    style.textContent = `
+      .atlas-tools {
+        display: flex;
+        align-items: end;
+        gap: 12px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--xr-line);
+        background: #09111b;
+      }
+
+      .atlas-search {
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+      }
+
+      .atlas-search label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--xr-muted);
+        font-size: 13px;
+      }
+
+      .atlas-search-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .atlas-search input {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        height: 46px;
+        padding: 10px 12px;
+        border: 1px solid var(--xr-line-strong);
+        border-radius: 4px;
+        background: #070e17;
+        color: var(--xr-text);
+        font-size: 16px;
+        font-family: inherit;
+      }
+
+      .atlas-tools button {
+        min-height: 46px;
+        padding: 10px 14px;
+        border: 1px solid #cdb78c55;
+        border-radius: 4px;
+        background: #cdb78c0a;
+        color: #ebdec5;
+        font-size: 14px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .atlas-tools :focus-visible {
+        outline: 2px solid var(--xr-cyan);
+        outline-offset: 3px;
+      }
+
+      .atlas-selection {
+        padding: 13px 20px;
+        border-top: 1px solid var(--xr-line);
+        color: var(--xr-muted);
+        font: 12px/1.7 var(--xr-mono);
+      }
+
+      .atlas-selection strong {
+        color: var(--xr-text);
+        font-weight: 500;
+      }
+
+      .atlas-marker {
+        fill: none;
+        stroke: #f1dfb9;
+        stroke-width: 1.8;
+        vector-effect: non-scaling-stroke;
+        pointer-events: none;
+      }
+
+      .atlas-selected-name {
+        fill: #f1dfb9;
+        font: 13px var(--xr-mono);
+        paint-order: stroke;
+        stroke: #08111b;
+        stroke-width: 4px;
+        stroke-linejoin: round;
+        pointer-events: none;
+      }
+
+      .xray-country.is-selected {
+        stroke: #f3e2bd;
+        stroke-width: 2.2;
+      }
+
+      .xray-country-row.is-selected {
+        box-shadow: inset 3px 0 #cdb78c;
+        background: #cdb78c0b;
+        padding-left: 12px;
+      }
+
+      .atlas-fund {
+        margin-top: 18px;
+        padding: 17px 0;
+        border-top: 1px solid var(--xr-line);
+      }
+
+      .atlas-fund-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .atlas-fund-head strong {
+        font-size: 17px;
+        color: var(--fund-color);
+      }
+
+      .atlas-fund-head span {
+        color: #e7edf1;
+        font: 15px var(--xr-mono);
+      }
+
+      .atlas-fund p {
+        margin: 10px 0;
+        color: var(--xr-muted);
+        font-size: 13px;
+        line-height: 1.8;
+      }
+
+      .atlas-fund small {
+        display: block;
+        color: var(--xr-dim);
+        font-size: 12px;
+        line-height: 1.8;
+      }
+
+      .atlas-fund-track {
+        height: 4px;
+        background: #24313d;
+        margin: 12px 0;
+      }
+
+      .atlas-fund-track span {
+        display: block;
+        height: 100%;
+        background: var(--fund-color);
+      }
+
+      .atlas-dates {
+        display: grid;
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 18px;
+        border-top: 1px solid var(--xr-line);
+        font-size: 12px;
+        line-height: 1.8;
+        color: var(--xr-muted);
+      }
+
+      .atlas-dates span {
+        color: #e5ded0;
+      }
+
+      .atlas-disclosure {
+        margin: 18px 0 0;
+        color: var(--xr-muted);
+        font-size: 13px;
+        line-height: 1.8;
+      }
+
+      .atlas-live {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .atlas-scale {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font: 12px var(--xr-mono);
+        color: var(--xr-muted);
+      }
+
+      .atlas-scale i {
+        display: block;
+        width: 100px;
+        height: 7px;
+        border-radius: 2px;
+        background: linear-gradient(
+          90deg,
+          #2c4d5c,
+          #99dce4
+        );
+      }
+
+      .atlas-missing {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        background: #263441;
+        border: 1px solid #78909f;
+        margin-right: 6px;
+      }
+
+      @media(max-width: 700px) {
+        .atlas-tools {
+          padding: 15px;
+          align-items: stretch;
+        }
+
+        .atlas-tools > button {
+          align-self: end;
+        }
+
+        .atlas-search-row button {
+          padding-inline: 12px;
+        }
+
+        .atlas-selection {
+          padding-inline: 15px;
+        }
+      }
+
+      @media(max-width: 420px) {
+        .atlas-tools {
+          flex-wrap: wrap;
+        }
+
+        .atlas-search {
+          flex-basis: 100%;
+        }
+
+        .atlas-tools > button {
+          width: 100%;
+        }
+      }
+    `;
+
+    document.head.append(style);
+
+    const tools = document.createElement("div");
+    tools.className = "atlas-tools";
+
+    tools.innerHTML = `
+      <form
+        class="atlas-search"
+        id="atlas-search"
+      >
+        <label for="atlas-country">
+          Find a country
+        </label>
+
+        <div class="atlas-search-row">
+          <input
+            id="atlas-country"
+            type="search"
+            list="atlas-countries"
+            placeholder="e.g. Taiwan"
+            autocomplete="off"
+            aria-describedby="atlas-search-help"
+          >
+
+          <datalist id="atlas-countries"></datalist>
+
+          <button type="submit">
+            Locate ↗
+          </button>
+        </div>
+
+        <span
+          class="atlas-live"
+          id="atlas-search-help"
+        >
+          Enter a country name, then choose Locate.
+        </span>
+      </form>
+
+      <button
+        id="atlas-clear"
+        type="button"
+      >
+        Clear selection
+      </button>
+    `;
+
+    $("xray-map-stage").before(tools);
+
+    const caption = document.createElement("div");
+    caption.className = "atlas-selection";
+    caption.id = "atlas-selection";
+
+    $("xray-map-stage").after(caption);
+
+    const live = document.createElement("p");
+    live.id = "atlas-live";
+    live.className = "atlas-live";
+    live.setAttribute("role", "status");
+
+    document.querySelector(".xray-atlas").append(live);
+
+    $("atlas-search").addEventListener(
+      "submit",
+      event => {
+        event.preventDefault();
+
+        const key = countryKey(
+          $("atlas-country").value
+        );
+
+        const names = atlasNames();
+
+        const exact = names.find(
+          name => countryKey(name) === key
+        );
+
+        const partial = key
+          ? names.filter(
+              name => countryKey(name).includes(key)
+            )
+          : [];
+
+        const name = exact || (
+          partial.length === 1
+            ? partial[0]
+            : ""
+        );
+
+        if (!name) {
+          $("atlas-live").textContent =
+            partial.length > 1
+              ? "Several countries match. Choose a full country name."
+              : "Country not found. Choose a name from the suggestions.";
+
+          $("atlas-country").focus();
+          return;
+        }
+
+        $("atlas-country").value = name;
+        selectCountry(name, "search");
+      }
+    );
+
+    $("atlas-clear").addEventListener(
+      "click",
+      () => {
+        selected = "";
+        $("atlas-country").value = "";
+
+        renderMap(currentResult);
+        renderInspector(currentResult);
+        renderCountryList(currentResult);
+        updateAtlas(currentResult);
+
+        $("atlas-live").textContent =
+          "Country selection cleared.";
+      }
+    );
+
+    document.querySelector(
+      ".xray-map-legend"
+    ).innerHTML = `
+      <span class="atlas-scale">
+        Lower
+        <i aria-hidden="true"></i>
+        Higher
+      </span>
+
+      <span id="atlas-scale-max"></span>
+
+      <span>
+        <b
+          class="atlas-missing"
+          aria-hidden="true"
+        ></b>
+        Not separately disclosed
+      </span>
+    `;
+  }
+
+  function atlasNames() {
+    return [...new Set([
+      ...(
+        currentResult?.countries.map(
+          row => row.name
+        ) || []
+      ),
+      ...mapCountries.map(
+        item => item.name
+      )
+    ])].sort(
+      (a, b) => a.localeCompare(b)
+    );
+  }
+
+  function updateAtlas(result) {
+    if (!$("atlas-countries")) return;
+
+    const names = atlasNames();
+    const signature = names.join("|");
+
+    if (
+      $("atlas-countries").dataset.names !== signature
+    ) {
+      $("atlas-countries").replaceChildren(
+        ...names.map(name => {
+          const option = document.createElement("option");
+          option.value = name;
+          return option;
+        })
+      );
+
+      $("atlas-countries").dataset.names =
+        signature;
+    }
+
+    const row = findCountry(
+      result,
+      selected
+    );
+
+    const maximum = Math.max(
+      0,
+      ...result.countries
+        .filter(
+          row => row.name !== "Other markets"
+        )
+        .map(
+          row => row.weight
+        )
+    );
+
+    $("atlas-scale-max").textContent = maximum
+      ? "Scale: 0–" + pct(maximum) +
+        " · square-root shading"
+      : "No reported allocation";
+
+    $("atlas-selection").replaceChildren();
+
+    const label = document.createElement("strong");
+
+    label.textContent =
+      selected || "Select a country";
+
+    $("atlas-selection").append(
+      label,
+      document.createTextNode(
+        selected
+          ? row
+            ? " · " + pct(row.weight) +
+              " identified exposure"
+            : " · not individually disclosed"
+          : " · use the map, finder or country ranking"
+      )
+    );
+  }
+
+  /* INITIALIZATION */
 
   function initialize() {
     account = readAccount();
 
     setupSky();
     setupNavigation();
+    setupAtlas();
     setupEvents();
 
     render();
-
-    /*
-      Independent loading:
-      Map, issuer data and prices can complete
-      in any order without blocking one another.
-    */
 
     loadWorldMap();
     loadIssuerData();
     loadPriceData();
 
-    /*
-      Refresh browser-local holdings after returning
-      from the main dashboard's transaction ledger.
-    */
+    addEventListener(
+      "pageshow",
+      event => {
+        if (!event.persisted) return;
 
-    addEventListener("pageshow", event => {
-      if (!event.persisted) return;
+        account = readAccount();
 
-      account = readAccount();
-      loadPriceData();
-      render();
-    });
+        loadPriceData();
+        render();
+      }
+    );
   }
 
   if (document.readyState === "loading") {
@@ -1998,5 +2455,4 @@
   } else {
     initialize();
   }
-
 })();
