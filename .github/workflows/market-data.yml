@@ -1,10 +1,13 @@
-
-name: JARVIS - Update ETF Prices
+name: NORTHSTAR - Hourly ETF Prices
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '15 19 * * 1-5'
+    # UTC: covers German summer and winter trading hours.
+    - cron: '17 7-17 * * 1-5'
+
+    # Later check for completed daily closing prices.
+    - cron: '47 19 * * 1-5'
 
 permissions:
   contents: write
@@ -18,184 +21,482 @@ concurrency:
 jobs:
   update-and-publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Check out main branch
+      - name: Check out main
         uses: actions/checkout@v4
         with:
           ref: main
-          persist-credentials: true
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install market data reader
-        run: python -m pip install 'yfinance>=0.2.60,<2'
+      - name: Install data and calendar readers
+        run: >-
+          python -m pip install
+          'yfinance>=0.2.60,<2'
+          'exchange-calendars>=4.11,<5'
 
-      - name: Download and verify Xetra closing prices
+      - name: Retrieve quotes and completed daily history
+        id: market
         shell: bash
         run: |
           python - <<'PY'
           import json
           import math
+          import os
           import time
-          from datetime import datetime, timedelta, timezone
-          from pathlib import Path
 
+          from datetime import (
+              datetime,
+              timedelta,
+              timezone,
+          )
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          import exchange_calendars as xcals
+          import pandas as pd
           import yfinance as yf
 
-          symbols = {
-              "VWCE": "VWCE.DE",
-              "VFEA": "VFEA.DE",
-              "SXR8": "SXR8.DE",
-          }
-
           now = datetime.now(timezone.utc)
-          prices = {}
-          latest_dates = {}
 
-          for asset, symbol in symbols.items():
-              rows = []
-              last_error = None
+          local = now.astimezone(
+              ZoneInfo('Europe/Berlin')
+          )
 
-              for attempt in range(1, 4):
-                  try:
-                      frame = yf.Ticker(symbol).history(
-                          period="2y",
-                          interval="1d",
-                          auto_adjust=False,
-                          actions=False,
-                      )
+          today = local.date()
 
-                      if frame.empty or "Close" not in frame:
-                          raise ValueError(
-                              "Empty price history"
-                          )
+          calendar = xcals.get_calendar(
+              'XETR',
+              start=str(
+                  today - timedelta(days=1200)
+              ),
+              end=str(
+                  today + timedelta(days=90)
+              ),
+          )
 
-                      rows = []
+          label = pd.Timestamp(today)
+          trading_day = calendar.is_session(label)
 
-                      for date, close in frame["Close"].items():
-                          value = float(close)
+          opening = (
+              calendar.session_open(label)
+              if trading_day else None
+          )
 
-                          if math.isfinite(value) and value > 0:
-                              rows.append([
-                                  date.date().isoformat(),
-                                  round(value, 4)
-                              ])
+          closing = (
+              calendar.session_close(label)
+              if trading_day else None
+          )
 
-                      rows = sorted(
-                          dict(
-                              (date, price)
-                              for date, price in rows
-                          ).items()
-                      )
+          scheduled = (
+              os.environ.get('GITHUB_EVENT_NAME')
+              == 'schedule'
+          )
 
-                      if len(rows) < 60:
-                          raise ValueError(
-                              "Not enough historical prices"
-                          )
+          evening = local.hour >= 20
 
-                      latest = datetime.fromisoformat(
-                          rows[-1][0]
-                      ).date()
+          in_window = (
+              trading_day and
+              opening <= now <= (
+                  closing + timedelta(minutes=90)
+              )
+          )
 
-                      if latest < (
-                          now.date() - timedelta(days=10)
-                      ):
-                          raise ValueError(
-                              f"Stale market data: {latest}"
-                          )
-
-                      break
-
-                  except Exception as exc:
-                      last_error = exc
-                      rows = []
-
-                      print(
-                          f"{asset} attempt {attempt}/3: {exc}",
-                          flush=True
-                      )
-
-                      if attempt < 3:
-                          time.sleep(attempt * 8)
-
-              if not rows:
-                  raise RuntimeError(
-                      f"Market data unavailable for "
-                      f"{asset} ({symbol}): {last_error}"
-                  )
-
-              prices[asset] = rows
-              latest_dates[asset] = rows[-1][0]
-
+          if scheduled and (
+              not trading_day or
+              (not in_window and not evening)
+          ):
               print(
-                  f"{asset}: {len(rows)} prices; "
-                  f"latest {rows[-1]}"
+                  'Outside Xetra update window; '
+                  'nothing to publish.'
               )
 
-          payload = {
-              "source": (
-                  "Yahoo Finance via yfinance; "
-                  "Xetra EUR daily closing prices (delayed)"
-              ),
-              "currency": "EUR",
-              "updatedAt": now.isoformat(
-                  timespec="seconds"
-              ),
-              "latestDates": latest_dates,
-              "symbols": symbols,
-              "prices": prices,
+              with open(
+                  os.environ['GITHUB_OUTPUT'],
+                  'a'
+              ) as output:
+                  output.write('publish=false\n')
+
+              raise SystemExit(0)
+
+          path = Path(
+              'public/data/etf-history.json'
+          )
+
+          previous = (
+              json.loads(path.read_text())
+              if path.exists() else {}
+          )
+
+          symbols = {
+              'VWCE': 'VWCE.DE',
+              'VFEA': 'VFEA.DE',
+              'SXR8': 'SXR8.DE',
           }
 
-          output = Path(
-              "public/data/etf-history.json"
-          )
+          prices = {}
+          quotes = {}
+          warnings = []
 
-          output.parent.mkdir(
+          def retry(operation):
+              for attempt in range(3):
+                  try:
+                      return operation()
+                  except Exception:
+                      if attempt == 2:
+                          raise
+
+                      time.sleep(
+                          3 * (attempt + 1)
+                      )
+
+          def valid_price(value):
+              return (
+                  isinstance(value, (int, float)) and
+                  math.isfinite(value) and
+                  value > 0
+              )
+
+          for asset, symbol in symbols.items():
+              ticker = yf.Ticker(symbol)
+              rows = {}
+
+              for day, price in previous.get(
+                  'prices', {}
+              ).get(asset, []):
+                  if valid_price(price):
+                      rows[day] = price
+
+              try:
+                  history = retry(
+                      lambda: ticker.history(
+                          period='2y',
+                          interval='1d',
+                          auto_adjust=False,
+                          actions=False,
+                          raise_errors=True,
+                          timeout=25,
+                      )
+                  )
+
+                  if history.empty:
+                      raise ValueError(
+                          'Empty history'
+                      )
+
+                  for stamp, close in (
+                      history['Close'].items()
+                  ):
+                      day = stamp.date()
+                      value = float(close)
+
+                      if (
+                          not valid_price(value) or
+                          day > today
+                      ):
+                          continue
+
+                      if day == today and (
+                          not trading_day or
+                          now < closing + timedelta(
+                              minutes=30
+                          )
+                      ):
+                          continue
+
+                      rows[str(day)] = round(
+                          value, 6
+                      )
+
+              except Exception as error:
+                  warnings.append(
+                      f'{asset} history retained: '
+                      f'{type(error).__name__}'
+                  )
+
+              # Keep unfinished intraday prices out
+              # of completed daily closing history.
+              if (
+                  not trading_day or
+                  now < closing + timedelta(
+                      minutes=30
+                  )
+              ):
+                  rows.pop(str(today), None)
+
+              if len(rows) < 60:
+                  raise RuntimeError(
+                      f'{asset}: insufficient '
+                      'daily history'
+                  )
+
+              prices[asset] = sorted(
+                  rows.items()
+              )
+
+              latest_day, latest_price = (
+                  prices[asset][-1]
+              )
+
+              latest_label = pd.Timestamp(
+                  latest_day
+              )
+
+              if calendar.is_session(
+                  latest_label
+              ):
+                  quotes[asset] = {
+                      'price': latest_price,
+                      'asOf': (
+                          calendar.session_close(
+                              latest_label
+                          ).isoformat()
+                      ),
+                      'date': latest_day,
+                      'type': 'closing',
+                  }
+
+              retained = previous.get(
+                  'quotes', {}
+              ).get(asset)
+
+              if (
+                  isinstance(retained, dict) and
+                  valid_price(
+                      retained.get('price')
+                  )
+              ):
+                  try:
+                      stamp = pd.Timestamp(
+                          retained['asOf']
+                      )
+
+                      baseline = quotes.get(
+                          asset, {}
+                      ).get('asOf')
+
+                      if (
+                          stamp.tzinfo and
+                          stamp <= now and
+                          (
+                              not baseline or
+                              stamp > pd.Timestamp(
+                                  baseline
+                              )
+                          )
+                      ):
+                          quotes[asset] = retained
+
+                  except (
+                      KeyError,
+                      ValueError,
+                      TypeError,
+                  ):
+                      pass
+
+              try:
+                  info = retry(ticker.get_info)
+
+                  value = info.get(
+                      'regularMarketPrice'
+                  )
+
+                  stamp = info.get(
+                      'regularMarketTime'
+                  )
+
+                  if (
+                      info.get('currency') != 'EUR' or
+                      info.get('symbol') != symbol
+                  ):
+                      raise ValueError(
+                          'Unexpected quote '
+                          'currency or symbol'
+                      )
+
+                  if (
+                      not valid_price(value) or
+                      not isinstance(
+                          stamp, (int, float)
+                      )
+                  ):
+                      raise ValueError(
+                          'Quote price or '
+                          'timestamp missing'
+                      )
+
+                  as_of = datetime.fromtimestamp(
+                      stamp,
+                      timezone.utc,
+                  )
+
+                  if as_of > now + timedelta(
+                      minutes=5
+                  ):
+                      raise ValueError(
+                          'Quote timestamp '
+                          'is in the future'
+                      )
+
+                  baseline = quotes.get(
+                      asset, {}
+                  ).get('asOf')
+
+                  if (
+                      not baseline or
+                      as_of > pd.Timestamp(
+                          baseline
+                      )
+                  ):
+                      quotes[asset] = {
+                          'price': round(
+                              value, 6
+                          ),
+                          'asOf': as_of.isoformat(
+                              timespec='seconds'
+                          ),
+                          'date': (
+                              as_of.astimezone(
+                                  ZoneInfo(
+                                      'Europe/Berlin'
+                                  )
+                              ).date().isoformat()
+                          ),
+                          'type': 'delayed',
+                      }
+
+              except Exception as error:
+                  warnings.append(
+                      f'{asset} quote retained: '
+                      f'{type(error).__name__}'
+                  )
+
+              print(
+                  f'{asset}: '
+                  f'close {prices[asset][-1]}; '
+                  f'quote {quotes.get(asset)}'
+              )
+
+          first = today - timedelta(days=7)
+          last = today + timedelta(days=60)
+
+          sessions = []
+
+          for session in (
+              calendar.sessions_in_range(
+                  str(first),
+                  str(last),
+              )
+          ):
+              sessions.append({
+                  'date': (
+                      session.date().isoformat()
+                  ),
+                  'open': (
+                      calendar.session_open(
+                          session
+                      ).isoformat()
+                  ),
+                  'close': (
+                      calendar.session_close(
+                          session
+                      ).isoformat()
+                  ),
+              })
+
+          payload = {
+              'source': (
+                  'Yahoo Finance via yfinance; '
+                  'delayed EUR quotes and '
+                  'completed daily history'
+              ),
+              'currency': 'EUR',
+              'updatedAt': now.isoformat(
+                  timespec='seconds'
+              ),
+              'latestDates': {
+                  asset: rows[-1][0]
+                  for asset, rows in prices.items()
+              },
+              'symbols': symbols,
+              'prices': prices,
+              'quotes': quotes,
+              'market': {
+                  'exchange': 'Xetra',
+                  'session': 'Regular session',
+                  'timezone': 'Europe/Berlin',
+                  'calendarStart': (
+                      first.isoformat()
+                  ),
+                  'calendarEnd': (
+                      last.isoformat()
+                  ),
+                  'sessions': sessions,
+              },
+              'warnings': warnings,
+          }
+
+          path.parent.mkdir(
               parents=True,
-              exist_ok=True
+              exist_ok=True,
           )
 
-          output.write_text(
-              json.dumps(payload, indent=2) + "\n",
-              encoding="utf-8"
+          path.write_text(
+              json.dumps(
+                  payload,
+                  indent=2,
+                  allow_nan=False,
+              ) + '\n'
           )
 
-          print(
-              f"Created {output} with 3 ETF histories"
-          )
+          for warning in warnings:
+              print(
+                  '::warning::' + warning
+              )
+
+          with open(
+              os.environ['GITHUB_OUTPUT'],
+              'a',
+          ) as output:
+              output.write('publish=true\n')
           PY
 
-      - name: Save public market data to GitHub
+      - name: Commit public market data
+        if: steps.market.outputs.publish == 'true'
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
           git add public/data/etf-history.json
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update JARVIS ETF daily close data"
-            git push origin main
-          else
-            echo "No changes to ETF history"
+            git commit -m 'Update Northstar delayed ETF quotes'
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
 
       - name: Configure GitHub Pages
+        if: steps.market.outputs.publish == 'true'
         uses: actions/configure-pages@v5
 
-      - name: Upload JARVIS site including market data
+      - name: Upload website
+        if: steps.market.outputs.publish == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
-      - name: Publish updated JARVIS site
+      - name: Publish website
+        if: steps.market.outputs.publish == 'true'
         id: deployment
         uses: actions/deploy-pages@v4
