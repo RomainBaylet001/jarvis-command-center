@@ -1,9 +1,8 @@
 /*
   NORTHSTAR portfolio engine
-  Actual purchases / delayed EUR closing prices
+  Hourly delayed EUR quotes / completed daily closing history
   VWCE + VFEA holdings / SXR8 benchmark
 */
-
 (() => {
   "use strict";
 
@@ -56,10 +55,13 @@
   let feedError = "Market data not loaded yet";
   let range = "ALL";
   let chartMode = "capital";
+  let refreshing = false;
+  let lastAttempt = 0;
+  let marketTimer = 0;
 
   const visible = new Set(Object.keys(COLORS));
 
-  // STORAGE: loading never writes or migrates saved purchases.
+  // Loading never writes or migrates saved purchases.
 
   function loadAccount() {
     try {
@@ -136,22 +138,78 @@
       throw Error("No common ETF trading dates");
     }
 
+    const latest = dates.at(-1);
+    const quotes = {};
+
+    for (const asset of SYMBOLS) {
+      const candidate = json.quotes?.[asset];
+      const timestamp = Date.parse(candidate?.asOf);
+      const price = Number(candidate?.price);
+
+      if (
+        candidate &&
+        NorthstarFinance.validDate(candidate.date) &&
+        candidate.date >= latest &&
+        Number.isFinite(price) &&
+        price > 0 &&
+        Number.isFinite(timestamp) &&
+        timestamp <= Date.now() + 300000 &&
+        berlinDate(timestamp) === candidate.date &&
+        ["delayed", "closing"].includes(candidate.type)
+      ) {
+        quotes[asset] = {
+          price,
+          date: candidate.date,
+          asOf: new Date(timestamp).toISOString(),
+          type: candidate.type
+        };
+      }
+    }
+
+    const rawMarket = json.market;
+
+    const sessions = Array.isArray(rawMarket?.sessions)
+      ? rawMarket.sessions.filter(session =>
+          NorthstarFinance.validDate(session.date) &&
+          Number.isFinite(Date.parse(session.open)) &&
+          Number.isFinite(Date.parse(session.close)) &&
+          Date.parse(session.open) < Date.parse(session.close) &&
+          berlinDate(Date.parse(session.open)) === session.date
+        ).sort((a, b) => a.date.localeCompare(b.date))
+      : [];
+
+    const market =
+      rawMarket?.timezone === "Europe/Berlin" &&
+      NorthstarFinance.validDate(rawMarket.calendarStart) &&
+      NorthstarFinance.validDate(rawMarket.calendarEnd) &&
+      sessions.length
+        ? { ...rawMarket, sessions }
+        : null;
+
     return {
       maps,
       dates,
-      latest: dates[dates.length - 1],
+      latest,
+      quotes,
+      market,
       updated: json.updatedAt || "",
       source: json.source || "Market provider"
     };
   }
 
   async function refreshPrices() {
+    if (refreshing) return;
+
+    refreshing = true;
+    lastAttempt = Date.now();
+
     document.dispatchEvent(new CustomEvent(
       "northstar:state",
       { detail: "loading" }
     ));
 
     const controller = new AbortController();
+
     const timeout = setTimeout(
       () => controller.abort(),
       15000
@@ -185,13 +243,18 @@
         { detail: feedError ? "warning" : "updated" }
       ));
 
+      refreshing = false;
       el("pf-refresh").disabled = false;
+
       render();
+      scheduleMarketRefresh();
     }
   }
 
   function currentQuote(asset) {
     if (feed) {
+      if (feed.quotes[asset]) return feed.quotes[asset];
+
       return {
         price: feed.maps[asset].get(feed.latest),
         date: feed.latest,
@@ -208,7 +271,391 @@
     } : null;
   }
 
-  // HOLDINGS: calculate using full saved share precision.
+  // Xetra regular-session calendar.
+
+  function berlinDate(timestamp = Date.now()) {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Berlin",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(new Date(timestamp));
+
+    const part = type =>
+      parts.find(item => item.type === type)?.value;
+
+    return `${part("year")}-${part("month")}-${part("day")}`;
+  }
+
+  function displayTime(timestamp) {
+    if (!Number.isFinite(Date.parse(timestamp))) return "";
+
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Berlin",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(new Date(timestamp));
+  }
+
+  function sessionState(now = Date.now()) {
+    const market = feed?.market;
+    const today = berlinDate(now);
+
+    if (
+      !market ||
+      today < market.calendarStart ||
+      today > market.calendarEnd
+    ) {
+      return { known: false, open: false };
+    }
+
+    const session = market.sessions.find(
+      item => item.date === today
+    );
+
+    return {
+      known: true,
+
+      open:
+        !!session &&
+        now >= Date.parse(session.open) &&
+        now < Date.parse(session.close),
+
+      session,
+
+      next: market.sessions.find(
+        item => Date.parse(item.open) > now
+      ),
+
+      previous: [...market.sessions].reverse().find(
+        item => Date.parse(item.close) <= now
+      )
+    };
+  }
+
+  function quoteStale(quote, now = Date.now()) {
+    if (!quote || !NorthstarFinance.validDate(quote.date)) {
+      return true;
+    }
+
+    const state = sessionState(now);
+    const timestamp = Date.parse(quote.asOf);
+
+    if (!state.known) {
+      return (
+        now - Date.parse(quote.date + "T12:00:00Z")
+      ) > 5 * 86400000;
+    }
+
+    if (state.open) {
+      return (
+        !Number.isFinite(timestamp) ||
+        now - timestamp > 90 * 60000
+      );
+    }
+
+    const last = state.previous;
+
+    if (!last) return false;
+    if (quote.date < last.date) return true;
+
+    return (
+      quote.type === "delayed" &&
+      now > Date.parse(last.close) + 60 * 60000 &&
+      timestamp < Date.parse(last.close) - 30 * 60000
+    );
+  }
+
+  function quoteLabel(quote) {
+    if (!quote) return "Price unavailable";
+
+    const time = displayTime(quote.asOf);
+
+    return (
+      quote.date +
+      (time ? " " + time + " Berlin" : "") +
+      (
+        quote.type === "closing"
+          ? " · daily close"
+          : quote.type === "manual"
+            ? " · manual snapshot"
+            : " · delayed quote"
+      )
+    );
+  }
+
+  function valuationLabel() {
+    if (!feed) {
+      return (
+        "PRICE SNAPSHOT / " +
+        (account.quoteDate || "UNAVAILABLE")
+      );
+    }
+
+    const assets = OWNED.filter(asset =>
+      account.trades.some(trade => trade.asset === asset)
+    );
+
+    const quotes = (
+      assets.length ? assets : SYMBOLS
+    ).map(currentQuote);
+
+    const dated = [...quotes].sort((a, b) =>
+      (a.asOf || a.date).localeCompare(b.asOf || b.date)
+    );
+
+    const oldest = dated[0];
+
+    const type = quotes.every(quote => quote.type === "closing")
+      ? "DAILY CLOSE"
+      : "DELAYED QUOTES";
+
+    return (
+      type + " / " + oldest.date +
+      (
+        oldest.asOf
+          ? " " + displayTime(oldest.asOf) + " Berlin"
+          : ""
+      ) +
+      (
+        quotes.some(quote => quoteStale(quote))
+          ? " · STALE"
+          : ""
+      )
+    );
+  }
+
+  function fixQuoteLabels() {
+    document.querySelectorAll("#asset-detail dt").forEach(term => {
+      if (term.textContent.trim() === "Latest close") {
+        term.textContent = "Latest quote";
+      }
+    });
+
+    const focusDate = el("focus-date");
+
+    if (focusDate) {
+      focusDate.textContent = valuationLabel();
+    }
+  }
+
+  function updateMarketDisplay() {
+    const badge = el("northstar-market-status");
+    if (!badge) return;
+
+    const state = sessionState();
+
+    badge.textContent = !state.known
+      ? "XETRA STATUS UNAVAILABLE"
+      : state.open
+        ? "XETRA OPEN"
+        : "XETRA CLOSED";
+
+    badge.dataset.market = !state.known
+      ? "unknown"
+      : state.open ? "open" : "closed";
+
+    badge.title = !state.known
+      ? "Refresh to load the exchange calendar."
+      : state.open
+        ? "Regular session · closes " +
+          displayTime(state.session.close) +
+          " Berlin time"
+        : state.next
+          ? "Regular session · next opens " +
+            state.next.date +
+            " at " +
+            displayTime(state.next.open) +
+            " Berlin time"
+          : "Regular session closed. Refresh for the next session.";
+
+    if (el("hero-date")) {
+      el("hero-date").textContent = valuationLabel();
+    }
+
+    if (feed) {
+      const stale = SYMBOLS.some(
+        asset => quoteStale(currentQuote(asset))
+      );
+
+      el("pf-feed").textContent =
+        (
+          feedError
+            ? "Refresh failed; previous data retained · "
+            : ""
+        ) +
+        "Hourly delayed EUR quotes · " +
+        (
+          stale
+            ? "WARNING: one or more prices are old · "
+            : ""
+        ) +
+        "Daily chart through " + feed.latest +
+        (
+          feed.updated
+            ? " · fetched " +
+              new Intl.DateTimeFormat("en-GB", {
+                day: "2-digit",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: "Europe/Berlin"
+              }).format(new Date(feed.updated)) +
+              " Berlin"
+            : ""
+        );
+    }
+
+    const goalMarket = el("goal-market");
+
+    if (goalMarket) {
+      goalMarket.textContent =
+        valuationLabel() + " · scheduled hourly";
+
+      goalMarket.dataset.warning = String(
+        !!feedError ||
+        OWNED.some(asset => quoteStale(currentQuote(asset)))
+      );
+    }
+
+    fixQuoteLabels();
+
+    document.querySelectorAll("#pf-holdings tr").forEach(row => {
+      const asset = row.cells[0]?.textContent.trim();
+
+      if (OWNED.includes(asset) && row.cells[3]) {
+        row.cells[3].title = quoteLabel(currentQuote(asset));
+      }
+    });
+
+    document.querySelectorAll(".pf-quote").forEach((card, index) => {
+      const quote = currentQuote(SYMBOLS[index]);
+      const caption = card.querySelector("span");
+
+      if (caption && quote) {
+        caption.textContent =
+          quoteLabel(quote) +
+          (quoteStale(quote) ? " · STALE" : "");
+      }
+    });
+
+    const stale = !!feedError || OWNED.some(asset =>
+      account.trades.some(trade => trade.asset === asset) &&
+      quoteStale(currentQuote(asset))
+    );
+
+    if (stale && feed) {
+      document.body.dataset.state = "warning";
+    } else if (!refreshing && feed) {
+      document.body.dataset.state = "idle";
+    }
+  }
+
+  function scheduleMarketRefresh() {
+    clearTimeout(marketTimer);
+    if (document.hidden) return;
+
+    const state = sessionState();
+
+    const delay = !state.known || state.open
+      ? 5 * 60000
+      : 30 * 60000;
+
+    marketTimer = setTimeout(() => {
+      if (!document.hidden) refreshPrices();
+    }, delay);
+  }
+
+  function setupMarketDisplay() {
+    const style = document.createElement("style");
+
+    style.textContent = `
+      .data-status {
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .data-status > .status-dot {
+        display: none;
+      }
+
+      #northstar-market-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #cdb78c;
+        font: 9px/1.8 var(--mono);
+        letter-spacing: .07em;
+      }
+
+      #northstar-market-status::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      #northstar-market-status[data-market=open] {
+        color: #80d8ad;
+      }
+
+      #northstar-market-status[data-market=closed] {
+        color: #ee9696;
+      }
+
+      #hero-date {
+        font-size: 9px;
+      }
+    `;
+
+    document.head.append(style);
+
+    const badge = document.createElement("span");
+    badge.id = "northstar-market-status";
+    badge.setAttribute("role", "status");
+
+    document.querySelector(".data-status")?.prepend(badge);
+
+    const footer = document.querySelector("main > footer p");
+
+    if (footer) {
+      footer.textContent = footer.textContent.replace(
+        "Daily closing prices",
+        "Hourly delayed quotes"
+      );
+    }
+
+    document.addEventListener("click", event => {
+      if (
+        event.target.closest?.("#explore-core, [data-asset]")
+      ) {
+        queueMicrotask(fixQuoteLabels);
+      }
+    });
+
+    const clock = () => {
+      if (!document.hidden) updateMarketDisplay();
+    };
+
+    setInterval(clock, 60000);
+
+    document.addEventListener("visibilitychange", () => {
+      clearTimeout(marketTimer);
+
+      if (!document.hidden) {
+        clock();
+
+        if (Date.now() - lastAttempt > 60000) {
+          refreshPrices();
+        } else {
+          scheduleMarketRefresh();
+        }
+      }
+    });
+  }
+
+  // HOLDINGS
 
   function summary() {
     const rows = {};
@@ -219,11 +666,13 @@
       );
 
       const invested = trades.reduce(
-        (sum, trade) => sum + trade.amount, 0
+        (sum, trade) => sum + trade.amount,
+        0
       );
 
       const shares = trades.reduce(
-        (sum, trade) => sum + trade.shares, 0
+        (sum, trade) => sum + trade.shares,
+        0
       );
 
       const candidate = currentQuote(asset);
@@ -246,7 +695,8 @@
     }
 
     const invested = OWNED.reduce(
-      (sum, asset) => sum + rows[asset].invested, 0
+      (sum, asset) => sum + rows[asset].invested,
+      0
     );
 
     const canValue =
@@ -257,7 +707,8 @@
 
     const value = canValue
       ? OWNED.reduce(
-          (sum, asset) => sum + (rows[asset].value || 0), 0
+          (sum, asset) => sum + (rows[asset].value || 0),
+          0
         )
       : null;
 
@@ -273,6 +724,7 @@
     const result = summary();
 
     el("pf-invested").textContent = eur(result.invested);
+
     el("pf-value").textContent =
       result.value === null ? "—" : eur(result.value);
 
@@ -295,7 +747,9 @@
 
       return `
         <tr>
-          <td style="color:${COLORS[asset]}"><b>${asset}</b></td>
+          <td style="color:${COLORS[asset]}">
+            <b>${asset}</b>
+          </td>
           <td>${eur(holding.invested)}</td>
           <td>${sharesText(holding.shares)}</td>
           <td>${holding.quote ? eur(holding.quote.price) : "—"}</td>
@@ -334,7 +788,9 @@
       .map(trade => `
         <tr>
           <td>${trade.date}</td>
-          <td style="color:${COLORS[trade.asset]}">${trade.asset}</td>
+          <td style="color:${COLORS[trade.asset]}">
+            ${trade.asset}
+          </td>
           <td>${eur(trade.amount)}</td>
           <td>${sharesText(trade.shares)}</td>
           <td>${html(trade.broker)}</td>
@@ -342,27 +798,25 @@
       `).join("");
 
     if (feed) {
-      const age = Math.floor(
-        (
-          Date.now() -
-          Date.parse(feed.latest + "T12:00:00Z")
-        ) / 86400000
-      );
+      el("pf-prices").innerHTML = SYMBOLS.map(asset => {
+        const quote = currentQuote(asset);
 
-      el("pf-feed").textContent =
-        (feedError ? "Refresh failed; retained data · " : "") +
-        `Automatic Xetra EUR daily closes · ${feed.latest}` +
-        (age > 5 ? " · WARNING: potentially stale" : "");
+        return `
+          <div class="pf-quote">
+            <small>
+              ${asset}${asset === "SXR8" ? " · BENCHMARK" : ""}
+            </small>
 
-      el("pf-prices").innerHTML = SYMBOLS.map(asset => `
-        <div class="pf-quote">
-          <small>${asset}${asset === "SXR8" ? " · BENCHMARK" : ""}</small>
-          <strong style="color:${COLORS[asset]}">
-            ${eur(feed.maps[asset].get(feed.latest))}
-          </strong>
-          <span>${feed.latest} · delayed close</span>
-        </div>
-      `).join("");
+            <strong style="color:${COLORS[asset]}">
+              ${eur(quote.price)}
+            </strong>
+
+            <span>
+              ${html(quoteLabel(quote))}${quoteStale(quote) ? " · STALE" : ""}
+            </span>
+          </div>
+        `;
+      }).join("");
     } else {
       el("pf-feed").textContent =
         `Automatic prices unavailable: ${feedError}`;
@@ -378,6 +832,19 @@
       `;
     }
 
+    const valuedQuotes = OWNED
+      .filter(asset => result.rows[asset].shares > 0)
+      .map(asset => result.rows[asset].quote);
+
+    const snapshotDates = valuedQuotes
+      .filter(Boolean)
+      .map(quote => quote.date)
+      .sort();
+
+    const warning = !!feedError || valuedQuotes.some(
+      quote => !quote || quoteStale(quote)
+    );
+
     document.dispatchEvent(new CustomEvent(
       "northstar:summary",
       {
@@ -385,19 +852,39 @@
           ...result,
           count: account.trades.length,
           allocation,
+
           allocationBasis:
-            result.value > 0 ? "Market value" : "Invested capital",
-          date: feed?.latest || account.quoteDate,
-          status: feedError ? "warning" : "idle"
+            result.value > 0
+              ? "Market value"
+              : "Invested capital",
+
+          date:
+            snapshotDates[0] ||
+            feed?.latest ||
+            account.quoteDate,
+
+          historyDate: feed?.latest || "",
+
+          quotes: feed
+            ? Object.fromEntries(
+                SYMBOLS.map(asset => [
+                  asset,
+                  currentQuote(asset)
+                ])
+              )
+            : {},
+
+          status: warning ? "warning" : "idle"
         }
       }
     ));
 
+    updateMarketDisplay();
     drawChart();
   }
 
   // MATCHED-CONTRIBUTION BENCHMARK
-  // This is cumulative gain / contributions, not TWR.
+  // Cumulative gain / contributions, not time-weighted return.
 
   function seriesData() {
     if (!feed || !account.trades.length) return [];
@@ -411,7 +898,9 @@
     }
 
     const trades = account.trades.map(trade => {
-      const tradeDay = dates.find(date => date >= trade.date);
+      const tradeDay = dates.find(
+        date => date >= trade.date
+      );
 
       return tradeDay ? {
         ...trade,
@@ -425,7 +914,9 @@
 
     const firstDay = trades.reduce(
       (earliest, trade) =>
-        earliest < trade.tradeDay ? earliest : trade.tradeDay,
+        earliest < trade.tradeDay
+          ? earliest
+          : trade.tradeDay,
       trades[0].tradeDay
     );
 
@@ -439,18 +930,21 @@
         if (!active.length) return null;
 
         const invested = active.reduce(
-          (sum, trade) => sum + trade.amount, 0
+          (sum, trade) => sum + trade.amount,
+          0
         );
 
         const actualValue = active.reduce(
           (sum, trade) =>
-            sum + trade.shares * maps[trade.asset].get(day),
+            sum +
+            trade.shares * maps[trade.asset].get(day),
           0
         );
 
         const benchmarkValue = active.reduce(
           (sum, trade) =>
-            sum + trade.benchmarkShares * maps.SXR8.get(day),
+            sum +
+            trade.benchmarkShares * maps.SXR8.get(day),
           0
         );
 
@@ -466,13 +960,15 @@
           );
 
           const cost = buys.reduce(
-            (sum, trade) => sum + trade.amount, 0
+            (sum, trade) => sum + trade.amount,
+            0
           );
 
           record[asset] = cost
             ? (
                 buys.reduce(
-                  (sum, trade) => sum + trade.shares, 0
+                  (sum, trade) => sum + trade.shares,
+                  0
                 ) * maps[asset].get(day) / cost - 1
               ) * 100
             : null;
@@ -483,7 +979,7 @@
       .filter(Boolean);
   }
 
-  // INTERACTIVE SVG CHART
+  // INTERACTIVE CHART
 
   function drawChart() {
     const target = el("pf-chart");
@@ -537,18 +1033,28 @@
       `;
 
       el("pf-readout").textContent = "";
+
       el("pf-chart-note").textContent =
         "Actual closing prices only. SXR8 is a benchmark, " +
         "never an owned holding.";
+
       return;
     }
 
     const final = data.at(-1).day;
     const limit = new Date(final + "T12:00:00Z");
-    const months = { "1M": 1, "3M": 3, "6M": 6, "1Y": 12 };
+
+    const months = {
+      "1M": 1,
+      "3M": 3,
+      "6M": 6,
+      "1Y": 12
+    };
 
     if (months[range]) {
-      limit.setUTCMonth(limit.getUTCMonth() - months[range]);
+      limit.setUTCMonth(
+        limit.getUTCMonth() - months[range]
+      );
     }
 
     const cutoff = limit.toISOString().slice(0, 10);
@@ -582,6 +1088,7 @@
     if (!values.length) {
       target.innerHTML =
         '<div class="pf-empty">Select at least one series above.</div>';
+
       el("pf-readout").textContent = "";
       return;
     }
@@ -589,11 +1096,17 @@
     const minimum = Math.min(0, ...values);
     const maximum = Math.max(0, ...values);
     const padding = Math.max(.5, (maximum - minimum) * .13);
+
     const low = minimum - padding;
     const high = maximum + padding;
 
-    const width = Math.max(300, target.clientWidth || 900);
+    const width = Math.max(
+      300,
+      target.clientWidth || 900
+    );
+
     const height = width < 520 ? 285 : 340;
+
     const left = 48;
     const right = 16;
     const top = 18;
@@ -618,22 +1131,31 @@
 
       svg += `
         <line
-          x1="${left}" x2="${width - right}"
-          y1="${y(value)}" y2="${y(value)}"
+          x1="${left}"
+          x2="${width - right}"
+          y1="${y(value)}"
+          y2="${y(value)}"
           stroke="#7299b31b"
         />
+
         <text
-          x="${left - 9}" y="${y(value) + 4}"
-          text-anchor="end" fill="#8da5b9" font-size="10"
+          x="${left - 9}"
+          y="${y(value) + 4}"
+          text-anchor="end"
+          fill="#8da5b9"
+          font-size="10"
         >${value.toFixed(1)}%</text>
       `;
     }
 
     svg += `
       <line
-        x1="${left}" x2="${width - right}"
-        y1="${y(0)}" y2="${y(0)}"
-        stroke="#7299b34d" stroke-dasharray="3 5"
+        x1="${left}"
+        x2="${width - right}"
+        y1="${y(0)}"
+        y2="${y(0)}"
+        stroke="#7299b34d"
+        stroke-dasharray="3 5"
       />
     `;
 
@@ -646,6 +1168,7 @@
           path +=
             `${active ? "L" : "M"}` +
             `${x(index).toFixed(2)},${y(point[asset]).toFixed(2)} `;
+
           active = true;
         } else {
           active = false;
@@ -654,11 +1177,14 @@
 
       svg += `
         <path
-          class="chart-line" pathLength="1"
-          d="${path}" fill="none"
+          class="chart-line"
+          pathLength="1"
+          d="${path}"
+          fill="none"
           stroke="${COLORS[asset]}"
           stroke-width="${asset === "Portfolio" ? 2.5 : 1.7}"
-          stroke-linejoin="round" stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-linecap="round"
         />
       `;
 
@@ -667,8 +1193,10 @@
       if (Number.isFinite(end)) {
         svg += `
           <circle
-            cx="${x(points.length - 1)}" cy="${y(end)}"
-            r="3" fill="${COLORS[asset]}"
+            cx="${x(points.length - 1)}"
+            cy="${y(end)}"
+            r="3"
+            fill="${COLORS[asset]}"
           />
         `;
       }
@@ -683,13 +1211,17 @@
     for (const index of labelIndexes) {
       const anchor = index === 0
         ? "start"
-        : index === points.length - 1 ? "end" : "middle";
+        : index === points.length - 1
+          ? "end"
+          : "middle";
 
       svg += `
         <text
-          x="${x(index)}" y="${height - 8}"
+          x="${x(index)}"
+          y="${height - 8}"
           text-anchor="${anchor}"
-          fill="#8da5b9" font-size="10"
+          fill="#8da5b9"
+          font-size="10"
         >${points[index].day}</text>
       `;
     }
@@ -698,14 +1230,19 @@
       <g id="pf-crosshair" visibility="hidden">
         <line
           id="pf-cross-line"
-          y1="${top}" y2="${height - bottom}"
-          stroke="#c5e8ff88" stroke-dasharray="3 4"
+          y1="${top}"
+          y2="${height - bottom}"
+          stroke="#c5e8ff88"
+          stroke-dasharray="3 4"
         />
+
         ${chosen.map(asset => `
           <circle
-            data-dot="${asset}" r="4"
+            data-dot="${asset}"
+            r="4"
             fill="${COLORS[asset]}"
-            stroke="#08101b" stroke-width="2"
+            stroke="#08101b"
+            stroke-width="2"
           />
         `).join("")}
       </g>
@@ -717,12 +1254,17 @@
         role="img"
         aria-label="${market ? "ETF price returns" : "Profit relative to contributions"} history"
       >${svg}</svg>
+
       <input
-        id="pf-scrub" class="chart-scrub"
-        type="range" min="0" max="${points.length - 1}"
+        id="pf-scrub"
+        class="chart-scrub"
+        type="range"
+        min="0"
+        max="${points.length - 1}"
         value="${points.length - 1}"
         aria-label="Inspect historical date"
       >
+
       <span class="scrub-hint">
         Drag the chart · use the slider or arrow keys to inspect history
       </span>
@@ -738,6 +1280,7 @@
 
       el("pf-readout").innerHTML = `
         <time>${point.day}</time>
+
         ${chosen.map(asset => `
           <span>
             <i style="background:${COLORS[asset]}"></i>
@@ -773,7 +1316,8 @@
 
       el("pf-scrub").setAttribute(
         "aria-valuetext",
-        `${point.day}. ` + chosen.map(asset =>
+        `${point.day}. ` +
+        chosen.map(asset =>
           `${asset}: ${
             Number.isFinite(point[asset])
               ? pct(point[asset])
@@ -784,17 +1328,20 @@
     }
 
     const plot = target.querySelector("svg");
+
     let frame = 0;
     let pendingX = 0;
 
     function scrub(event) {
       pendingX = event.clientX;
+
       if (frame) return;
 
       frame = requestAnimationFrame(() => {
         frame = 0;
 
         const rect = plot.getBoundingClientRect();
+
         const position =
           (pendingX - rect.left) / rect.width * width;
 
@@ -822,6 +1369,7 @@
 
     plot.addEventListener("pointerleave", () => {
       if (frame) cancelAnimationFrame(frame);
+
       frame = 0;
       show(points.length - 1, false);
     });
@@ -848,6 +1396,7 @@
   function importCsv() {
     try {
       const raw = el("pf-csv").value.trim();
+
       const imported = raw.startsWith("{")
         ? JSON.parse(raw)
         : null;
@@ -868,10 +1417,13 @@
         return;
       }
 
-      // Persist successfully before changing in-memory state.
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(next)
+      );
 
       account = next;
+
       document.body.removeAttribute("data-storage-error");
       el("pf-csv").value = "";
 
@@ -913,7 +1465,8 @@
   function exportJson() {
     try {
       downloadBackup(
-        localStorage.getItem(STORAGE_KEY) || JSON.stringify(account),
+        localStorage.getItem(STORAGE_KEY) ||
+        JSON.stringify(account),
         "json",
         "application/json"
       );
@@ -937,7 +1490,9 @@
       <div class="pf-micro">
         NORTHSTAR / INVESTMENT INTELLIGENCE 002
       </div>
+
       <h1>My Portfolio<span style="color:#56d5ef">.</span></h1>
+
       <p class="pf-sub">
         Actual purchases · VWCE + VFEA · S&P 500 benchmark
       </p>
@@ -947,14 +1502,17 @@
           <small>TOTAL INVESTED</small>
           <strong id="pf-invested">—</strong>
         </div>
+
         <div class="pf-card">
           <small>PORTFOLIO VALUE*</small>
           <strong id="pf-value">—</strong>
         </div>
+
         <div class="pf-card">
           <small>UNREALIZED P/L*</small>
           <strong id="pf-pl">—</strong>
         </div>
+
         <div class="pf-card">
           <small>PURCHASES</small>
           <strong id="pf-count">—</strong>
@@ -973,49 +1531,96 @@
           aria-label="Return calculation"
         >
           <button
-            type="button" data-mode="capital"
-            class="active" aria-pressed="true"
+            type="button"
+            data-mode="capital"
+            class="active"
+            aria-pressed="true"
           >Your capital</button>
+
           <button
-            type="button" data-mode="market"
+            type="button"
+            data-mode="market"
             aria-pressed="false"
           >ETF market returns</button>
         </div>
 
-        <div class="pf-controls" id="pf-legend"></div>
+        <div
+          class="pf-controls"
+          id="pf-legend"
+        ></div>
 
         <div class="pf-controls" id="pf-periods">
-          <button data-range="1M" type="button" aria-pressed="false">1M</button>
-          <button data-range="3M" type="button" aria-pressed="false">3M</button>
-          <button data-range="6M" type="button" aria-pressed="false">6M</button>
-          <button data-range="1Y" type="button" aria-pressed="false">1Y</button>
-          <button data-range="ALL" type="button" class="active" aria-pressed="true">ALL</button>
+          <button
+            data-range="1M"
+            type="button"
+            aria-pressed="false"
+          >1M</button>
+
+          <button
+            data-range="3M"
+            type="button"
+            aria-pressed="false"
+          >3M</button>
+
+          <button
+            data-range="6M"
+            type="button"
+            aria-pressed="false"
+          >6M</button>
+
+          <button
+            data-range="1Y"
+            type="button"
+            aria-pressed="false"
+          >1Y</button>
+
+          <button
+            data-range="ALL"
+            type="button"
+            class="active"
+            aria-pressed="true"
+          >ALL</button>
         </div>
 
-        <div id="pf-readout" class="pf-readout" aria-live="off"></div>
+        <div
+          id="pf-readout"
+          class="pf-readout"
+          aria-live="off"
+        ></div>
+
         <div id="pf-chart"></div>
+
         <p id="pf-chart-note" class="pf-sub"></p>
       </section>
 
       <section class="pf-panel">
         <div class="pf-top">
           <h2>Automatic Market Prices</h2>
-          <button type="button" id="pf-refresh">REFRESH DATA ↻</button>
+
+          <button type="button" id="pf-refresh">
+            REFRESH DATA ↻
+          </button>
         </div>
-        <p class="pf-sub" id="pf-feed">Connecting to market data…</p>
+
+        <p class="pf-sub" id="pf-feed">
+          Connecting to market data…
+        </p>
+
         <div id="pf-prices" class="pf-prices"></div>
+
         <p class="pf-sub">
-          *Latest available Xetra EUR daily closing prices,
-          NOT intraday live quotes. Source: Yahoo Finance
-          via GitHub Actions. Updates on weekdays if
-          the workflow succeeds.
+          *Delayed EUR quotes, scheduled hourly during the Xetra regular session.
+          Each ETF shows its own price timestamp. Historical charts use completed
+          daily closes. Source: Yahoo Finance via GitHub Actions.
         </p>
       </section>
 
       <section class="pf-panel">
         <h2>Current Holdings</h2>
+
         <div class="pf-bar" id="pf-bar"></div>
         <p class="pf-sub" id="pf-allocation"></p>
+
         <div class="pf-table">
           <table>
             <thead>
@@ -1023,14 +1628,16 @@
                 <th>ETF</th>
                 <th>INVESTED</th>
                 <th>SHARES</th>
-                <th>CLOSE*</th>
+                <th>PRICE*</th>
                 <th>VALUE*</th>
                 <th>P/L*</th>
               </tr>
             </thead>
+
             <tbody id="pf-holdings"></tbody>
           </table>
         </div>
+
         <p class="pf-sub">
           P/L uses the saved purchase amounts and full saved
           share precision. It may differ slightly from your
@@ -1041,8 +1648,12 @@
       <section class="pf-panel">
         <div class="pf-top">
           <h2>Transaction History</h2>
-          <span class="pf-micro">PRIVATE / THIS BROWSER</span>
+
+          <span class="pf-micro">
+            PRIVATE / THIS BROWSER
+          </span>
         </div>
+
         <div class="pf-table">
           <table>
             <thead>
@@ -1054,38 +1665,55 @@
                 <th>BROKER</th>
               </tr>
             </thead>
+
             <tbody id="pf-trades"></tbody>
           </table>
         </div>
 
         <details>
           <summary>Import or restore purchases</summary>
+
           <p class="pf-sub">
             Choose a CSV or JSON backup, or paste CSV below.
             Import replaces purchases only after confirmation.
             Nothing is uploaded to GitHub.
           </p>
+
           <label class="file-label">
             Choose backup
+
             <input
-              id="pf-file" type="file"
+              id="pf-file"
+              type="file"
               accept=".csv,.json,text/csv,application/json"
             >
           </label>
+
           <label for="pf-csv">Backup contents</label>
+
           <textarea
             id="pf-csv"
             placeholder="date,asset,invested,shares,price,broker"
           ></textarea>
+
           <button id="pf-import" type="button">
             IMPORT TRANSACTIONS
           </button>
         </details>
 
-        <button id="pf-json" type="button">EXPORT JSON BACKUP ↓</button>
-        <button id="pf-backup" type="button">EXPORT CSV ↓</button>
+        <button id="pf-json" type="button">
+          EXPORT JSON BACKUP ↓
+        </button>
 
-        <p class="pf-sub" id="pf-message" aria-live="polite">
+        <button id="pf-backup" type="button">
+          EXPORT CSV ↓
+        </button>
+
+        <p
+          class="pf-sub"
+          id="pf-message"
+          aria-live="polite"
+        >
           Your transactions are stored only in this browser.
           Save a backup.
         </p>
@@ -1093,7 +1721,10 @@
     `;
 
     host.appendChild(root);
-    document.dispatchEvent(new Event("northstar:ready"));
+
+    document.dispatchEvent(
+      new Event("northstar:ready")
+    );
 
     el("pf-json").addEventListener("click", exportJson);
 
@@ -1109,7 +1740,8 @@
       try {
         el("pf-csv").value = await file.text();
       } catch {
-        el("pf-message").textContent = "Unable to read backup file.";
+        el("pf-message").textContent =
+          "Unable to read backup file.";
       }
 
       event.target.value = "";
@@ -1122,8 +1754,15 @@
       chartMode = button.dataset.mode;
 
       el("pf-modes").querySelectorAll("button").forEach(item => {
-        item.classList.toggle("active", item === button);
-        item.setAttribute("aria-pressed", String(item === button));
+        item.classList.toggle(
+          "active",
+          item === button
+        );
+
+        item.setAttribute(
+          "aria-pressed",
+          String(item === button)
+        );
       });
 
       drawChart();
@@ -1135,7 +1774,10 @@
       button.textContent = asset;
       button.className = "active";
       button.type = "button";
-      button.style.borderLeft = `4px solid ${COLORS[asset]}`;
+
+      button.style.borderLeft =
+        `4px solid ${COLORS[asset]}`;
+
       button.setAttribute("aria-pressed", "true");
 
       button.addEventListener("click", () => {
@@ -1145,7 +1787,11 @@
           visible.add(asset);
         }
 
-        button.classList.toggle("active", visible.has(asset));
+        button.classList.toggle(
+          "active",
+          visible.has(asset)
+        );
+
         button.setAttribute(
           "aria-pressed",
           String(visible.has(asset))
@@ -1158,35 +1804,64 @@
     }
 
     el("pf-periods").addEventListener("click", event => {
-      const button = event.target.closest("button[data-range]");
+      const button = event.target.closest(
+        "button[data-range]"
+      );
+
       if (!button) return;
 
       range = button.dataset.range;
 
       el("pf-periods").querySelectorAll("button").forEach(item => {
-        item.classList.toggle("active", item === button);
-        item.setAttribute("aria-pressed", String(item === button));
+        item.classList.toggle(
+          "active",
+          item === button
+        );
+
+        item.setAttribute(
+          "aria-pressed",
+          String(item === button)
+        );
       });
 
       drawChart();
     });
 
-    el("pf-import").addEventListener("click", importCsv);
-    el("pf-backup").addEventListener("click", exportCsv);
-    el("pf-refresh").addEventListener("click", refreshPrices);
+    el("pf-import").addEventListener(
+      "click",
+      importCsv
+    );
+
+    el("pf-backup").addEventListener(
+      "click",
+      exportCsv
+    );
+
+    el("pf-refresh").addEventListener(
+      "click",
+      refreshPrices
+    );
 
     let resizeTimer;
     let lastWidth = 0;
 
     new ResizeObserver(entries => {
-      const width = Math.round(entries[0].contentRect.width);
+      const width = Math.round(
+        entries[0].contentRect.width
+      );
+
       if (width === lastWidth) return;
 
       lastWidth = width;
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(drawChart, 120);
+
+      resizeTimer = setTimeout(
+        drawChart,
+        120
+      );
     }).observe(el("pf-chart"));
 
+    setupMarketDisplay();
     loadAccount();
     render();
     refreshPrices();
