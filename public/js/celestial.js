@@ -1011,23 +1011,40 @@
         c.shadowBlur = 0;
       }
 
+      /*
+        The elliptical glow reaches full transparency
+        before touching any canvas boundary.
+      */
+      const glowRadius = Math.min(size * .44, 350);
+      const glowHeight = Math.min(
+        glowRadius,
+        fieldHeight * .44
+      );
+
+      c.save();
+      c.scale(1, glowHeight / glowRadius);
+
       const glow = c.createRadialGradient(
         0, 0, 0,
-        0, 0, Math.min(size * .44, 350)
+        0, 0, glowRadius
       );
 
       glow.addColorStop(0, 'rgba(197,142,72,.11)');
       glow.addColorStop(.25, 'rgba(155,83,46,.055)');
-      glow.addColorStop(.65, 'rgba(66,105,130,.02)');
+      glow.addColorStop(.55, 'rgba(92,78,64,.022)');
+      glow.addColorStop(.78, 'rgba(66,105,130,.006)');
       glow.addColorStop(1, 'rgba(66,105,130,0)');
 
       c.fillStyle = glow;
+
       c.fillRect(
-        -size / 2,
-        -fieldHeight / 2,
-        size,
-        fieldHeight
+        -glowRadius,
+        -glowRadius,
+        glowRadius * 2,
+        glowRadius * 2
       );
+
+      c.restore();
 
       sparks.forEach(star => {
         const p = project(
@@ -1101,7 +1118,6 @@
         c.stroke();
       }
 
-      // A decorative rose, without geographic bearings.
       c.save();
       c.scale(scale, scale);
 
