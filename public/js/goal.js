@@ -1,5 +1,8 @@
-/* NORTHSTAR / personal goal.
-   Uses summary events; never edits purchases. */
+/*
+  NORTHSTAR / portfolio goal.
+  Reads engine summaries. Saves only the separate goal setting.
+*/
+
 (() => {
   'use strict';
 
@@ -33,9 +36,10 @@
 
   let target = 1000000;
   let summary = null;
+  let targetKind = 'Example target';
 
   let storageNote =
-    'Example target · save to keep it in this browser.';
+    'Example target · choose Edit goal to save your own.';
 
   try {
     const raw = localStorage.getItem(KEY);
@@ -48,17 +52,18 @@
         validTarget(saved.target)
       ) {
         target = saved.target;
-        storageNote = 'Target saved in this browser.';
+        targetKind = 'Your target';
+        storageNote = '';
       } else {
         storageNote =
-          'Saved goal could not be read. Save a target ' +
-          'to replace that goal setting.';
+          'Saved goal could not be read. ' +
+          'The example below has not replaced it.';
       }
     }
   } catch {
     storageNote =
-      'Goal could not be loaded. You can still set ' +
-      'a target for this visit.';
+      'Goal could not be loaded. ' +
+      'The example below is for this visit.';
   }
 
   const style = document.createElement('style');
@@ -107,122 +112,189 @@
       scroll-margin-top: 106px;
     }
 
-    #goal-section .goal-heading {
-      display: flex;
-      justify-content: space-between;
-      align-items: start;
-      gap: 20px;
+    body.goal-enabled #goal-section h2 {
+      font: normal clamp(27px, 2.6vw, 34px)/1.2 Georgia, serif;
+      letter-spacing: -.025em;
+      margin: 0;
     }
 
-    #goal-section h2 {
-      font: normal clamp(28px, 4vw, 40px)/1.15 Georgia, serif;
-      letter-spacing: -.035em;
-      margin: 14px 0 0;
-    }
-
-    #goal-section button {
-      min-height: 44px;
-      cursor: pointer;
-      font-family: inherit;
-    }
-
-    #goal-section .goal-description {
-      color: #b4c0cd;
-      font-size: 13px;
+    body.goal-enabled #goal-section .goal-description {
+      color: #aebdcc;
+      font-size: 15px;
       line-height: 1.8;
-      margin: 22px 0 28px;
+      margin: 14px 0 28px;
+      max-width: 60ch;
     }
 
-    #goal-section .goal-kicker {
-      display: block;
-      color: #aab9c8;
-      font: 9px/1.7 var(--mono);
-      letter-spacing: .12em;
+    body.goal-enabled #goal-section .goal-overview {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      align-items: center;
+      gap: 32px;
     }
 
-    #goal-section .goal-target {
+    body.goal-enabled #goal-section .goal-kicker {
       display: block;
-      margin: 10px 0 26px;
-      font-size: clamp(30px, 5vw, 52px);
-      font-weight: 400;
+      color: #acbbc9;
+      font: 12px/1.8 var(--mono);
+      letter-spacing: .035em;
+    }
+
+    body.goal-enabled #goal-section .goal-target {
+      display: block;
+      margin: 12px 0 28px;
+      font-size: clamp(32px, 4vw, 48px);
+      font-weight: 350;
+      line-height: 1.2;
       letter-spacing: -.045em;
       font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
     }
 
-    #goal-section .goal-progress-heading {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 15px;
-    }
-
-    #goal-section .goal-progress-heading strong {
-      font-size: 24px;
-      font-weight: 400;
-      color: #99dce4;
-    }
-
-    #goal-section .goal-progress-heading span {
-      font-size: 11px;
-      color: #b4c0cd;
-    }
-
-    #goal-section .goal-track {
-      height: 6px;
-      border-radius: 3px;
-      background: #a3b9cf1c;
-      overflow: hidden;
-      margin: 14px 0 24px;
-    }
-
-    #goal-section .goal-fill {
-      height: 100%;
-      width: 0;
-      background: #99dce4;
-      border-radius: 3px;
-    }
-
-    #goal-section .goal-metrics {
+    body.goal-enabled #goal-section .goal-metrics {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 24px;
+      gap: 20px 32px;
       margin: 0;
     }
 
-    #goal-section .goal-metrics dt {
-      color: #aab9c8;
-      font-size: 11px;
+    body.goal-enabled #goal-section .goal-metrics dt {
+      color: #aebdcc;
+      font-size: 14px;
       margin-bottom: 10px;
     }
 
-    #goal-section .goal-metrics dd {
+    body.goal-enabled #goal-section .goal-metrics dd {
       margin: 0;
-      font-size: clamp(20px, 3vw, 29px);
+      font-size: clamp(21px, 2.4vw, 29px);
+      line-height: 1.3;
       letter-spacing: -.025em;
       font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
     }
 
-    #goal-section .goal-market {
+    body.goal-enabled #goal-section .goal-dial {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      display: grid;
+      place-items: center;
+      justify-self: center;
+    }
+
+    .goal-dial svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      fill: none;
+      pointer-events: none;
+    }
+
+    .goal-dial .goal-dial-guide {
+      stroke: #a4b5c51a;
+      stroke-width: .6;
+    }
+
+    .goal-dial .goal-dial-track {
+      stroke: #273541;
+      stroke-width: 4;
+    }
+
+    .goal-dial .goal-dial-progress {
+      stroke: #99dce4;
+      stroke-width: 4;
+      stroke-linecap: butt;
+      transform: rotate(-90deg);
+      transform-origin: 100px 100px;
+    }
+
+    body.goal-enabled #goal-section .goal-dial-label {
+      position: relative;
+      display: grid;
+      gap: 8px;
+      text-align: center;
+      max-width: 150px;
+    }
+
+    body.goal-enabled #goal-section #goal-percent {
+      color: #b1e3e7;
+      font-size: 32px;
+      font-weight: 350;
+      letter-spacing: -.04em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    body.goal-enabled #goal-section #goal-progress-label {
+      color: #aebdcc;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    body.goal-enabled #goal-section .goal-market {
       color: #a6b8c8;
-      font: 10px/1.8 var(--mono);
-      margin: 23px 0 28px;
+      font: 12px/1.8 var(--mono);
+      margin: 26px 0 0;
+      overflow-wrap: anywhere;
+      letter-spacing: .015em;
     }
 
     #goal-section .goal-market[data-warning=true] {
       color: #dec18d;
     }
 
-    #goal-section form {
-      border-top: 1px solid #a4b5c522;
-      padding-top: 24px;
-      max-width: 620px;
+    body.goal-enabled #goal-section .goal-storage {
+      color: #cbb78f;
+      font-size: 13px;
+      line-height: 1.8;
+      margin: 12px 0 0;
     }
 
-    #goal-section label {
+    #goal-section .goal-storage:empty {
+      display: none;
+    }
+
+    #goal-section .goal-editor {
+      margin-top: 24px;
+      border-top: 1px solid #a4b5c522;
+    }
+
+    #goal-section .goal-editor > summary {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-height: 48px;
+      padding: 14px 0;
+      list-style: none;
+      color: #e1d6c0;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #goal-section .goal-editor > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    #goal-section .goal-editor > summary::after {
+      content: "+";
+      margin-left: auto;
+      color: #cdb78c;
+      font-size: 20px;
+    }
+
+    #goal-section .goal-editor[open] > summary::after {
+      content: "−";
+    }
+
+    body.goal-enabled #goal-section form {
+      max-width: 620px;
+      padding: 8px 0 20px;
+      border: 0;
+    }
+
+    body.goal-enabled #goal-section label {
       display: block;
-      font-size: 12px;
+      font-size: 14px;
       color: #d9e2e9;
       margin-bottom: 10px;
     }
@@ -247,33 +319,29 @@
     }
 
     #goal-section .goal-save {
+      min-height: 48px;
       padding: 10px 20px;
       white-space: nowrap;
       border: 1px solid #dccba5;
       border-radius: 3px;
       background: #d9c7a1;
       color: #151a1d;
+      cursor: pointer;
+      font-family: inherit;
     }
 
     #goal-section .goal-save:hover {
       background: #e8d9b9;
     }
 
-    #goal-section .goal-storage {
-      min-height: 1.8em;
-      color: #a8b9c9;
-      font-size: 11px;
-      line-height: 1.8;
-      margin: 12px 0;
-    }
-
-    #goal-section .goal-footnote {
-      border-top: 1px solid #a4b5c522;
-      margin: 22px 0 0;
-      padding-top: 18px;
+    body.goal-enabled #goal-section .goal-footnote {
+      border: 0;
+      margin: 16px 0 0;
+      padding: 0;
       color: #a6b5c4;
-      font-size: 11px;
-      line-height: 1.8;
+      font-size: 13px;
+      line-height: 1.85;
+      max-width: 80ch;
     }
 
     #goal-section :focus-visible,
@@ -289,6 +357,8 @@
     #view-investments #pf-root #goal-section {
       scroll-margin-top: 106px;
     }
+
+    /* Existing ledger layout and controls. */
 
     #ledger-dialog {
       width: min(1080px, 95vw);
@@ -349,19 +419,43 @@
       outline-offset: 4px;
     }
 
-    @media(max-width: 1100px) {
+    @media (max-width: 1100px) {
       .nav .goal-nav > span {
         display: none;
       }
     }
 
-    @media(max-width: 850px) {
+    @media (max-width: 850px) {
       .nav .goal-nav {
         font-size: 11px;
       }
     }
 
-    @media(max-width: 620px) {
+    @media (max-width: 700px) {
+      body.goal-enabled #goal-section .goal-overview {
+        grid-template-columns: minmax(0, 1fr) 170px;
+        gap: 20px;
+      }
+
+      body.goal-enabled #goal-section .goal-dial {
+        width: 170px;
+        height: 170px;
+      }
+
+      body.goal-enabled #goal-section .goal-dial-label {
+        max-width: 120px;
+      }
+
+      body.goal-enabled #goal-section #goal-percent {
+        font-size: 27px;
+      }
+
+      body.goal-enabled #goal-section .goal-metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
       #ledger-dialog {
         padding: 20px;
         max-height: 92dvh;
@@ -380,14 +474,6 @@
         padding: 23px;
       }
 
-      #goal-section .goal-heading {
-        gap: 12px;
-      }
-
-      #goal-section .goal-metrics {
-        gap: 16px;
-      }
-
       #goal-section .goal-form-row {
         flex-wrap: wrap;
       }
@@ -395,15 +481,21 @@
       #goal-section .goal-save {
         width: 100%;
       }
-
-      #goal-section .goal-target {
-        font-size: 36px;
-      }
     }
 
-    @media(max-width: 380px) {
-      #goal-section .goal-metrics {
+    @media (max-width: 420px) {
+      body.goal-enabled #goal-section .goal-overview {
         grid-template-columns: 1fr;
+      }
+
+      body.goal-enabled #goal-section .goal-dial {
+        width: 180px;
+        height: 180px;
+      }
+
+      body.goal-enabled #goal-section .goal-metrics {
+        grid-template-columns: 1fr;
+        gap: 20px;
       }
     }
   `;
@@ -415,7 +507,9 @@
   trigger.href = '#goal-section';
   trigger.innerHTML = '<span>03</span> Goal';
 
-  nav.querySelector('a[href="#pf-chart"]')?.after(trigger);
+  nav.querySelector(
+    'a[href="#pf-chart"]'
+  )?.after(trigger);
 
   const holdingsLink = nav.querySelector(
     'a[href="#pf-holdings"]'
@@ -459,109 +553,171 @@
 
   dialog.innerHTML = `
     <div class="goal-heading">
-      <div>
-        <span class="eyebrow">
-          NORTHSTAR / YOUR NEXT MILESTONE
-        </span>
-
-        <h2 id="goal-title">Your goal. In sight.</h2>
-      </div>
+      <h2 id="goal-title">Goal</h2>
     </div>
 
     <p id="goal-help" class="goal-description">
-      Set a target in euros. Your progress follows the
-      current value of your VWCE and VFEA holdings.
+      Progress towards your portfolio target.
     </p>
 
-    <span class="goal-kicker">
-      PORTFOLIO TARGET / EUR
-    </span>
-
-    <strong class="goal-target" id="goal-target">—</strong>
-
-    <div class="goal-progress-heading">
-      <strong id="goal-percent">—</strong>
-
-      <span id="goal-progress-label">
-        Awaiting portfolio data
-      </span>
-    </div>
-
-    <div
-      class="goal-track"
-      id="goal-track"
-      role="progressbar"
-      aria-label="Progress towards portfolio target"
-      aria-valuemin="0"
-      aria-valuemax="100"
-    >
-      <div class="goal-fill"></div>
-    </div>
-
-    <dl class="goal-metrics">
+    <div class="goal-overview">
       <div>
-        <dt>Current portfolio value</dt>
-        <dd id="goal-current">—</dd>
+        <span class="goal-kicker">
+          <span id="goal-kind">Example target</span> / EUR
+        </span>
+
+        <strong class="goal-target" id="goal-target">—</strong>
+
+        <dl class="goal-metrics">
+          <div>
+            <dt>Portfolio value</dt>
+            <dd id="goal-current">—</dd>
+          </div>
+
+          <div>
+            <dt>Remaining</dt>
+            <dd id="goal-remaining">—</dd>
+          </div>
+        </dl>
       </div>
 
-      <div>
-        <dt>Remaining to target</dt>
-        <dd id="goal-remaining">—</dd>
+      <div
+        class="goal-dial"
+        id="goal-track"
+        role="progressbar"
+        aria-label="Progress towards portfolio target"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <circle
+            class="goal-dial-guide"
+            cx="100"
+            cy="100"
+            r="95"
+          />
+
+          <circle
+            class="goal-dial-track"
+            cx="100"
+            cy="100"
+            r="82"
+          />
+
+          <circle
+            class="goal-dial-progress"
+            id="goal-arc"
+            cx="100"
+            cy="100"
+            r="82"
+            pathLength="100"
+            stroke-dasharray="0 100"
+          />
+        </svg>
+
+        <div class="goal-dial-label" aria-hidden="true">
+          <strong id="goal-percent">—</strong>
+          <span id="goal-progress-label">Awaiting valuation</span>
+        </div>
       </div>
-    </dl>
+    </div>
 
     <p class="goal-market" id="goal-market">
       Waiting for portfolio data.
     </p>
 
-    <form id="goal-form">
-      <label for="goal-input">
-        Your target in euros
-      </label>
+    <p class="goal-storage" id="goal-storage" role="status"></p>
 
-      <div class="goal-form-row">
-        <input
-          id="goal-input"
-          name="target"
-          type="number"
-          inputmode="decimal"
-          min="0.01"
-          max="1000000000000"
-          step="0.01"
-          required
-          aria-describedby="goal-storage"
-        >
+    <details class="goal-editor" id="goal-editor">
+      <summary>Edit goal</summary>
 
-        <button class="goal-save" type="submit">
-          Save goal
-        </button>
-      </div>
+      <form id="goal-form">
+        <label for="goal-input">Your target in euros</label>
 
-      <p
-        class="goal-storage"
-        id="goal-storage"
-        role="status"
-      ></p>
-    </form>
+        <div class="goal-form-row">
+          <input
+            id="goal-input"
+            name="target"
+            type="number"
+            inputmode="decimal"
+            min="0.01"
+            max="1000000000000"
+            step="0.01"
+            required
+            aria-describedby="goal-storage"
+          >
+
+          <button class="goal-save" type="submit">
+            Save goal
+          </button>
+        </div>
+      </form>
+    </details>
 
     <p class="goal-footnote">
-      Progress uses portfolio market value, including gains
-      and losses. It can go down as well as up. SXR8 is
-      excluded. This is a nominal euro target, not an
-      inflation-adjusted forecast or a promised completion date.
+      Based on portfolio market value, not a forecast. Progress can fall.
+      SXR8 is excluded. Target is in nominal euros, before inflation.
     </p>
   `;
 
-  document.querySelector('#view-investments').after(dialog);
+  document.querySelector(
+    '#view-investments'
+  ).after(dialog);
 
   const get = id => dialog.querySelector('#' + id);
   const input = get('goal-input');
 
   input.value = String(target);
-  get('goal-storage').textContent = storageNote;
+
+  function priceLabel() {
+    const quotes = ['VWCE', 'VFEA']
+      .filter(asset =>
+        summary?.rows?.[asset]?.shares > 0
+      )
+      .map(asset => summary.rows[asset].quote)
+      .filter(Boolean);
+
+    if (!quotes.length) {
+      return summary?.date
+        ? 'Price snapshot / ' + summary.date
+        : 'Price date unavailable';
+    }
+
+    const oldest = [...quotes].sort((a, b) =>
+      (a.asOf || a.date || '').localeCompare(
+        b.asOf || b.date || ''
+      )
+    )[0];
+
+    const label = quotes.every(q => q.type === 'delayed')
+      ? 'Delayed quotes'
+      : quotes.every(q => q.type === 'closing')
+        ? 'Daily close'
+        : quotes.every(q => q.type === 'manual')
+          ? 'Manual snapshot'
+          : 'Price snapshots';
+
+    const timestamp = Date.parse(oldest.asOf);
+
+    const time = Number.isFinite(timestamp)
+      ? ' ' + new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Berlin',
+          hour: '2-digit',
+          minute: '2-digit'
+        }).format(new Date(timestamp)) + ' Berlin'
+      : '';
+
+    return (
+      label + ' / ' +
+      (oldest.date || 'date unavailable') +
+      time
+    );
+  }
 
   function render() {
     get('goal-target').textContent = money(target);
+    get('goal-kind').textContent = targetKind;
+    get('goal-storage').textContent = storageNote;
 
     const value = summary?.value;
     const known = Number.isFinite(value) && value >= 0;
@@ -597,15 +753,17 @@
         ' remaining'
       );
 
-      track.firstElementChild.style.width =
-        progress.bar + '%';
+      get('goal-arc').setAttribute(
+        'stroke-dasharray',
+        progress.bar + ' 100'
+      );
     } else {
       get('goal-percent').textContent = '—';
       get('goal-remaining').textContent = '—';
 
       get('goal-progress-label').textContent = summary
         ? 'Valuation unavailable'
-        : 'Awaiting portfolio data';
+        : 'Awaiting valuation';
 
       track.removeAttribute('aria-valuenow');
 
@@ -614,44 +772,43 @@
         'Portfolio valuation unavailable'
       );
 
-      track.firstElementChild.style.width = '0%';
+      get('goal-arc').setAttribute(
+        'stroke-dasharray',
+        '0 100'
+      );
     }
 
     const market = get('goal-market');
-    const heroDate = document.getElementById('hero-date');
-    const date = summary?.date;
 
-    const age = date
-      ? Date.now() - Date.parse(date + 'T12:00:00Z')
+    const age = summary?.date
+      ? Date.now() - Date.parse(
+          summary.date + 'T12:00:00Z'
+        )
       : NaN;
 
-    market.dataset.warning = String(
-      !!summary && (
-        !known ||
-        summary.status === 'warning' ||
-        age > 5 * 86400000
-      )
+    const warning = !!summary && (
+      !known ||
+      summary.status === 'warning' ||
+      age > 5 * 86400000
     );
+
+    market.dataset.warning = String(warning);
 
     if (!summary) {
       market.textContent = 'Waiting for portfolio data.';
     } else if (!known) {
       market.textContent =
-        'Portfolio value unavailable. Progress will resume ' +
-        'when a valid valuation is available.';
+        'Valuation unavailable. Progress will resume ' +
+        'when prices are available.';
     } else if (!summary.count) {
       market.textContent =
-        'No purchases saved in this browser. ' +
         'Add purchases in Ledger to start tracking.';
     } else {
-      market.textContent = (
-        heroDate?.textContent.trim() ||
-        (
-          date
-            ? 'LATEST CLOSE / ' + date
-            : 'Price date unavailable'
-        )
-      ) + ' · daily prices, not live quotes';
+      market.textContent = priceLabel() + (
+        warning
+          ? ' · Price warning — check market data'
+          : ''
+      );
     }
   }
 
@@ -663,9 +820,7 @@
     if (
       !input.reportValidity() ||
       !validTarget(next)
-    ) {
-      return;
-    }
+    ) return;
 
     target = next;
 
@@ -678,18 +833,20 @@
         })
       );
 
-      storageNote =
-        'Goal saved in this browser. ' +
-        'Your purchases have not changed.';
+      targetKind = 'Your target';
+      storageNote = 'Goal saved in this browser.';
     } catch {
+      targetKind = 'Target for this visit';
+
       storageNote =
-        'Goal applied for this visit, but browser storage ' +
-        'could not save it.';
+        'Goal applied for this visit. ' +
+        'Browser storage could not save it.';
     }
 
-    get('goal-storage').textContent = storageNote;
     render();
   });
+
+  // Preserve the existing section and Ledger connections.
 
   document.addEventListener('northstar:ready', () => {
     const chart = document.getElementById('pf-chart')
@@ -702,10 +859,6 @@
 
     if (chart) chart.after(dialog);
 
-    /*
-      Existing navigation holds references to these sections.
-      Update the labels without replacing those sections.
-    */
     [
       [chart, '02 / PERFORMANCE'],
       [dialog, '03 / GOAL'],
@@ -746,6 +899,7 @@
     if (title) title.id = 'ledger-title';
 
     const heading = document.createElement('div');
+
     heading.className = 'ledger-dialog-heading';
 
     heading.innerHTML =
@@ -769,29 +923,34 @@
     ledgerDialog.append(heading, ledger);
     root.append(ledgerDialog);
 
-    /*
-      Move existing elements, retaining their IDs and
-      the financial engine's event handlers.
-    */
     function openLedger() {
       if (!ledgerDialog.open) {
         ledgerDialog.showModal();
       }
 
-      ledgerButton.setAttribute('aria-expanded', 'true');
+      ledgerButton.setAttribute(
+        'aria-expanded', 'true'
+      );
     }
 
     ledgerButton.disabled = false;
 
-    ledgerButton.addEventListener('click', openLedger);
+    ledgerButton.addEventListener(
+      'click', openLedger
+    );
 
     close.addEventListener('click', () => {
       ledgerDialog.close();
     });
 
     ledgerDialog.addEventListener('close', () => {
-      ledgerButton.setAttribute('aria-expanded', 'false');
-      ledgerButton.focus({preventScroll: true});
+      ledgerButton.setAttribute(
+        'aria-expanded', 'false'
+      );
+
+      ledgerButton.focus({
+        preventScroll: true
+      });
     });
 
     document.addEventListener('click', event => {
@@ -805,9 +964,7 @@
         event.ctrlKey ||
         event.shiftKey ||
         event.altKey
-      ) {
-        return;
-      }
+      ) return;
 
       event.preventDefault();
       openLedger();
@@ -819,13 +976,15 @@
       }
     };
 
-    addEventListener('hashchange', followLedgerHash);
+    addEventListener(
+      'hashchange', followLedgerHash
+    );
 
     requestAnimationFrame(() => {
       followLedgerHash();
       dispatchEvent(new Event('scroll'));
     });
-  }, {once: true});
+  }, { once: true });
 
   document.addEventListener('northstar:summary', event => {
     summary = event.detail;
@@ -835,7 +994,9 @@
   const motion = document.getElementById('motion-toggle');
   const footer = document.querySelector('main > footer');
 
-  if (motion && footer) footer.append(motion);
+  if (motion && footer) {
+    footer.append(motion);
+  }
 
   document.querySelector(
     '.hero-actions .quiet-link[href="#pf-trades"]'
