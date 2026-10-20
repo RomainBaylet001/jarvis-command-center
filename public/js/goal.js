@@ -1,5 +1,6 @@
 /*
-  NORTHSTAR / minimal portfolio goal.
+  NORTHSTAR / celestial portfolio goal.
+  Reads portfolio summaries.
   Saves only the separate goal setting.
 */
 
@@ -105,46 +106,167 @@
       color: #ebdec5;
     }
 
+    /* A standalone instrument against the page's star field. */
+
     #goal-section {
       box-sizing: border-box;
       width: 100%;
-      padding: 32px;
-      border: 1px solid #bcac8150;
-      border-radius: 4px;
-      background: #0c121c;
       color: #edf0f3;
       scroll-margin-top: 106px;
     }
 
-    body.goal-enabled #goal-section h2 {
-      font: normal 30px/1.2 Georgia, serif;
-      letter-spacing: -.025em;
+    body.goal-enabled #view-investments #pf-root > #goal-section.goal-observatory {
+      display: block;
+      text-align: center;
+      padding: 32px 24px;
+      margin: 0 0 32px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    body.goal-enabled #view-investments #pf-root > #goal-section.goal-observatory::before {
+      display: none;
+    }
+
+    body.goal-enabled #view-investments #pf-root #goal-section h2 {
       margin: 0;
+      font: normal 26px/1.2 Georgia, serif;
+      letter-spacing: -.025em;
     }
 
     body.goal-enabled #goal-section .goal-overview {
-      display: grid;
-      grid-template-columns: 132px minmax(0, 1fr);
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 28px;
-      max-width: 640px;
-      margin-top: 24px;
+      gap: 0;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    body.goal-enabled #goal-section .goal-dial {
+      position: relative;
+      width: 280px;
+      height: 240px;
+      display: grid;
+      place-items: center;
+      margin: 8px auto 0;
+      isolation: isolate;
+    }
+
+    #goal-section .goal-dial::before {
+      content: "";
+      position: absolute;
+      inset: 18% 24%;
+      border-radius: 50%;
+      z-index: -1;
+      pointer-events: none;
+      background: radial-gradient(
+        circle, #99dce409, transparent 72%
+      );
+    }
+
+    #goal-section .goal-dial svg {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: 280px;
+      transform: translateY(-50%);
+      fill: none;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    /* Financial progress: always tied to the actual value. */
+
+    #goal-section .goal-dial-track {
+      stroke: #8194a32b;
+      stroke-width: 2;
+    }
+
+    #goal-section .goal-dial-progress {
+      stroke: #99dce4;
+      stroke-width: 2.6;
+      stroke-linecap: butt;
+      transform: rotate(-90deg);
+      transform-origin: 100px 100px;
+    }
+
+    /* Decorative orbit: independent of financial performance. */
+
+    #goal-section .goal-orbit-path {
+      stroke: #cdb78c40;
+      stroke-width: .7;
+    }
+
+    #goal-section .goal-orbit-light {
+      stroke: #e2d1aa;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      transform-origin: 100px 100px;
+      animation: goal-orbit-travel 24s linear infinite;
+    }
+
+    #goal-section .goal-orbit-trail {
+      stroke: #d5c29a55;
+      stroke-width: 1.2;
+      transform-origin: 100px 100px;
+      animation: goal-orbit-travel 24s linear infinite;
+    }
+
+    @keyframes goal-orbit-travel {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    #goal-section.goal-resting .goal-orbit-light,
+    #goal-section.goal-resting .goal-orbit-trail,
+    body.motion-paused #goal-section .goal-orbit-light,
+    body.motion-paused #goal-section .goal-orbit-trail,
+    body.tab-hidden #goal-section .goal-orbit-light,
+    body.tab-hidden #goal-section .goal-orbit-trail {
+      animation-play-state: paused;
+    }
+
+    body.goal-enabled #goal-section .goal-dial-label {
+      display: grid;
+      place-items: center;
+      gap: 7px;
+      max-width: 130px;
+      text-align: center;
+      position: relative;
+      pointer-events: none;
+    }
+
+    body.goal-enabled #goal-section #goal-percent {
+      color: #b9e4e8;
+      font-size: 32px;
+      font-weight: 350;
+      letter-spacing: -.035em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    body.goal-enabled #goal-section #goal-progress-label {
+      color: #aebdcc;
+      font-size: 12px;
+      line-height: 1.5;
     }
 
     body.goal-enabled #goal-section .goal-kicker {
       display: block;
       color: #aab9c8;
-      font: 12px/1.6 var(--mono);
-      letter-spacing: .025em;
+      font: 11px/1.8 var(--mono);
+      letter-spacing: .04em;
     }
 
     body.goal-enabled #goal-section .goal-target {
       display: block;
-      margin: 8px 0 12px;
+      margin: 6px 0 10px;
       color: #edf0f3;
-      font-size: clamp(30px, 3vw, 40px);
+      font-size: clamp(32px, 3.4vw, 44px);
       font-weight: 350;
-      line-height: 1.15;
+      line-height: 1.2;
       letter-spacing: -.04em;
       font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
@@ -154,7 +276,7 @@
       margin: 0;
       color: #aebdcc;
       font-size: 15px;
-      line-height: 1.7;
+      line-height: 1.8;
     }
 
     body.goal-enabled #goal-section #goal-remaining {
@@ -163,65 +285,13 @@
       font-variant-numeric: tabular-nums;
     }
 
-    body.goal-enabled #goal-section .goal-dial {
-      position: relative;
-      width: 132px;
-      height: 132px;
-      display: grid;
-      place-items: center;
-    }
-
-    #goal-section .goal-dial svg {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      fill: none;
-      pointer-events: none;
-    }
-
-    #goal-section .goal-dial-track {
-      stroke: #273541;
-      stroke-width: 4;
-    }
-
-    #goal-section .goal-dial-progress {
-      stroke: #99dce4;
-      stroke-width: 4;
-      stroke-linecap: butt;
-      transform: rotate(-90deg);
-      transform-origin: 100px 100px;
-    }
-
-    body.goal-enabled #goal-section .goal-dial-label {
-      display: grid;
-      place-items: center;
-      gap: 4px;
-      max-width: 96px;
-      text-align: center;
-    }
-
-    body.goal-enabled #goal-section #goal-percent {
-      color: #b1e3e7;
-      font-size: 23px;
-      font-weight: 400;
-      letter-spacing: -.025em;
-      font-variant-numeric: tabular-nums;
-    }
-
-    body.goal-enabled #goal-section #goal-progress-label {
-      color: #aebdcc;
-      font-size: 11px;
-      line-height: 1.5;
-    }
-
     body.goal-enabled #goal-section .goal-warning,
     body.goal-enabled #goal-section .goal-storage {
       color: #d1bb90;
       font-size: 13px;
       line-height: 1.8;
-      margin: 16px 0 0;
-      max-width: 65ch;
+      margin: 16px auto 0;
+      max-width: 60ch;
     }
 
     #goal-section .goal-warning[hidden],
@@ -230,8 +300,10 @@
     }
 
     body.goal-enabled #goal-section .goal-editor {
-      margin-top: 20px;
+      margin: 24px auto 0;
+      max-width: 480px;
       border-top: 1px solid #a4b5c51c;
+      text-align: left;
     }
 
     #goal-section .goal-editor > summary {
@@ -262,7 +334,6 @@
     }
 
     body.goal-enabled #goal-section form {
-      max-width: 540px;
       padding: 12px 0 8px;
       border: 0;
     }
@@ -318,7 +389,6 @@
       margin: 14px 0 0;
       padding: 0;
       border: 0;
-      max-width: 75ch;
       overflow-wrap: anywhere;
     }
 
@@ -340,7 +410,7 @@
       scroll-margin-top: 106px;
     }
 
-    /* Ledger */
+    /* Existing Ledger presentation. */
 
     #ledger-dialog {
       width: min(1080px, 95vw);
@@ -428,38 +498,22 @@
         font-size: 7px;
       }
 
-      #goal-section {
-        padding: 23px;
-      }
-
-      body.goal-enabled #goal-section .goal-overview {
-        grid-template-columns: 100px minmax(0, 1fr);
-        gap: 18px;
+      body.goal-enabled #view-investments #pf-root > #goal-section.goal-observatory {
+        padding: 28px 16px;
+        margin-bottom: 24px;
       }
 
       body.goal-enabled #goal-section .goal-dial {
-        width: 100px;
-        height: 100px;
+        width: 240px;
+        height: 210px;
+      }
+
+      #goal-section .goal-dial svg {
+        height: 240px;
       }
 
       body.goal-enabled #goal-section #goal-percent {
-        font-size: 18px;
-      }
-
-      body.goal-enabled #goal-section .goal-dial-label {
-        max-width: 74px;
-      }
-
-      body.goal-enabled #goal-section #goal-progress-label {
-        font-size: 10px;
-      }
-
-      body.goal-enabled #goal-section .goal-target {
         font-size: 28px;
-      }
-
-      body.goal-enabled #goal-section .goal-remaining-line {
-        font-size: 14px;
       }
 
       #goal-section .goal-form-row {
@@ -471,15 +525,10 @@
       }
     }
 
-    @media (max-width: 360px) {
-      body.goal-enabled #goal-section .goal-overview {
-        grid-template-columns: 1fr;
-        gap: 16px;
-      }
-
-      body.goal-enabled #goal-section .goal-dial {
-        width: 110px;
-        height: 110px;
+    @media (prefers-reduced-motion: reduce) {
+      #goal-section .goal-orbit-light,
+      #goal-section .goal-orbit-trail {
+        animation: none;
       }
     }
   `;
@@ -529,7 +578,7 @@
 
   const dialog = document.createElement('section');
 
-  dialog.className = 'pf-panel';
+  dialog.className = 'pf-panel goal-observatory';
   dialog.id = 'goal-section';
 
   dialog.setAttribute('aria-labelledby', 'goal-title');
@@ -550,6 +599,33 @@
         aria-valuemax="100"
       >
         <svg viewBox="0 0 200 200" aria-hidden="true">
+          <g transform="translate(100 100) rotate(-28) scale(1 .42) translate(-100 -100)">
+            <circle
+              class="goal-orbit-path"
+              cx="100"
+              cy="100"
+              r="112"
+            />
+
+            <circle
+              class="goal-orbit-trail"
+              cx="100"
+              cy="100"
+              r="112"
+              pathLength="100"
+              stroke-dasharray="9 91"
+            />
+
+            <circle
+              class="goal-orbit-light"
+              cx="100"
+              cy="100"
+              r="112"
+              pathLength="100"
+              stroke-dasharray=".5 99.5"
+            />
+          </g>
+
           <circle
             class="goal-dial-track"
             cx="100"
@@ -838,7 +914,7 @@
     render();
   });
 
-  // Preserve existing section and Ledger connections.
+  // Preserve section navigation and the existing Ledger.
 
   document.addEventListener('northstar:ready', () => {
     const chart = document.getElementById('pf-chart')
@@ -994,5 +1070,32 @@
 
   document.body.classList.add('goal-enabled');
 
+  // Pause decorative motion offscreen and in background tabs.
+
+  let goalVisible = true;
+
+  function syncGoalMotion() {
+    dialog.classList.toggle(
+      'goal-resting',
+      document.hidden || !goalVisible
+    );
+  }
+
+  if ('IntersectionObserver' in window) {
+    goalVisible = false;
+
+    const goalObserver = new IntersectionObserver(entries => {
+      goalVisible = entries[0].isIntersecting;
+      syncGoalMotion();
+    });
+
+    goalObserver.observe(dialog);
+  }
+
+  document.addEventListener(
+    'visibilitychange', syncGoalMotion
+  );
+
+  syncGoalMotion();
   render();
 })();
