@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -29,6 +28,78 @@
   <link rel="stylesheet" href="./observatory.css">
   <link rel="stylesheet" href="./celestial.css">
 
+  <style>
+    /* Keep the page heading accessible without a visible slogan. */
+
+    body .observatory .hero-copy #hero-title {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    body.goal-enabled main > .observatory {
+      min-height: 420px;
+      padding-block: 36px;
+      gap: clamp(24px, 4vw, 60px);
+    }
+
+    body.goal-enabled .observatory .hero-copy {
+      padding-block: 12px;
+    }
+
+    body.goal-enabled .observatory .hero-valuation > strong {
+      font-size: clamp(48px, 5.2vw, 78px);
+      line-height: 1.12;
+      margin-block: 16px;
+    }
+
+    body.goal-enabled .observatory .instrument {
+      max-width: 380px;
+    }
+
+    body.goal-enabled .observatory .hero-actions {
+      margin-block: 28px 20px;
+    }
+
+    @media (min-width: 621px) and (max-width: 900px) {
+      body.goal-enabled main > .observatory {
+        min-height: 380px;
+        gap: 24px;
+      }
+
+      body.goal-enabled .observatory .hero-valuation > strong {
+        font-size: 48px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      body.goal-enabled main > .observatory {
+        min-height: 0;
+        padding-block: 32px 24px;
+        gap: 0;
+      }
+
+      body.goal-enabled .observatory .hero-copy {
+        padding-block: 0;
+      }
+
+      body.goal-enabled .observatory .hero-valuation > strong {
+        font-size: clamp(38px, 11.8vw, 56px);
+      }
+
+      body.goal-enabled .observatory .instrument {
+        max-width: 240px;
+        margin: 8px auto 0;
+      }
+    }
+  </style>
+
   <script defer src="./js/finance-utils.js"></script>
   <script defer src="./js/observatory.js"></script>
   <script defer src="./js/celestial.js"></script>
@@ -49,7 +120,6 @@
   </div>
 
   <header class="masthead" id="top">
-
     <a
       class="identity"
       href="#top"
@@ -61,6 +131,7 @@
         height="38"
         alt=""
       >
+
       <span>
         NORTHSTAR
         <small>WEALTH OBSERVATORY</small>
@@ -96,7 +167,6 @@
     >
       Motion <span>ON</span>
     </button>
-
   </header>
 
   <main>
@@ -105,7 +175,6 @@
       class="observatory"
       aria-labelledby="hero-title"
     >
-
       <div class="hero-copy">
 
         <div class="eyebrow">
@@ -113,14 +182,11 @@
           THE PRIVATE WEALTH OBSERVATORY
         </div>
 
-        <h1 id="hero-title">
-          Your investments.<br>
-          <em>Clearly understood.</em>
-        </h1>
+        <h1 id="hero-title">Portfolio overview</h1>
 
         <div class="hero-valuation">
           <span class="label">
-            TOTAL PORTFOLIO VALUE
+            PORTFOLIO VALUE
             <span class="unit">EUR</span>
           </span>
 
@@ -177,7 +243,7 @@
           <span class="status-dot"></span>
 
           <span id="hero-date">
-            CONNECTING TO DAILY MARKET DATA
+            CONNECTING TO MARKET DATA
           </span>
 
           <button
@@ -186,7 +252,6 @@
             aria-label="Refresh market data"
           >↻</button>
         </div>
-
       </div>
 
       <div
@@ -195,14 +260,12 @@
         role="region"
         aria-label="Northstar celestial instrument"
       >
-
         <div class="instrument-heading">
           <span>NORTHSTAR CORE</span>
           <span>NS / 001</span>
         </div>
 
         <div class="core-space">
-
           <div class="core-halo"></div>
 
           <canvas
@@ -216,13 +279,11 @@
           </div>
 
           <div class="core-tilt" id="core-tilt">
-
             <svg
               class="core-dial"
               viewBox="0 0 500 500"
               aria-hidden="true"
             >
-
               <defs>
                 <radialGradient id="core-surface">
                   <stop stop-color="#1a3d50"/>
@@ -259,6 +320,7 @@
                 opacity=".2"
               >
                 <path d="M250 8V492M8 250H492"/>
+
                 <circle cx="250" cy="250" r="230"/>
 
                 <circle
@@ -448,13 +510,11 @@
                 <text x="226" y="372">TRUE NORTH</text>
                 <text x="220" y="132">CAPITAL / EUR</text>
               </g>
-
             </svg>
 
             <div class="gyro gyro-one"><i></i></div>
             <div class="gyro gyro-two"><i></i></div>
             <div class="gyro gyro-three"><i></i></div>
-
           </div>
 
           <div class="orbit-tag tag-world">
@@ -466,7 +526,6 @@
             <i></i>
             <span>EMERGING<small>VFEA</small></span>
           </div>
-
         </div>
 
         <p class="orbit-disclaimer">
@@ -481,9 +540,7 @@
 
           <span>PRECISION / PERSPECTIVE</span>
         </div>
-
       </div>
-
     </section>
 
     <div class="section-divider">
@@ -512,7 +569,7 @@
 
       <p>
         Perspective, without speculation.<br>
-        Daily closing prices · private browser storage ·
+        Delayed market prices · private browser storage ·
         no brokerage connection.
       </p>
 
@@ -529,7 +586,6 @@
     aria-labelledby="map-title"
     aria-describedby="map-help"
   >
-
     <div class="map-heading">
       <div>
         <span class="eyebrow">
@@ -557,7 +613,6 @@
     </p>
 
     <div class="map-layout">
-
       <canvas
         id="celestial-map"
         tabindex="0"
@@ -566,7 +621,6 @@
       ></canvas>
 
       <div class="map-information">
-
         <span class="eyebrow">SELECT A REFERENCE</span>
 
         <div
@@ -605,9 +659,7 @@
           PRIVATE BY DESIGN<br>
           Purchases stay in this browser. No brokerage connection.
         </p>
-
       </div>
-
     </div>
 
     <div class="map-bottom">
@@ -619,7 +671,6 @@
         Reset orientation ↺
       </button>
     </div>
-
   </dialog>
 
 </body>
