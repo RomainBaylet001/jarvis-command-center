@@ -1,9 +1,8 @@
 /*
-  NORTHSTAR / galaxy goal.
+  NORTHSTAR / ember galaxy goal.
   Reads portfolio summaries.
   Saves only the separate goal setting.
 */
-
 (() => {
   'use strict';
 
@@ -45,7 +44,6 @@
   let target = 1000000;
   let summary = null;
   let targetKind = 'Example target';
-
   let storageNote =
     'Example target · choose Edit goal to save your own.';
 
@@ -138,17 +136,17 @@
       flex-direction: column;
       align-items: center;
       gap: 0;
-      max-width: 520px;
+      max-width: 920px;
       margin: 0 auto;
     }
 
     body.goal-enabled #goal-section .goal-dial.goal-galaxy {
       position: relative;
-      width: min(580px, 100%);
-      height: 300px;
+      width: 100%;
+      height: clamp(340px, 43vw, 500px);
       display: grid;
       place-items: center;
-      margin: 4px auto 0;
+      margin: 12px auto 0;
       isolation: isolate;
     }
 
@@ -169,8 +167,8 @@
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 220px;
-      height: 220px;
+      width: 270px;
+      height: 270px;
       transform: translate(-50%, -50%);
       fill: none;
       overflow: visible;
@@ -198,9 +196,9 @@
       place-items: center;
       align-content: center;
       gap: 7px;
-      width: 150px;
-      max-width: 150px;
-      min-height: 120px;
+      width: 180px;
+      max-width: 180px;
+      min-height: 145px;
       padding: 16px;
       border-radius: 50%;
       text-align: center;
@@ -216,7 +214,7 @@
 
     body.goal-enabled #goal-section #goal-percent {
       color: #b9e4e8;
-      font-size: 32px;
+      font-size: 38px;
       font-weight: 350;
       letter-spacing: -.035em;
       font-variant-numeric: tabular-nums;
@@ -385,8 +383,6 @@
       scroll-margin-top: 106px;
     }
 
-    /* Existing Ledger presentation. */
-
     #ledger-dialog {
       width: min(1080px, 95vw);
       max-height: 90dvh;
@@ -479,16 +475,16 @@
       }
 
       body.goal-enabled #goal-section .goal-dial.goal-galaxy {
-        height: 260px;
+        height: 300px;
       }
 
       #goal-section .goal-dial.goal-galaxy > svg {
-        width: 200px;
-        height: 200px;
+        width: 230px;
+        height: 230px;
       }
 
       body.goal-enabled #goal-section #goal-percent {
-        font-size: 28px;
+        font-size: 32px;
       }
 
       #goal-section .goal-form-row {
@@ -504,13 +500,10 @@
   document.head.append(style);
 
   const trigger = document.createElement('a');
-
   trigger.href = '#goal-section';
   trigger.innerHTML = '<span>03</span> Goal';
 
-  nav.querySelector(
-    'a[href="#pf-chart"]'
-  )?.after(trigger);
+  nav.querySelector('a[href="#pf-chart"]')?.after(trigger);
 
   const holdingsLink = nav.querySelector(
     'a[href="#pf-holdings"]'
@@ -521,10 +514,8 @@
   }
 
   const ledgerButton = document.createElement('button');
-
   ledgerButton.type = 'button';
   ledgerButton.className = 'goal-nav';
-
   ledgerButton.innerHTML =
     '<span aria-hidden="true">05</span> Ledger';
 
@@ -544,10 +535,8 @@
   }
 
   const dialog = document.createElement('section');
-
   dialog.className = 'pf-panel goal-observatory';
   dialog.id = 'goal-section';
-
   dialog.setAttribute('aria-labelledby', 'goal-title');
   dialog.setAttribute('aria-describedby', 'goal-help');
 
@@ -578,7 +567,6 @@
             cy="100"
             r="82"
           />
-
           <circle
             class="goal-dial-progress"
             id="goal-arc"
@@ -600,9 +588,7 @@
         <span class="goal-kicker" id="goal-kind">
           Example target
         </span>
-
         <strong class="goal-target" id="goal-target">—</strong>
-
         <p class="goal-remaining-line">
           <strong id="goal-remaining">—</strong> remaining
         </p>
@@ -623,7 +609,6 @@
 
       <form id="goal-form">
         <label for="goal-input">Target in euros</label>
-
         <div class="goal-form-row">
           <input
             id="goal-input"
@@ -636,7 +621,6 @@
             required
             aria-describedby="goal-storage"
           >
-
           <button class="goal-save" type="submit">
             Save goal
           </button>
@@ -657,20 +641,15 @@
     </details>
   `;
 
-  document.querySelector(
-    '#view-investments'
-  ).after(dialog);
+  document.querySelector('#view-investments').after(dialog);
 
   const get = id => dialog.querySelector('#' + id);
   const input = get('goal-input');
-
   input.value = String(target);
 
   function priceLabel() {
     const quotes = ['VWCE', 'VFEA']
-      .filter(asset =>
-        summary?.rows?.[asset]?.shares > 0
-      )
+      .filter(asset => summary?.rows?.[asset]?.shares > 0)
       .map(asset => summary.rows[asset].quote)
       .filter(Boolean);
 
@@ -704,11 +683,8 @@
         }).format(new Date(timestamp)) + ' Berlin'
       : '';
 
-    return (
-      label + ' / ' +
-      (oldest.date || 'date unavailable') +
-      time
-    );
+    return label + ' / ' +
+      (oldest.date || 'date unavailable') + time;
   }
 
   function render() {
@@ -775,9 +751,7 @@
     const market = get('goal-market');
 
     const age = summary?.date
-      ? Date.now() - Date.parse(
-          summary.date + 'T12:00:00Z'
-        )
+      ? Date.now() - Date.parse(summary.date + 'T12:00:00Z')
       : NaN;
 
     const warning = !!summary && (
@@ -791,8 +765,7 @@
     const warningNote = get('goal-warning');
 
     warningNote.hidden =
-      !summary ||
-      (known && summary.count > 0);
+      !summary || (known && summary.count > 0);
 
     warningNote.textContent = !known
       ? 'Valuation unavailable'
@@ -833,23 +806,15 @@
     try {
       localStorage.setItem(
         KEY,
-        JSON.stringify({
-          version: 1,
-          target
-        })
+        JSON.stringify({ version: 1, target })
       );
 
       targetKind = 'Your target';
       storageNote = '';
-
       get('goal-editor').open = false;
-
-      get('goal-editor')
-        .querySelector('summary')
-        .focus();
+      get('goal-editor').querySelector('summary').focus();
     } catch {
       targetKind = 'Target for this visit';
-
       storageNote =
         'Goal applied for this visit. ' +
         'Browser storage could not save it.';
@@ -857,8 +822,6 @@
 
     render();
   });
-
-  // Preserve section navigation and the existing Ledger.
 
   document.addEventListener('northstar:ready', () => {
     const chart = document.getElementById('pf-chart')
@@ -882,9 +845,7 @@
     ].forEach(([section, title]) => {
       if (!section) return;
 
-      let label = section.querySelector(
-        '.section-coordinate'
-      );
+      let label = section.querySelector('.section-coordinate');
 
       if (!label) {
         label = document.createElement('div');
@@ -898,35 +859,23 @@
     if (!ledger || !root) return;
 
     const ledgerDialog = document.createElement('dialog');
-
     ledgerDialog.id = 'ledger-dialog';
-
-    ledgerDialog.setAttribute(
-      'aria-labelledby', 'ledger-title'
-    );
+    ledgerDialog.setAttribute('aria-labelledby', 'ledger-title');
 
     const title = ledger.querySelector('h2');
-
     if (title) title.id = 'ledger-title';
 
     const heading = document.createElement('div');
-
     heading.className = 'ledger-dialog-heading';
-
     heading.innerHTML =
       '<span class="eyebrow">' +
       'NORTHSTAR / PRIVATE LEDGER' +
       '</span>';
 
     const close = document.createElement('button');
-
     close.type = 'button';
     close.textContent = 'Close ×';
-
-    close.setAttribute(
-      'aria-label', 'Close transaction history'
-    );
-
+    close.setAttribute('aria-label', 'Close transaction history');
     close.setAttribute('autofocus', '');
 
     heading.append(close);
@@ -934,33 +883,20 @@
     root.append(ledgerDialog);
 
     function openLedger() {
-      if (!ledgerDialog.open) {
-        ledgerDialog.showModal();
-      }
-
-      ledgerButton.setAttribute(
-        'aria-expanded', 'true'
-      );
+      if (!ledgerDialog.open) ledgerDialog.showModal();
+      ledgerButton.setAttribute('aria-expanded', 'true');
     }
 
     ledgerButton.disabled = false;
-
-    ledgerButton.addEventListener(
-      'click', openLedger
-    );
+    ledgerButton.addEventListener('click', openLedger);
 
     close.addEventListener('click', () => {
       ledgerDialog.close();
     });
 
     ledgerDialog.addEventListener('close', () => {
-      ledgerButton.setAttribute(
-        'aria-expanded', 'false'
-      );
-
-      ledgerButton.focus({
-        preventScroll: true
-      });
+      ledgerButton.setAttribute('aria-expanded', 'false');
+      ledgerButton.focus({ preventScroll: true });
     });
 
     document.addEventListener('click', event => {
@@ -981,14 +917,10 @@
     });
 
     const followLedgerHash = () => {
-      if (location.hash === '#pf-trades') {
-        openLedger();
-      }
+      if (location.hash === '#pf-trades') openLedger();
     };
 
-    addEventListener(
-      'hashchange', followLedgerHash
-    );
+    addEventListener('hashchange', followLedgerHash);
 
     requestAnimationFrame(() => {
       followLedgerHash();
@@ -1004,9 +936,7 @@
   const motion = document.getElementById('motion-toggle');
   const footer = document.querySelector('main > footer');
 
-  if (motion && footer) {
-    footer.append(motion);
-  }
+  if (motion && footer) footer.append(motion);
 
   document.querySelector(
     '.hero-actions .quiet-link[href="#pf-trades"]'
@@ -1014,14 +944,8 @@
 
   document.body.classList.add('goal-enabled');
 
-  /*
-    Original procedural galaxy.
-    Decorative motion never changes financial values.
-  */
-
   function setupGalaxy() {
     const canvas = get('goal-galaxy-canvas');
-
     if (!canvas) return;
 
     let context;
@@ -1047,7 +971,6 @@
     let previous = 0;
     let lastPaint = -Infinity;
     let frame = 0;
-
     let visible = !('IntersectionObserver' in window);
     let seed = 7341;
 
@@ -1056,42 +979,49 @@
       2147483646;
 
     const particles = Array.from(
-      { length: 1100 },
+      { length: 1800 },
       (_, index) => {
         const radius = Math.sqrt(random());
 
         return {
           radius,
-
           angle:
             index % 3 * TAU / 3 +
-            radius * 7.8 +
-            (random() - .5) * .5,
-
+            radius * 6.4 +
+            (random() - .5) * .48,
           scatter: (random() - .5) * .13,
-          size: .24 + random() * .58,
-          alpha: .2 + random() * .65,
+          size: .35 + random() * .85,
+          alpha: .32 + random() * .65,
           phase: random() * TAU,
-
-          colour: index % 9 === 0
-            ? '#baa9d7'
-            : index % 5 === 0
-              ? '#e1d3b5'
-              : '#b2deea',
-
+          colour: index % 7 === 0
+            ? '#f0aa78'
+            : index % 3 === 0
+              ? '#e6cbb1'
+              : '#b7cfdf',
           haze: index % 14 === 0
         };
       }
     );
 
-    function makeGlow() {
-      const sprite = document.createElement('canvas');
+    const clouds = Array.from({ length: 190 }, (_, index) => {
+      const radius = .12 + Math.sqrt(random()) * .84;
 
+      return {
+        radius,
+        angle: index % 3 * TAU / 3 + radius * 6.4,
+        scatter: (random() - .5) * .055,
+        size: 32 + random() * 64,
+        alpha: .16 + random() * .24,
+        palette: index % 8 < 4 ? 0 : index % 8 < 7 ? 1 : 2
+      };
+    });
+
+    function makeGlow(colour) {
+      const sprite = document.createElement('canvas');
       sprite.width = 48;
       sprite.height = 48;
 
       const c = sprite.getContext('2d');
-
       if (!c) return null;
 
       const glow = c.createRadialGradient(
@@ -1099,10 +1029,10 @@
         24, 24, 24
       );
 
-      glow.addColorStop(0, '#ccebf4b0');
-      glow.addColorStop(.12, '#91cce966');
-      glow.addColorStop(.48, '#777fc31c');
-      glow.addColorStop(1, '#777fc300');
+      glow.addColorStop(0, `rgba(${colour}, .65)`);
+      glow.addColorStop(.18, `rgba(${colour}, .38)`);
+      glow.addColorStop(.55, `rgba(${colour}, .09)`);
+      glow.addColorStop(1, `rgba(${colour}, 0)`);
 
       c.fillStyle = glow;
       c.fillRect(0, 0, 48, 48);
@@ -1110,7 +1040,13 @@
       return sprite;
     }
 
-    const sprite = makeGlow();
+    const mist = [
+      makeGlow('179, 66, 37'),
+      makeGlow('190, 108, 53'),
+      makeGlow('74, 107, 154')
+    ];
+
+    const sprite = makeGlow('202, 221, 237');
 
     function paint() {
       if (!width || !height) return;
@@ -1120,12 +1056,10 @@
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
       c.clearRect(0, 0, width, height);
 
-      const extent = Math.min(width * .47, 250);
-      const scale = Math.min(1, width / 520);
-
+      const extent = Math.min(width * .48, 440);
+      const scale = Math.min(1, width / 900);
       const centreX = width / 2;
       const centreY = height / 2;
-
       const tilt = -.24;
       const cosTilt = Math.cos(tilt);
       const sinTilt = Math.sin(tilt);
@@ -1133,64 +1067,71 @@
       c.save();
       c.translate(centreX, centreY);
       c.rotate(tilt);
-      c.scale(1, .5);
+      c.scale(1, .48);
 
       const atmosphere = c.createRadialGradient(
         0, 0, 12,
         0, 0, extent
       );
 
-      atmosphere.addColorStop(0, '#b5e4f309');
-      atmosphere.addColorStop(.42, '#7a9acb09');
-      atmosphere.addColorStop(.75, '#8275b007');
-      atmosphere.addColorStop(1, '#8275b000');
+      atmosphere.addColorStop(0, '#a95f2d30');
+      atmosphere.addColorStop(.28, '#873b2628');
+      atmosphere.addColorStop(.65, '#65232212');
+      atmosphere.addColorStop(1, '#39192100');
 
       c.fillStyle = atmosphere;
-
       c.fillRect(
-        -extent,
-        -extent,
-        extent * 2,
-        extent * 2
+        -extent, -extent,
+        extent * 2, extent * 2
       );
-
       c.restore();
 
-      for (const star of particles) {
-        const radius =
-          16 + star.radius * (extent - 16);
+      const clearRadius = Math.min(88, width * .18);
+      const feather = Math.min(40, width * .08);
 
-        const angle = star.angle + time * .038;
-
+      function project(particle) {
+        const radius = 12 + particle.radius * (extent - 12);
+        const angle = particle.angle + time * .026;
         const diskX = Math.cos(angle) * radius;
 
         const diskY =
-          Math.sin(angle) * radius * .5 +
-          star.scatter * extent * star.radius;
+          Math.sin(angle) * radius * .48 +
+          particle.scatter * extent * particle.radius;
 
-        const x =
-          centreX +
-          diskX * cosTilt -
-          diskY * sinTilt;
+        return {
+          x: centreX + diskX * cosTilt - diskY * sinTilt,
+          y: centreY + diskX * sinTilt + diskY * cosTilt
+        };
+      }
 
-        const y =
-          centreY +
-          diskX * sinTilt +
-          diskY * cosTilt;
+      const centreFade = (x, y) => Math.max(0, Math.min(1,
+        (Math.hypot(x - centreX, y - centreY) - clearRadius) /
+        Math.max(1, feather)
+      ));
 
-        const distance = Math.hypot(
-          x - centreX,
-          y - centreY
+      for (const cloud of clouds) {
+        const texture = mist[cloud.palette];
+        if (!texture) continue;
+
+        const { x, y } = project(cloud);
+        const edge = Math.min(1, (1 - cloud.radius) * 6);
+        const size = cloud.size * Math.max(.55, scale);
+
+        c.globalAlpha =
+          cloud.alpha * edge * centreFade(x, y);
+
+        c.drawImage(
+          texture,
+          x - size / 2,
+          y - size / 2,
+          size,
+          size
         );
+      }
 
-        const clearCentre = Math.max(
-          0,
-          Math.min(
-            1,
-            (distance - 58 * scale) /
-            (42 * scale || 1)
-          )
-        );
+      for (const star of particles) {
+        const { x, y } = project(star);
+        const clearCentre = centreFade(x, y);
 
         const edge = Math.max(
           0,
@@ -1198,20 +1139,16 @@
         );
 
         const shimmer =
-          .88 +
-          .12 * Math.sin(time * .38 + star.phase);
+          .88 + .12 * Math.sin(time * .38 + star.phase);
 
         const alpha =
-          star.alpha *
-          clearCentre *
-          edge *
-          shimmer;
+          star.alpha * clearCentre * edge * shimmer;
 
         if (alpha < .015) continue;
 
         if (star.haze && sprite) {
           const size =
-            (12 + star.radius * 14) * scale;
+            (10 + star.radius * 12) * Math.max(.6, scale);
 
           c.globalAlpha = alpha * .45;
 
@@ -1228,8 +1165,8 @@
         c.fillStyle = star.colour;
 
         const size = Math.max(
-          .4,
-          star.size * scale
+          .55,
+          star.size * Math.max(.6, scale)
         );
 
         c.fillRect(x, y, size, size);
@@ -1243,13 +1180,10 @@
       document.body.classList.contains('motion-paused');
 
     const canAnimate = () =>
-      visible &&
-      !document.hidden &&
-      !paused();
+      visible && !document.hidden && !paused();
 
     function stop() {
       if (frame) cancelAnimationFrame(frame);
-
       frame = 0;
       previous = 0;
     }
@@ -1263,10 +1197,7 @@
       }
 
       if (previous) {
-        time += Math.min(
-          .05,
-          (now - previous) / 1000
-        );
+        time += Math.min(.05, (now - previous) / 1000);
       }
 
       previous = now;
@@ -1283,9 +1214,7 @@
       if (!canAnimate()) {
         stop();
 
-        if (visible && !document.hidden) {
-          paint();
-        }
+        if (visible && !document.hidden) paint();
       } else if (!frame) {
         previous = 0;
         frame = requestAnimationFrame(tick);
@@ -1297,11 +1226,7 @@
 
       width = box.width;
       height = box.height;
-
-      dpr = Math.min(
-        devicePixelRatio || 1,
-        1.5
-      );
+      dpr = Math.min(devicePixelRatio || 1, 1.5);
 
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
@@ -1321,14 +1246,8 @@
       new ResizeObserver(resize).observe(canvas);
     }
 
-    addEventListener(
-      'resize', resize, { passive: true }
-    );
-
-    document.addEventListener(
-      'visibilitychange', sync
-    );
-
+    addEventListener('resize', resize, { passive: true });
+    document.addEventListener('visibilitychange', sync);
     reduced.addEventListener('change', sync);
 
     let lastPaused = paused();
