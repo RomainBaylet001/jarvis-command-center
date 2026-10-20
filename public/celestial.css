@@ -1,4 +1,4 @@
-/* NORTHSTAR / orbital sphere and continuous celestial background. */
+/* NORTHSTAR — celestial design and dashboard readability */
 
 :root {
   --bg: #070b11;
@@ -22,6 +22,8 @@ main {
 .atmosphere {
   display: none;
 }
+
+/* HEADER */
 
 .masthead {
   position: sticky;
@@ -98,10 +100,7 @@ main {
   height: 2px;
   transform: translateX(var(--beacon-x, 0px));
   background: linear-gradient(
-    90deg,
-    transparent,
-    #dec99e,
-    transparent
+    90deg, transparent, #dec99e, transparent
   );
   transition:
     transform .24s cubic-bezier(.2, .8, .2, 1),
@@ -282,7 +281,6 @@ main {
   touch-action: pan-y;
 }
 
-/* Quiet static surface, also used if rendering is unavailable. */
 .core-space::before {
   content: "";
   position: absolute;
@@ -290,9 +288,7 @@ main {
   border: 1px solid #a2dbe51c;
   border-radius: 50%;
   background: radial-gradient(
-    circle at 34% 28%,
-    #96dce408,
-    transparent 64%
+    circle at 34% 28%, #96dce408, transparent 64%
   );
   box-shadow: inset 0 0 24px #83c8dd06;
   pointer-events: none;
@@ -312,7 +308,6 @@ main {
   display: none;
 }
 
-/* Hide the fallback only after the orbital renderer is ready. */
 .instrument.orbital-ready .northstar-anchor {
   visibility: hidden;
 }
@@ -425,10 +420,7 @@ main {
 
 #view-investments #pf-root .pf-panel:before {
   background: linear-gradient(
-    90deg,
-    #c6b48480,
-    #8facd728,
-    transparent
+    90deg, #c6b48480, #8facd728, transparent
   );
 }
 
@@ -757,7 +749,7 @@ body:has(#core-dialog[open]) {
   86% { opacity: .025; }
 }
 
-/* LARGE SCREENS */
+/* RESPONSIVE FOUNDATION */
 
 @media (min-width: 1500px) {
   .observatory {
@@ -765,8 +757,6 @@ body:has(#core-dialog[open]) {
     gap: 45px;
   }
 }
-
-/* IPAD AND SMALL DESKTOP */
 
 @media (max-width: 1100px) {
   .masthead { height: 80px; }
@@ -778,8 +768,6 @@ body:has(#core-dialog[open]) {
   .hero-facts { gap: 17px; }
   .hero-actions { gap: 15px; }
 }
-
-/* NARROW TABLETS */
 
 @media (max-width: 850px) {
   .observatory {
@@ -800,8 +788,6 @@ body:has(#core-dialog[open]) {
   #core-dialog { padding: 25px; }
 }
 
-/* MOBILE */
-
 @media (max-width: 620px) {
   .masthead {
     height: 70px;
@@ -813,7 +799,9 @@ body:has(#core-dialog[open]) {
     letter-spacing: .2em;
   }
 
-  .identity small { font-size: 6px; }
+  .identity small {
+    font-size: 6px;
+  }
 
   .nav {
     position: fixed;
@@ -850,8 +838,13 @@ body:has(#core-dialog[open]) {
     margin: 20px 0 25px;
   }
 
-  .hero-copy > .eyebrow { font-size: 7px; }
-  .hero-valuation > strong { font-size: 52px; }
+  .hero-copy > .eyebrow {
+    font-size: 7px;
+  }
+
+  .hero-valuation > strong {
+    font-size: 52px;
+  }
 
   .hero-facts {
     padding-left: 23px;
@@ -864,7 +857,9 @@ body:has(#core-dialog[open]) {
     gap: 18px;
   }
 
-  .primary-link { padding-inline: 16px; }
+  .primary-link {
+    padding-inline: 16px;
+  }
 
   .instrument {
     order: 1;
@@ -958,5 +953,378 @@ body.motion-paused *:after {
 
   html {
     scroll-behavior: auto;
+  }
+}
+
+/*
+  HOMEPAGE READABILITY
+  Scoped to the dashboard, preserving dialog form layouts.
+*/
+
+body.goal-enabled main {
+  max-width: 1480px;
+}
+
+body.goal-enabled .masthead .nav {
+  gap: clamp(16px, 2.1vw, 30px);
+}
+
+body.goal-enabled .masthead .nav a,
+body.goal-enabled .masthead .nav .goal-nav {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+body.goal-enabled .masthead .nav > a > span,
+body.goal-enabled .masthead .nav > .goal-nav > span {
+  display: none;
+}
+
+body.goal-enabled .hero-copy > .eyebrow {
+  display: none;
+}
+
+body.goal-enabled .observatory {
+  padding: 56px 0 48px;
+  gap: clamp(24px, 4vw, 64px);
+}
+
+body.goal-enabled .hero-copy h1 {
+  margin: 0 0 36px;
+  font-size: clamp(36px, 3.4vw, 50px);
+  line-height: 1.16;
+}
+
+body.goal-enabled .hero-valuation .label {
+  font-size: 11px;
+  letter-spacing: .09em;
+}
+
+body.goal-enabled .hero-valuation > strong {
+  font-size: clamp(46px, 4.8vw, 72px);
+  margin: 14px 0;
+  letter-spacing: -.045em;
+  overflow-wrap: anywhere;
+}
+
+body.goal-enabled .hero-pl {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+body.goal-enabled .unit {
+  font-size: 10px;
+}
+
+body.goal-enabled .hero-facts {
+  gap: 24px 36px;
+  margin-top: 28px;
+}
+
+body.goal-enabled .hero-facts span {
+  font-size: 10px;
+  letter-spacing: .05em;
+}
+
+body.goal-enabled .hero-facts strong {
+  margin-top: 7px;
+  font-size: 16px;
+}
+
+body.goal-enabled .hero-actions {
+  margin: 30px 0 22px;
+}
+
+body.goal-enabled .hero-actions .primary-link {
+  min-height: 48px;
+  padding: 13px 20px;
+  font-size: 14px;
+}
+
+body.goal-enabled .data-status {
+  column-gap: 14px;
+  row-gap: 8px;
+  letter-spacing: .025em;
+}
+
+body.goal-enabled #hero-date,
+body.goal-enabled #northstar-market-status {
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+body.goal-enabled #hero-date {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+body.goal-enabled .instrument {
+  max-width: 420px;
+}
+
+/* Consistent spacing for main-page panels only. */
+
+body.goal-enabled #view-investments #pf-root > section.pf-panel {
+  margin: 0 0 32px;
+  padding: clamp(24px, 3vw, 40px);
+  border-color: #9baec92b;
+  box-shadow: none;
+}
+
+body.goal-enabled #view-investments #pf-root > section.pf-panel > .section-coordinate {
+  display: none;
+}
+
+body.goal-enabled #view-investments #pf-root > section.pf-panel h2 {
+  font-size: clamp(27px, 2.6vw, 34px);
+  line-height: 1.2;
+}
+
+body.goal-enabled #view-investments #pf-root > section.pf-panel .pf-top {
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+body.goal-enabled #view-investments #pf-root > section.pf-panel .pf-sub {
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+/* Goal readability. */
+
+body.goal-enabled #goal-section .goal-heading .eyebrow {
+  display: none;
+}
+
+body.goal-enabled #goal-section h2 {
+  margin-top: 0;
+}
+
+body.goal-enabled #goal-section .goal-description {
+  font-size: 15px;
+  line-height: 1.8;
+  max-width: 60ch;
+  margin: 20px 0 30px;
+}
+
+body.goal-enabled #goal-section .goal-kicker,
+body.goal-enabled #goal-section .goal-market {
+  font-size: 12px;
+  letter-spacing: .035em;
+}
+
+body.goal-enabled #goal-section .goal-progress-heading span,
+body.goal-enabled #goal-section .goal-metrics dt,
+body.goal-enabled #goal-section label {
+  font-size: 14px;
+}
+
+body.goal-enabled #goal-section .goal-storage,
+body.goal-enabled #goal-section .goal-footnote {
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+/* A quieter X-Ray preview. Source dates remain visible. */
+
+body.goal-enabled #portfolio-xray.nxp-card {
+  margin: 0 0 32px;
+  border-radius: 4px;
+}
+
+body.goal-enabled #portfolio-xray .nxp-topline {
+  justify-content: flex-end;
+  padding: 16px 32px;
+  font-size: 11px;
+  color: #aab9c8;
+  letter-spacing: .025em;
+}
+
+body.goal-enabled #portfolio-xray .nxp-topline > span:first-child,
+body.goal-enabled #portfolio-xray .nxp-eyebrow,
+body.goal-enabled #portfolio-xray .nxp-preview-index,
+body.goal-enabled #portfolio-xray .nxp-preview-heading > div > span,
+body.goal-enabled #portfolio-xray .nxp-bottomline > span:last-child {
+  display: none;
+}
+
+body.goal-enabled #portfolio-xray .nxp-grid {
+  min-height: 0;
+}
+
+body.goal-enabled #portfolio-xray .nxp-copy {
+  padding: 32px;
+}
+
+body.goal-enabled #portfolio-xray h2 {
+  font-size: clamp(28px, 2.6vw, 36px);
+  line-height: 1.2;
+}
+
+body.goal-enabled #portfolio-xray .nxp-description {
+  font-size: 15px;
+  line-height: 1.8;
+  margin: 20px 0 28px;
+  max-width: 45ch;
+  color: #b4c0cd;
+}
+
+body.goal-enabled #portfolio-xray .nxp-action {
+  font-size: 12px;
+  min-height: 48px;
+  letter-spacing: .025em;
+}
+
+body.goal-enabled #portfolio-xray .nxp-preview {
+  padding: 32px;
+}
+
+body.goal-enabled #portfolio-xray .nxp-preview-heading strong {
+  margin-top: 0;
+  font-size: 24px;
+}
+
+body.goal-enabled #portfolio-xray .nxp-countries {
+  gap: 24px;
+  padding: 26px 0;
+}
+
+body.goal-enabled #portfolio-xray .nxp-country-name {
+  font-size: 15px;
+}
+
+body.goal-enabled #portfolio-xray .nxp-country-heading > strong {
+  font-size: 15px;
+}
+
+body.goal-enabled #portfolio-xray .nxp-country-name small,
+body.goal-enabled #portfolio-xray .nxp-country-value,
+body.goal-enabled #portfolio-xray .nxp-legend > span,
+body.goal-enabled #portfolio-xray #nxp-basis,
+body.goal-enabled #portfolio-xray .nxp-bottomline {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #a6b6c6;
+  letter-spacing: .02em;
+}
+
+/* Footer. */
+
+body.goal-enabled main > footer {
+  flex-wrap: wrap;
+  gap: 24px;
+  padding-block: 36px;
+}
+
+body.goal-enabled main > footer p {
+  font-size: 12px;
+  line-height: 1.8;
+  max-width: 52ch;
+}
+
+/* iPad portrait and smaller tablets. */
+
+@media (min-width: 621px) and (max-width: 900px) {
+  body.goal-enabled .masthead {
+    gap: 16px;
+    padding-inline: 24px;
+  }
+
+  body.goal-enabled .masthead .nav {
+    gap: 16px;
+  }
+
+  body.goal-enabled .masthead .nav a,
+  body.goal-enabled .masthead .nav .goal-nav {
+    font-size: 13px;
+  }
+
+  body.goal-enabled .identity {
+    font-size: 11px;
+    letter-spacing: .15em;
+  }
+
+  body.goal-enabled .identity img {
+    width: 32px;
+    height: 32px;
+  }
+
+  body.goal-enabled .hero-copy h1 {
+    font-size: 35px;
+  }
+
+  body.goal-enabled .hero-valuation > strong {
+    font-size: 48px;
+  }
+}
+
+/* Mobile readability. */
+
+@media (max-width: 620px) {
+  body.goal-enabled .masthead .nav {
+    gap: 2px;
+    padding-inline: 8px;
+  }
+
+  body.goal-enabled .masthead .nav a,
+  body.goal-enabled .masthead .nav .goal-nav {
+    justify-content: center;
+    font-size: 11px;
+    min-width: 44px;
+  }
+
+  body.goal-enabled .observatory {
+    padding: 36px 0 32px;
+    gap: 0;
+  }
+
+  body.goal-enabled .hero-copy h1 {
+    font-size: clamp(31px, 8vw, 40px);
+    margin-bottom: 32px;
+  }
+
+  body.goal-enabled .hero-valuation {
+    padding-left: 16px;
+  }
+
+  body.goal-enabled .hero-valuation > strong {
+    font-size: clamp(38px, 11.8vw, 56px);
+  }
+
+  body.goal-enabled .hero-facts {
+    padding-left: 17px;
+    gap: 20px 28px;
+  }
+
+  body.goal-enabled .hero-facts strong {
+    font-size: 15px;
+  }
+
+  body.goal-enabled .instrument {
+    max-width: 280px;
+    margin-top: 12px;
+  }
+
+  body.goal-enabled #view-investments #pf-root > section.pf-panel {
+    padding: 24px 18px;
+    margin: 0 0 24px;
+  }
+
+  body.goal-enabled #portfolio-xray.nxp-card {
+    margin-bottom: 24px;
+  }
+
+  body.goal-enabled #portfolio-xray .nxp-topline,
+  body.goal-enabled #portfolio-xray .nxp-bottomline {
+    padding: 14px 18px;
+  }
+
+  body.goal-enabled #portfolio-xray .nxp-copy,
+  body.goal-enabled #portfolio-xray .nxp-preview {
+    padding: 26px 18px;
+  }
+
+  body.goal-enabled #portfolio-xray .nxp-country-name {
+    font-size: 14px;
   }
 }
