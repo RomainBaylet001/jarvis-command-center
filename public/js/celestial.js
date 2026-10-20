@@ -1,4 +1,4 @@
-/* NORTHSTAR / celestial compass. Decorative bearings, real portfolio data. */
+/* NORTHSTAR / integrated celestial portfolio. */
 (() => {
   'use strict';
 
@@ -438,15 +438,16 @@
       'Northstar portfolio compass'
     );
 
+    const hero = document.querySelector('.observatory');
+    const copy = hero?.querySelector('.hero-copy');
+
+    if (hero && copy) {
+      hero.insertBefore(instrument, copy);
+    }
+
     const compassStyle = document.createElement('style');
 
     compassStyle.textContent = `
-      body .precision-compass .core-space {
-        height: auto;
-        aspect-ratio: 1;
-        touch-action: pan-y;
-      }
-
       .precision-compass .core-space::before {
         display: none;
       }
@@ -460,9 +461,9 @@
         justify-content: center;
         width: 100%;
         height: 100%;
-        padding: 0 0 3%;
+        padding: 0;
         border: 0;
-        border-radius: 50%;
+        border-radius: 40%;
         background: transparent;
         color: #acbbc9;
         cursor: pointer;
@@ -471,8 +472,9 @@
       }
 
       .precision-compass .compass-open span {
-        font: 11px/1.5 var(--mono, monospace);
-        letter-spacing: .045em;
+        font: 12px/1.5 var(--mono, monospace);
+        letter-spacing: .025em;
+        color: #c8b48e;
         transition: color .2s;
       }
 
@@ -484,6 +486,159 @@
       .precision-compass .compass-open:focus-visible {
         outline: 2px solid #99dce4;
         outline-offset: 5px;
+      }
+
+      body.goal-enabled main > .observatory {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        min-height: 0;
+        padding: 16px 0 44px;
+      }
+
+      body.goal-enabled main > .observatory #instrument.precision-compass {
+        width: 100%;
+        max-width: 900px;
+        margin: 0 auto;
+        align-self: center;
+      }
+
+      body.goal-enabled #instrument.precision-compass .core-space {
+        width: 100%;
+        height: clamp(260px, 25vw, 340px);
+        aspect-ratio: auto;
+        touch-action: pan-y;
+      }
+
+      body.goal-enabled main > .observatory .hero-copy {
+        width: 100%;
+        max-width: 680px;
+        padding: 18px 0 0;
+        text-align: center;
+      }
+
+      body.goal-enabled .observatory .hero-valuation {
+        border: 0;
+        padding: 0;
+      }
+
+      body.goal-enabled .observatory .hero-valuation .label {
+        font-size: 10px;
+        letter-spacing: .13em;
+      }
+
+      body.goal-enabled main > .observatory .hero-valuation > strong {
+        display: block;
+        margin: 12px 0 10px;
+        font-size: clamp(38px, 4vw, 52px);
+        line-height: 1.12;
+        letter-spacing: -.045em;
+        font-variant-numeric: tabular-nums;
+        font-weight: 350;
+      }
+
+      body.goal-enabled .observatory .hero-pl {
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      body.goal-enabled .observatory .hero-facts {
+        display: flex;
+        justify-content: center;
+        gap: 22px 36px;
+        flex-wrap: wrap;
+        padding: 0;
+        margin: 22px 0 0;
+      }
+
+      body.goal-enabled .observatory .hero-facts span {
+        font-size: 9px;
+        line-height: 1.8;
+        color: #91a2b1;
+      }
+
+      body.goal-enabled .observatory .hero-facts strong {
+        font-size: 13px;
+        margin-top: 5px;
+      }
+
+      body.goal-enabled .observatory .hero-actions {
+        display: none;
+      }
+
+      body.goal-enabled .observatory .data-status {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin: 22px auto 0;
+        max-width: 100%;
+      }
+
+      body.goal-enabled .observatory #hero-date {
+        min-width: 0;
+        max-width: 520px;
+        white-space: normal;
+        font-size: 10px;
+        line-height: 1.9;
+        letter-spacing: .025em;
+      }
+
+      body.goal-enabled #view-investments #pf-root > section.performance-refined {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        padding: 28px 0 32px;
+        margin-bottom: 40px;
+      }
+
+      body.goal-enabled #view-investments #pf-root > section.performance-refined::before {
+        display: none;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-chart {
+        background: linear-gradient(180deg, #070b1166, #070b1122);
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-chart svg {
+        background: transparent;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-readout {
+        border-top-color: #a4b5c514;
+        border-bottom-color: #a4b5c514;
+      }
+
+      @media (max-width: 620px) {
+        body.goal-enabled main > .observatory {
+          padding: 12px 0 28px;
+        }
+
+        body.goal-enabled #instrument.precision-compass .core-space {
+          height: 270px;
+        }
+
+        body.goal-enabled main > .observatory .hero-copy {
+          padding-top: 20px;
+        }
+
+        body.goal-enabled main > .observatory .hero-valuation > strong {
+          font-size: clamp(32px, 9vw, 44px);
+        }
+
+        body.goal-enabled .observatory .hero-facts {
+          gap: 18px;
+        }
+
+        body.goal-enabled .observatory #hero-date {
+          font-size: 9px;
+        }
+
+        body.goal-enabled #view-investments #pf-root > section.performance-refined {
+          padding: 20px 0;
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -501,7 +656,7 @@
     open.setAttribute('aria-label', 'Open portfolio in focus');
     open.setAttribute('aria-haspopup', 'dialog');
     open.setAttribute('aria-controls', 'core-dialog');
-    open.innerHTML = '<span>Explore portfolio ↗</span>';
+    open.innerHTML = '<span>View portfolio ↗</span>';
     space.append(open);
 
     let openedFromCompass = false;
@@ -559,34 +714,35 @@
 
     const orbits = [
       {
-        r: .38,
-        tilt: 1.12,
-        angle: -.42,
-        period: 36,
+        r: .46,
+        tilt: 1.31,
+        angle: -.22,
+        period: 52,
         phase: .4,
-        color: '153,220,228'
+        color: '215,180,120'
       },
       {
         r: .41,
-        tilt: .95,
-        angle: .98,
-        period: 52,
+        tilt: 1.34,
+        angle: .18,
+        period: 76,
         phase: 2.7,
-        color: '205,183,140'
+        color: '184,103,66'
       },
       {
-        r: .35,
-        tilt: 1.20,
-        angle: 2.05,
-        period: 74,
+        r: .36,
+        tilt: 1.32,
+        angle: -.35,
+        period: 98,
         phase: 4.5,
-        color: '171,184,220'
+        color: '159,184,201'
       }
     ];
 
     let width = 0;
     let height = 0;
     let size = 0;
+    let fieldHeight = 0;
     let dpr = 0;
 
     let time = 0;
@@ -606,13 +762,31 @@
 
     const wrap = (n, max) => ((n % max) + max) % max;
 
+    let sparkSeed = 9821;
+
+    const sparkRandom = () =>
+      ((sparkSeed = sparkSeed * 16807 % 2147483647) - 1) /
+      2147483646;
+
+    const sparks = Array.from({ length: 120 }, (_, i) => ({
+      orbit: {
+        ...orbits[i % 3],
+        r: .23 + sparkRandom() * .25,
+        angle:
+          orbits[i % 3].angle +
+          (sparkRandom() - .5) * .12
+      },
+      phase: sparkRandom() * TAU,
+      alpha: .14 + sparkRandom() * .38,
+      radius: .35 + sparkRandom() * .5,
+      warm: i % 4 !== 0
+    }));
+
     function resize() {
       const nextDpr = Math.min(devicePixelRatio || 1, 1.75);
-
-      const nextSize = Math.max(
-        1,
-        space.getBoundingClientRect().width
-      );
+      const bounds = space.getBoundingClientRect();
+      const nextSize = Math.max(1, bounds.width);
+      const nextHeight = Math.max(1, bounds.height);
 
       if (
         width !== innerWidth ||
@@ -652,9 +826,15 @@
         });
       }
 
-      if (size !== nextSize || dpr !== nextDpr) {
+      if (
+        size !== nextSize ||
+        fieldHeight !== nextHeight ||
+        dpr !== nextDpr
+      ) {
         size = nextSize;
-        orb.width = orb.height = Math.round(size * nextDpr);
+        fieldHeight = nextHeight;
+        orb.width = Math.round(size * nextDpr);
+        orb.height = Math.round(fieldHeight * nextDpr);
       }
 
       dpr = nextDpr;
@@ -707,17 +887,26 @@
     }
 
     function project(o, a) {
-      const r = size * o.r;
-      const tilt = o.tilt + pitch;
+      const tilt = o.tilt + pitch * .35;
+
+      const turn =
+        o.angle +
+        yaw * .35 +
+        Math.sin(time * .09) * .025;
+
+      const vertical = Math.hypot(
+        Math.sin(turn),
+        Math.cos(turn) * Math.cos(tilt)
+      );
+
+      const r = Math.min(
+        Math.min(size, 850) * o.r,
+        fieldHeight * .40 / Math.max(.1, vertical)
+      );
 
       const x = Math.cos(a) * r;
       const y = Math.sin(a) * r * Math.cos(tilt);
       const z = Math.sin(a) * r * Math.sin(tilt);
-
-      const turn =
-        o.angle +
-        yaw +
-        Math.sin(time * .09) * .035;
 
       const perspective = 1 + z / (size * 5);
 
@@ -744,12 +933,17 @@
 
       c.clearRect(
         -size / 2 - 1,
-        -size / 2 - 1,
+        -fieldHeight / 2 - 1,
         size + 2,
-        size + 2
+        fieldHeight + 2
       );
 
-      const scale = size / 400;
+      const scale = Math.min(
+        380,
+        size * .95,
+        fieldHeight * 1.12
+      ) / 400;
+
       const segments = [];
       const lights = [];
 
@@ -817,23 +1011,56 @@
         c.shadowBlur = 0;
       }
 
-      // Ambient light, with no solid globe.
       const glow = c.createRadialGradient(
         0, 0, 0,
-        0, 0, size * .36
+        0, 0, Math.min(size * .44, 350)
       );
 
-      glow.addColorStop(0, 'rgba(197,142,72,.10)');
-      glow.addColorStop(.25, 'rgba(145,104,60,.04)');
+      glow.addColorStop(0, 'rgba(197,142,72,.11)');
+      glow.addColorStop(.25, 'rgba(155,83,46,.055)');
       glow.addColorStop(.65, 'rgba(66,105,130,.02)');
       glow.addColorStop(1, 'rgba(66,105,130,0)');
 
       c.fillStyle = glow;
-      c.fillRect(-size / 2, -size / 2, size, size);
+      c.fillRect(
+        -size / 2,
+        -fieldHeight / 2,
+        size,
+        fieldHeight
+      );
+
+      sparks.forEach(star => {
+        const p = project(
+          star.orbit,
+          star.phase + time * .018
+        );
+
+        const distance = Math.hypot(p.x, p.y);
+
+        const fade = Math.max(
+          0,
+          Math.min(
+            1,
+            (distance - 100 * scale) / (55 * scale)
+          )
+        );
+
+        const light =
+          star.alpha *
+          fade *
+          (.9 + .1 * Math.sin(time * .3 + star.phase));
+
+        c.fillStyle = star.warm
+          ? `rgba(224,183,132,${light})`
+          : `rgba(181,205,222,${light})`;
+
+        c.beginPath();
+        c.arc(p.x, p.y, star.radius, 0, TAU);
+        c.fill();
+      });
 
       layer(false);
 
-      // Stationary compass scale.
       function circle(radius, colour, lineWidth = .7) {
         c.strokeStyle = colour;
         c.lineWidth = lineWidth * Math.max(.8, scale);
@@ -843,8 +1070,8 @@
       }
 
       circle(136, 'rgba(205,183,140,.25)');
-      circle(128, 'rgba(166,195,210,.14)');
-      circle(109, 'rgba(166,195,210,.09)');
+      circle(128, 'rgba(190,150,104,.16)');
+      circle(109, 'rgba(190,150,104,.08)');
 
       for (let i = 0; i < 120; i++) {
         const angle = i / 120 * TAU - Math.PI / 2;
@@ -855,8 +1082,8 @@
         c.strokeStyle = major
           ? 'rgba(220,204,172,.65)'
           : medium
-            ? 'rgba(159,191,208,.40)'
-            : 'rgba(159,191,208,.18)';
+            ? 'rgba(190,161,120,.40)'
+            : 'rgba(177,151,116,.18)';
 
         c.lineWidth = major ? 1 : .65;
         c.beginPath();
@@ -874,42 +1101,7 @@
         c.stroke();
       }
 
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.font =
-        `500 ${Math.max(10, 12 * scale)}px system-ui, sans-serif`;
-
-      ['N', 'E', 'S', 'W'].forEach((label, i) => {
-        const angle = i * Math.PI / 2 - Math.PI / 2;
-
-        c.fillStyle = i === 0 ? '#e0cc9f' : '#8da6b6';
-
-        c.fillText(
-          label,
-          Math.cos(angle) * 151 * scale,
-          Math.sin(angle) * 151 * scale
-        );
-      });
-
-      // Hide small bearing numbers on compact screens.
-      if (size >= 300) {
-        c.font = `${9 * scale}px monospace`;
-        c.fillStyle = 'rgba(157,180,195,.55)';
-
-        [30, 60, 120, 150, 210, 240, 300, 330]
-          .forEach(degrees => {
-            const angle =
-              degrees * Math.PI / 180 - Math.PI / 2;
-
-            c.fillText(
-              String(degrees).padStart(3, '0'),
-              Math.cos(angle) * 104 * scale,
-              Math.sin(angle) * 104 * scale
-            );
-          });
-      }
-
-      // Eight-point compass rose, shaded facet by facet.
+      // A decorative rose, without geographic bearings.
       c.save();
       c.scale(scale, scale);
 
@@ -931,7 +1123,7 @@
 
         c.fillStyle = i === 0
           ? '#decca3'
-          : cardinal ? '#bdd8df' : '#688694';
+          : cardinal ? '#c9b18a' : '#9a7655';
 
         c.beginPath();
         c.moveTo(0, 0);
@@ -942,7 +1134,7 @@
 
         c.fillStyle = i === 0
           ? '#8c7856'
-          : cardinal ? '#536f7f' : '#354b5b';
+          : cardinal ? '#796044' : '#513c30';
 
         c.beginPath();
         c.moveTo(0, 0);
@@ -952,7 +1144,6 @@
         c.fill();
       }
 
-      // Original Northstar at the centre.
       c.save();
       c.scale(.62, .62);
 
@@ -989,18 +1180,6 @@
       c.restore();
 
       layer(true);
-
-      // Fixed north marker.
-      c.save();
-      c.scale(scale, scale);
-      c.fillStyle = '#e3ce9c';
-      c.beginPath();
-      c.moveTo(0, -141);
-      c.lineTo(-3, -136);
-      c.lineTo(3, -136);
-      c.closePath();
-      c.fill();
-      c.restore();
 
       if (!instrument.classList.contains('orbital-ready')) {
         instrument.classList.add('orbital-ready');
