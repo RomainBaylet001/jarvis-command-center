@@ -1,5 +1,5 @@
 /*
-  NORTHSTAR / celestial portfolio goal.
+  NORTHSTAR / galaxy goal.
   Reads portfolio summaries.
   Saves only the separate goal setting.
 */
@@ -106,8 +106,6 @@
       color: #ebdec5;
     }
 
-    /* A standalone instrument against the page's star field. */
-
     #goal-section {
       box-sizing: border-box;
       width: 100%;
@@ -144,41 +142,41 @@
       margin: 0 auto;
     }
 
-    body.goal-enabled #goal-section .goal-dial {
+    body.goal-enabled #goal-section .goal-dial.goal-galaxy {
       position: relative;
-      width: 280px;
-      height: 240px;
+      width: min(580px, 100%);
+      height: 300px;
       display: grid;
       place-items: center;
-      margin: 8px auto 0;
+      margin: 4px auto 0;
       isolation: isolate;
     }
 
-    #goal-section .goal-dial::before {
-      content: "";
-      position: absolute;
-      inset: 18% 24%;
-      border-radius: 50%;
-      z-index: -1;
-      pointer-events: none;
-      background: radial-gradient(
-        circle, #99dce409, transparent 72%
-      );
+    #goal-section .goal-dial.goal-galaxy::before {
+      display: none;
     }
 
-    #goal-section .goal-dial svg {
+    #goal-section .goal-galaxy-canvas {
       position: absolute;
-      left: 0;
-      top: 50%;
+      inset: 0;
       width: 100%;
-      height: 280px;
-      transform: translateY(-50%);
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #goal-section .goal-dial.goal-galaxy > svg {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 220px;
+      height: 220px;
+      transform: translate(-50%, -50%);
       fill: none;
       overflow: visible;
       pointer-events: none;
+      z-index: 1;
     }
-
-    /* Financial progress: always tied to the actual value. */
 
     #goal-section .goal-dial-track {
       stroke: #8194a32b;
@@ -193,50 +191,27 @@
       transform-origin: 100px 100px;
     }
 
-    /* Decorative orbit: independent of financial performance. */
-
-    #goal-section .goal-orbit-path {
-      stroke: #cdb78c40;
-      stroke-width: .7;
-    }
-
-    #goal-section .goal-orbit-light {
-      stroke: #e2d1aa;
-      stroke-width: 2.2;
-      stroke-linecap: round;
-      transform-origin: 100px 100px;
-      animation: goal-orbit-travel 24s linear infinite;
-    }
-
-    #goal-section .goal-orbit-trail {
-      stroke: #d5c29a55;
-      stroke-width: 1.2;
-      transform-origin: 100px 100px;
-      animation: goal-orbit-travel 24s linear infinite;
-    }
-
-    @keyframes goal-orbit-travel {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
-    #goal-section.goal-resting .goal-orbit-light,
-    #goal-section.goal-resting .goal-orbit-trail,
-    body.motion-paused #goal-section .goal-orbit-light,
-    body.motion-paused #goal-section .goal-orbit-trail,
-    body.tab-hidden #goal-section .goal-orbit-light,
-    body.tab-hidden #goal-section .goal-orbit-trail {
-      animation-play-state: paused;
-    }
-
-    body.goal-enabled #goal-section .goal-dial-label {
+    body.goal-enabled #goal-section .goal-dial.goal-galaxy .goal-dial-label {
+      box-sizing: border-box;
+      position: relative;
       display: grid;
       place-items: center;
+      align-content: center;
       gap: 7px;
-      max-width: 130px;
+      width: 150px;
+      max-width: 150px;
+      min-height: 120px;
+      padding: 16px;
+      border-radius: 50%;
       text-align: center;
-      position: relative;
       pointer-events: none;
+      z-index: 2;
+      background: radial-gradient(
+        circle,
+        #070b11e6 20%,
+        #070b1180 55%,
+        transparent 72%
+      );
     }
 
     body.goal-enabled #goal-section #goal-percent {
@@ -503,13 +478,13 @@
         margin-bottom: 24px;
       }
 
-      body.goal-enabled #goal-section .goal-dial {
-        width: 240px;
-        height: 210px;
+      body.goal-enabled #goal-section .goal-dial.goal-galaxy {
+        height: 260px;
       }
 
-      #goal-section .goal-dial svg {
-        height: 240px;
+      #goal-section .goal-dial.goal-galaxy > svg {
+        width: 200px;
+        height: 200px;
       }
 
       body.goal-enabled #goal-section #goal-percent {
@@ -522,13 +497,6 @@
 
       #goal-section .goal-save {
         width: 100%;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      #goal-section .goal-orbit-light,
-      #goal-section .goal-orbit-trail {
-        animation: none;
       }
     }
   `;
@@ -563,7 +531,6 @@
   ledgerButton.setAttribute('aria-haspopup', 'dialog');
   ledgerButton.setAttribute('aria-controls', 'ledger-dialog');
   ledgerButton.setAttribute('aria-expanded', 'false');
-
   ledgerButton.disabled = true;
 
   const oldLedgerLink = nav.querySelector(
@@ -591,41 +558,20 @@
 
     <div class="goal-overview">
       <div
-        class="goal-dial"
+        class="goal-dial goal-galaxy"
         id="goal-track"
         role="progressbar"
         aria-label="Progress towards portfolio target"
         aria-valuemin="0"
         aria-valuemax="100"
       >
+        <canvas
+          class="goal-galaxy-canvas"
+          id="goal-galaxy-canvas"
+          aria-hidden="true"
+        ></canvas>
+
         <svg viewBox="0 0 200 200" aria-hidden="true">
-          <g transform="translate(100 100) rotate(-28) scale(1 .42) translate(-100 -100)">
-            <circle
-              class="goal-orbit-path"
-              cx="100"
-              cy="100"
-              r="112"
-            />
-
-            <circle
-              class="goal-orbit-trail"
-              cx="100"
-              cy="100"
-              r="112"
-              pathLength="100"
-              stroke-dasharray="9 91"
-            />
-
-            <circle
-              class="goal-orbit-light"
-              cx="100"
-              cy="100"
-              r="112"
-              pathLength="100"
-              stroke-dasharray=".5 99.5"
-            />
-          </g>
-
           <circle
             class="goal-dial-track"
             cx="100"
@@ -846,15 +792,13 @@
 
     warningNote.hidden =
       !summary ||
-      (known && summary.count > 0 && !warning);
+      (known && summary.count > 0);
 
     warningNote.textContent = !known
       ? 'Valuation unavailable'
       : !summary?.count
         ? 'Add purchases in Ledger to start tracking.'
-        : 'Price warning' + (
-            summary.date ? ' · ' + summary.date : ''
-          );
+        : '';
 
     if (!summary) {
       market.textContent = 'Waiting for portfolio data.';
@@ -868,7 +812,7 @@
     } else {
       market.textContent = priceLabel() + (
         warning
-          ? ' · Price warning — check market data'
+          ? ' · Using available prices; see market status above'
           : ''
       );
     }
@@ -1070,32 +1014,340 @@
 
   document.body.classList.add('goal-enabled');
 
-  // Pause decorative motion offscreen and in background tabs.
+  /*
+    Original procedural galaxy.
+    Decorative motion never changes financial values.
+  */
 
-  let goalVisible = true;
+  function setupGalaxy() {
+    const canvas = get('goal-galaxy-canvas');
 
-  function syncGoalMotion() {
-    dialog.classList.toggle(
-      'goal-resting',
-      document.hidden || !goalVisible
+    if (!canvas) return;
+
+    let context;
+
+    try {
+      context = canvas.getContext('2d');
+    } catch {
+      return;
+    }
+
+    if (!context) return;
+
+    const reduced = matchMedia(
+      '(prefers-reduced-motion: reduce)'
     );
-  }
 
-  if ('IntersectionObserver' in window) {
-    goalVisible = false;
+    const TAU = Math.PI * 2;
 
-    const goalObserver = new IntersectionObserver(entries => {
-      goalVisible = entries[0].isIntersecting;
-      syncGoalMotion();
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let time = 0;
+    let previous = 0;
+    let lastPaint = -Infinity;
+    let frame = 0;
+
+    let visible = !('IntersectionObserver' in window);
+    let seed = 7341;
+
+    const random = () =>
+      ((seed = seed * 16807 % 2147483647) - 1) /
+      2147483646;
+
+    const particles = Array.from(
+      { length: 1100 },
+      (_, index) => {
+        const radius = Math.sqrt(random());
+
+        return {
+          radius,
+
+          angle:
+            index % 3 * TAU / 3 +
+            radius * 7.8 +
+            (random() - .5) * .5,
+
+          scatter: (random() - .5) * .13,
+          size: .24 + random() * .58,
+          alpha: .2 + random() * .65,
+          phase: random() * TAU,
+
+          colour: index % 9 === 0
+            ? '#baa9d7'
+            : index % 5 === 0
+              ? '#e1d3b5'
+              : '#b2deea',
+
+          haze: index % 14 === 0
+        };
+      }
+    );
+
+    function makeGlow() {
+      const sprite = document.createElement('canvas');
+
+      sprite.width = 48;
+      sprite.height = 48;
+
+      const c = sprite.getContext('2d');
+
+      if (!c) return null;
+
+      const glow = c.createRadialGradient(
+        24, 24, 0,
+        24, 24, 24
+      );
+
+      glow.addColorStop(0, '#ccebf4b0');
+      glow.addColorStop(.12, '#91cce966');
+      glow.addColorStop(.48, '#777fc31c');
+      glow.addColorStop(1, '#777fc300');
+
+      c.fillStyle = glow;
+      c.fillRect(0, 0, 48, 48);
+
+      return sprite;
+    }
+
+    const sprite = makeGlow();
+
+    function paint() {
+      if (!width || !height) return;
+
+      const c = context;
+
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.clearRect(0, 0, width, height);
+
+      const extent = Math.min(width * .47, 250);
+      const scale = Math.min(1, width / 520);
+
+      const centreX = width / 2;
+      const centreY = height / 2;
+
+      const tilt = -.24;
+      const cosTilt = Math.cos(tilt);
+      const sinTilt = Math.sin(tilt);
+
+      c.save();
+      c.translate(centreX, centreY);
+      c.rotate(tilt);
+      c.scale(1, .5);
+
+      const atmosphere = c.createRadialGradient(
+        0, 0, 12,
+        0, 0, extent
+      );
+
+      atmosphere.addColorStop(0, '#b5e4f309');
+      atmosphere.addColorStop(.42, '#7a9acb09');
+      atmosphere.addColorStop(.75, '#8275b007');
+      atmosphere.addColorStop(1, '#8275b000');
+
+      c.fillStyle = atmosphere;
+
+      c.fillRect(
+        -extent,
+        -extent,
+        extent * 2,
+        extent * 2
+      );
+
+      c.restore();
+
+      for (const star of particles) {
+        const radius =
+          16 + star.radius * (extent - 16);
+
+        const angle = star.angle + time * .038;
+
+        const diskX = Math.cos(angle) * radius;
+
+        const diskY =
+          Math.sin(angle) * radius * .5 +
+          star.scatter * extent * star.radius;
+
+        const x =
+          centreX +
+          diskX * cosTilt -
+          diskY * sinTilt;
+
+        const y =
+          centreY +
+          diskX * sinTilt +
+          diskY * cosTilt;
+
+        const distance = Math.hypot(
+          x - centreX,
+          y - centreY
+        );
+
+        const clearCentre = Math.max(
+          0,
+          Math.min(
+            1,
+            (distance - 58 * scale) /
+            (42 * scale || 1)
+          )
+        );
+
+        const edge = Math.max(
+          0,
+          Math.min(1, (1 - star.radius) * 7)
+        );
+
+        const shimmer =
+          .88 +
+          .12 * Math.sin(time * .38 + star.phase);
+
+        const alpha =
+          star.alpha *
+          clearCentre *
+          edge *
+          shimmer;
+
+        if (alpha < .015) continue;
+
+        if (star.haze && sprite) {
+          const size =
+            (12 + star.radius * 14) * scale;
+
+          c.globalAlpha = alpha * .45;
+
+          c.drawImage(
+            sprite,
+            x - size / 2,
+            y - size / 2,
+            size,
+            size
+          );
+        }
+
+        c.globalAlpha = alpha;
+        c.fillStyle = star.colour;
+
+        const size = Math.max(
+          .4,
+          star.size * scale
+        );
+
+        c.fillRect(x, y, size, size);
+      }
+
+      c.globalAlpha = 1;
+    }
+
+    const paused = () =>
+      reduced.matches ||
+      document.body.classList.contains('motion-paused');
+
+    const canAnimate = () =>
+      visible &&
+      !document.hidden &&
+      !paused();
+
+    function stop() {
+      if (frame) cancelAnimationFrame(frame);
+
+      frame = 0;
+      previous = 0;
+    }
+
+    function tick(now) {
+      frame = 0;
+
+      if (!canAnimate()) {
+        previous = 0;
+        return;
+      }
+
+      if (previous) {
+        time += Math.min(
+          .05,
+          (now - previous) / 1000
+        );
+      }
+
+      previous = now;
+
+      if (now - lastPaint >= 1000 / 30) {
+        paint();
+        lastPaint = now;
+      }
+
+      frame = requestAnimationFrame(tick);
+    }
+
+    function sync() {
+      if (!canAnimate()) {
+        stop();
+
+        if (visible && !document.hidden) {
+          paint();
+        }
+      } else if (!frame) {
+        previous = 0;
+        frame = requestAnimationFrame(tick);
+      }
+    }
+
+    function resize() {
+      const box = canvas.getBoundingClientRect();
+
+      width = box.width;
+      height = box.height;
+
+      dpr = Math.min(
+        devicePixelRatio || 1,
+        1.5
+      );
+
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+
+      paint();
+      sync();
+    }
+
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(entries => {
+        visible = entries[0].isIntersecting;
+        sync();
+      }).observe(canvas);
+    }
+
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(resize).observe(canvas);
+    }
+
+    addEventListener(
+      'resize', resize, { passive: true }
+    );
+
+    document.addEventListener(
+      'visibilitychange', sync
+    );
+
+    reduced.addEventListener('change', sync);
+
+    let lastPaused = paused();
+
+    new MutationObserver(() => {
+      const next = paused();
+
+      if (next !== lastPaused) {
+        lastPaused = next;
+        sync();
+      }
+    }).observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class']
     });
 
-    goalObserver.observe(dialog);
+    resize();
   }
 
-  document.addEventListener(
-    'visibilitychange', syncGoalMotion
-  );
-
-  syncGoalMotion();
   render();
+  setupGalaxy();
 })();
