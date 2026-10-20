@@ -1,4 +1,4 @@
-/* NORTHSTAR: orbital light, real portfolio data, no storage writes. */
+/* NORTHSTAR / celestial compass. Decorative bearings, real portfolio data. */
 (() => {
   'use strict';
 
@@ -65,7 +65,6 @@
           <span><i></i>VWCE / World</span>
           <strong id="focus-world">—</strong>
         </div>
-
         <div>
           <span><i></i>VFEA / Emerging</span>
           <strong id="focus-emerging">—</strong>
@@ -113,7 +112,6 @@
       const bar = focus.querySelector('.focus-allocation');
 
       bar.children[0].style.width = (a ?? 0) + '%';
-
       bar.children[1].style.width =
         (a === null ? 0 : 100 - a) + '%';
 
@@ -255,7 +253,6 @@
 
     trigger.addEventListener('click', event => {
       event.preventDefault();
-
       updateFocus();
       details();
 
@@ -267,7 +264,7 @@
     });
 
     dialog.addEventListener('close', () => {
-      trigger.focus({preventScroll: true});
+      trigger.focus({ preventScroll: true });
     });
 
     dialog.querySelectorAll('[data-asset]').forEach(button => {
@@ -308,9 +305,7 @@
         if (
           !i ||
           section.querySelector('.section-coordinate')
-        ) {
-          return;
-        }
+        ) return;
 
         const label = document.createElement('div');
         label.className = 'section-coordinate';
@@ -378,7 +373,7 @@
           animate && !paused() ? 'smooth' : 'instant';
 
         if (i === 0) {
-          scrollTo({top: 0, behavior});
+          scrollTo({ top: 0, behavior });
         } else {
           sections[i].scrollIntoView({
             behavior,
@@ -397,9 +392,7 @@
             event.ctrlKey ||
             event.shiftKey ||
             event.altKey
-          ) {
-            return;
-          }
+          ) return;
 
           event.preventDefault();
 
@@ -423,13 +416,13 @@
         }
       }
 
-      addEventListener('scroll', schedule, {passive: true});
-      addEventListener('resize', schedule, {passive: true});
+      addEventListener('scroll', schedule, { passive: true });
+      addEventListener('resize', schedule, { passive: true });
       addEventListener('popstate', followHash);
       addEventListener('hashchange', followHash);
 
       requestAnimationFrame(followHash);
-    }, {once: true});
+    }, { once: true });
   }
 
   function setupSky() {
@@ -438,6 +431,94 @@
     const instrument = $('instrument');
 
     if (!background || !space || !instrument) return;
+
+    instrument.classList.add('precision-compass');
+    instrument.setAttribute(
+      'aria-label',
+      'Northstar portfolio compass'
+    );
+
+    const compassStyle = document.createElement('style');
+
+    compassStyle.textContent = `
+      body .precision-compass .core-space {
+        height: auto;
+        aspect-ratio: 1;
+        touch-action: pan-y;
+      }
+
+      .precision-compass .core-space::before {
+        display: none;
+      }
+
+      .precision-compass .compass-open {
+        appearance: none;
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        padding: 0 0 3%;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: #acbbc9;
+        cursor: pointer;
+        z-index: 4;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .precision-compass .compass-open span {
+        font: 11px/1.5 var(--mono, monospace);
+        letter-spacing: .045em;
+        transition: color .2s;
+      }
+
+      .precision-compass .compass-open:hover span,
+      .precision-compass .compass-open:focus-visible span {
+        color: #ecdcba;
+      }
+
+      .precision-compass .compass-open:focus-visible {
+        outline: 2px solid #99dce4;
+        outline-offset: 5px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .precision-compass .compass-open span {
+          transition: none;
+        }
+      }
+    `;
+
+    document.head.append(compassStyle);
+
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'compass-open';
+    open.setAttribute('aria-label', 'Open portfolio in focus');
+    open.setAttribute('aria-haspopup', 'dialog');
+    open.setAttribute('aria-controls', 'core-dialog');
+    open.innerHTML = '<span>Explore portfolio ↗</span>';
+    space.append(open);
+
+    let openedFromCompass = false;
+
+    open.addEventListener('click', () => {
+      if (!$('core-dialog')?.open) {
+        openedFromCompass = true;
+        $('explore-core')?.click();
+      }
+    });
+
+    $('core-dialog')?.addEventListener('close', () => {
+      if (openedFromCompass) {
+        openedFromCompass = false;
+        open.focus({ preventScroll: true });
+      }
+    });
 
     document.body.prepend(background);
 
@@ -461,7 +542,6 @@
     orb.setAttribute('aria-hidden', 'true');
 
     space.append(orb);
-
     background.setAttribute('aria-hidden', 'true');
 
     const bg = background.getContext('2d');
@@ -482,7 +562,7 @@
         r: .38,
         tilt: 1.12,
         angle: -.42,
-        period: 14,
+        period: 36,
         phase: .4,
         color: '153,220,228'
       },
@@ -490,7 +570,7 @@
         r: .41,
         tilt: .95,
         angle: .98,
-        period: 21,
+        period: 52,
         phase: 2.7,
         color: '205,183,140'
       },
@@ -498,7 +578,7 @@
         r: .35,
         tilt: 1.20,
         angle: 2.05,
-        period: 29,
+        period: 74,
         phase: 4.5,
         color: '171,184,220'
       }
@@ -513,6 +593,7 @@
     let last = 0;
     let frame = 0;
     let lastSky = -Infinity;
+    let lastOrb = -Infinity;
 
     let visible = true;
     let dirty = true;
@@ -645,12 +726,10 @@
           x * Math.cos(turn) -
           y * Math.sin(turn)
         ) * perspective,
-
         y: (
           x * Math.sin(turn) +
           y * Math.cos(turn)
         ) * perspective,
-
         z
       };
     }
@@ -660,8 +739,7 @@
 
       c.setTransform(
         dpr, 0, 0, dpr,
-        orb.width / 2,
-        orb.height / 2
+        orb.width / 2, orb.height / 2
       );
 
       c.clearRect(
@@ -671,6 +749,7 @@
         size + 2
       );
 
+      const scale = size / 400;
       const segments = [];
       const lights = [];
 
@@ -689,10 +768,10 @@
 
         const head = time / o.period * TAU + o.phase;
 
-        for (let i = 22; i >= 0; i--) {
+        for (let i = 18; i >= 0; i--) {
           lights.push({
-            ...project(o, head - i * .012),
-            alpha: (1 - i / 23) ** 2,
+            ...project(o, head - i * .011),
+            alpha: (1 - i / 19) ** 2,
             head: i === 0,
             color: o.color
           });
@@ -704,11 +783,10 @@
           if ((s.z >= 0) !== front) return;
 
           c.strokeStyle =
-            `rgba(${s.color},${
-              front ? .30 + .18 * s.z / size : .11
-            })`;
+            `rgba(${s.color},${front ? .28 : .10})`;
 
-          c.lineWidth = front ? .85 : .65;
+          c.lineWidth =
+            (front ? .8 : .6) * Math.max(.8, scale);
 
           c.beginPath();
           c.moveTo(s.a.x, s.a.y);
@@ -720,70 +798,163 @@
           if ((p.z >= 0) !== front) return;
 
           c.fillStyle =
-            `rgba(${p.color},${
-              p.alpha * (front ? .95 : .3)
-            })`;
+            `rgba(${p.color},${p.alpha * (front ? .95 : .3)})`;
 
           c.shadowColor = `rgba(${p.color},.65)`;
-          c.shadowBlur = p.head ? 9 : 0;
+          c.shadowBlur = p.head ? 9 * scale : 0;
 
           c.beginPath();
-
           c.arc(
             p.x,
             p.y,
-            p.head ? 1.8 : .9,
+            (p.head ? 2 : .8) * Math.max(.7, scale),
             0,
             TAU
           );
-
           c.fill();
         });
 
         c.shadowBlur = 0;
       }
 
+      // Ambient light, with no solid globe.
+      const glow = c.createRadialGradient(
+        0, 0, 0,
+        0, 0, size * .36
+      );
+
+      glow.addColorStop(0, 'rgba(197,142,72,.10)');
+      glow.addColorStop(.25, 'rgba(145,104,60,.04)');
+      glow.addColorStop(.65, 'rgba(66,105,130,.02)');
+      glow.addColorStop(1, 'rgba(66,105,130,0)');
+
+      c.fillStyle = glow;
+      c.fillRect(-size / 2, -size / 2, size, size);
+
       layer(false);
 
-      const r = size * .265;
+      // Stationary compass scale.
+      function circle(radius, colour, lineWidth = .7) {
+        c.strokeStyle = colour;
+        c.lineWidth = lineWidth * Math.max(.8, scale);
+        c.beginPath();
+        c.arc(0, 0, radius * scale, 0, TAU);
+        c.stroke();
+      }
 
-      const surface = c.createRadialGradient(
-        -r * .3,
-        -r * .4,
-        0,
-        0,
-        0,
-        r
-      );
+      circle(136, 'rgba(205,183,140,.25)');
+      circle(128, 'rgba(166,195,210,.14)');
+      circle(109, 'rgba(166,195,210,.09)');
 
-      surface.addColorStop(
-        0,
-        'rgba(113,171,204,.025)'
-      );
+      for (let i = 0; i < 120; i++) {
+        const angle = i / 120 * TAU - Math.PI / 2;
+        const major = i % 10 === 0;
+        const medium = i % 5 === 0;
+        const inner = major ? 119 : medium ? 123 : 126;
 
-      surface.addColorStop(
-        .8,
-        'rgba(80,133,175,.035)'
-      );
+        c.strokeStyle = major
+          ? 'rgba(220,204,172,.65)'
+          : medium
+            ? 'rgba(159,191,208,.40)'
+            : 'rgba(159,191,208,.18)';
 
-      surface.addColorStop(
-        1,
-        'rgba(151,203,224,.07)'
-      );
+        c.lineWidth = major ? 1 : .65;
+        c.beginPath();
 
-      c.fillStyle = surface;
-      c.strokeStyle = 'rgba(163,212,232,.13)';
-      c.lineWidth = .7;
+        c.moveTo(
+          Math.cos(angle) * inner * scale,
+          Math.sin(angle) * inner * scale
+        );
 
-      c.beginPath();
-      c.arc(0, 0, r, 0, TAU);
-      c.fill();
-      c.stroke();
+        c.lineTo(
+          Math.cos(angle) * 132 * scale,
+          Math.sin(angle) * 132 * scale
+        );
 
+        c.stroke();
+      }
+
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.font =
+        `500 ${Math.max(10, 12 * scale)}px system-ui, sans-serif`;
+
+      ['N', 'E', 'S', 'W'].forEach((label, i) => {
+        const angle = i * Math.PI / 2 - Math.PI / 2;
+
+        c.fillStyle = i === 0 ? '#e0cc9f' : '#8da6b6';
+
+        c.fillText(
+          label,
+          Math.cos(angle) * 151 * scale,
+          Math.sin(angle) * 151 * scale
+        );
+      });
+
+      // Hide small bearing numbers on compact screens.
+      if (size >= 300) {
+        c.font = `${9 * scale}px monospace`;
+        c.fillStyle = 'rgba(157,180,195,.55)';
+
+        [30, 60, 120, 150, 210, 240, 300, 330]
+          .forEach(degrees => {
+            const angle =
+              degrees * Math.PI / 180 - Math.PI / 2;
+
+            c.fillText(
+              String(degrees).padStart(3, '0'),
+              Math.cos(angle) * 104 * scale,
+              Math.sin(angle) * 104 * scale
+            );
+          });
+      }
+
+      // Eight-point compass rose, shaded facet by facet.
       c.save();
-
-      const scale = Math.min(1, size / 360);
       c.scale(scale, scale);
+
+      for (let i = 0; i < 8; i++) {
+        const angle = i * Math.PI / 4 - Math.PI / 2;
+        const cardinal = i % 2 === 0;
+        const length = i === 0 ? 77 : cardinal ? 65 : 44;
+        const halfWidth = cardinal ? 10 : 6;
+
+        const tip = {
+          x: Math.cos(angle) * length,
+          y: Math.sin(angle) * length
+        };
+
+        const left = {
+          x: Math.cos(angle + Math.PI / 2) * halfWidth,
+          y: Math.sin(angle + Math.PI / 2) * halfWidth
+        };
+
+        c.fillStyle = i === 0
+          ? '#decca3'
+          : cardinal ? '#bdd8df' : '#688694';
+
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.lineTo(left.x, left.y);
+        c.lineTo(tip.x, tip.y);
+        c.closePath();
+        c.fill();
+
+        c.fillStyle = i === 0
+          ? '#8c7856'
+          : cardinal ? '#536f7f' : '#354b5b';
+
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.lineTo(tip.x, tip.y);
+        c.lineTo(-left.x, -left.y);
+        c.closePath();
+        c.fill();
+      }
+
+      // Original Northstar at the centre.
+      c.save();
+      c.scale(.62, .62);
 
       const metal = c.createLinearGradient(
         -20, -35, 20, 35
@@ -795,14 +966,12 @@
       metal.addColorStop(1, '#d4e9ed');
 
       c.fillStyle = metal;
-      c.shadowColor = 'rgba(165,224,239,.3)';
-      c.shadowBlur = 12;
-
+      c.shadowColor = 'rgba(165,224,239,.25)';
+      c.shadowBlur = 10;
       c.fill(starPath);
 
       c.shadowBlur = 0;
       c.fillStyle = '#10202b';
-
       c.beginPath();
       c.moveTo(0, -5);
       c.lineTo(5, 0);
@@ -812,14 +981,26 @@
       c.fill();
 
       c.fillStyle = '#e6f8ff';
-
       c.beginPath();
-      c.arc(0, 0, 1.25, 0, TAU);
+      c.arc(0, 0, 1.6, 0, TAU);
       c.fill();
 
       c.restore();
+      c.restore();
 
       layer(true);
+
+      // Fixed north marker.
+      c.save();
+      c.scale(scale, scale);
+      c.fillStyle = '#e3ce9c';
+      c.beginPath();
+      c.moveTo(0, -141);
+      c.lineTo(-3, -136);
+      c.lineTo(3, -136);
+      c.closePath();
+      c.fill();
+      c.restore();
 
       if (!instrument.classList.contains('orbital-ready')) {
         instrument.classList.add('orbital-ready');
@@ -846,7 +1027,6 @@
         time += dt;
 
         const ease = 1 - Math.exp(-dt * 7);
-
         yaw += (targetYaw - yaw) * ease;
         pitch += (targetPitch - pitch) * ease;
       }
@@ -856,7 +1036,13 @@
         lastSky = now;
       }
 
-      if (visible || dirty) paintOrb();
+      if (
+        (visible || dirty) &&
+        (dirty || now - lastOrb >= 1000 / 30)
+      ) {
+        paintOrb();
+        lastOrb = now;
+      }
 
       dirty = false;
 
@@ -880,7 +1066,7 @@
       wake();
     }).observe(instrument);
 
-    addEventListener('resize', resize, {passive: true});
+    addEventListener('resize', resize, { passive: true });
 
     instrument.addEventListener('pointermove', event => {
       if (paused()) return;
@@ -902,7 +1088,7 @@
           (event.clientY - box.top) / box.height - .5
         )
       ) * .32;
-    }, {passive: true});
+    }, { passive: true });
 
     [
       'pointerleave',
@@ -911,7 +1097,7 @@
     ].forEach(type => {
       instrument.addEventListener(type, () => {
         targetYaw = targetPitch = 0;
-      }, {passive: true});
+      }, { passive: true });
     });
 
     document.addEventListener('visibilitychange', () => {
