@@ -1,6 +1,8 @@
-/* Presentation layer:
-   No portfolio persistence.
-   No external network requests. */
+/*
+  NORTHSTAR presentation layer.
+  No portfolio persistence.
+  No external network requests.
+*/
 
 (() => {
   "use strict";
@@ -36,16 +38,19 @@
   }
 
   function updateMotion() {
-    document.body.classList.toggle("motion-paused", paused);
+    document.body.classList.toggle(
+      "motion-paused", paused
+    );
 
     $("motion-toggle").setAttribute(
-      "aria-pressed",
-      String(paused)
+      "aria-pressed", String(paused)
     );
 
     $("motion-toggle").setAttribute(
       "aria-label",
-      paused ? "Resume ambient motion" : "Pause ambient motion"
+      paused
+        ? "Resume ambient motion"
+        : "Pause ambient motion"
     );
 
     $("motion-toggle").querySelector("span").textContent =
@@ -66,21 +71,20 @@
 
   document.addEventListener("visibilitychange", () => {
     document.body.classList.toggle(
-      "tab-hidden",
-      document.hidden
+      "tab-hidden", document.hidden
     );
   });
 
   new IntersectionObserver(entries => {
     entries.forEach(entry => {
       instrument.classList.toggle(
-        "offscreen",
-        !entry.isIntersecting
+        "offscreen", !entry.isIntersecting
       );
     });
   }).observe(instrument);
 
   // Calibration marks for the SVG fallback.
+
   const ticks = [];
 
   for (let index = 0; index < 120; index++) {
@@ -109,7 +113,11 @@
   let pointerY = 0;
 
   instrument.addEventListener("pointermove", event => {
-    if (paused || reduced.matches || document.hidden) return;
+    if (
+      paused ||
+      reduced.matches ||
+      document.hidden
+    ) return;
 
     pointerX = event.clientX;
     pointerY = event.clientY;
@@ -132,7 +140,7 @@
       tilt.style.setProperty("--yaw", `${yaw}deg`);
       tilt.style.setProperty("--pitch", `${pitch}deg`);
     });
-  }, {passive:true});
+  }, { passive: true });
 
   function resetTilt() {
     if (tiltFrame) cancelAnimationFrame(tiltFrame);
@@ -147,11 +155,12 @@
   instrument.addEventListener("pointerup", resetTilt);
   instrument.addEventListener("pointercancel", resetTilt);
 
+  // Presentation feedback from the financial engine.
+
   document.addEventListener("northstar:state", event => {
     clearTimeout(stateTimer);
 
     document.body.dataset.state = event.detail;
-
     $("refresh").disabled = event.detail === "loading";
 
     const labels = {
@@ -182,19 +191,24 @@
     const summary = event.detail;
 
     // Exact values only; no invented intermediate totals.
+
     $("hero-value").textContent =
-      summary.value === null ? "—" : currency(summary.value);
+      summary.value === null
+        ? "—"
+        : currency(summary.value);
 
     if (!summary.count) {
       $("hero-pl").textContent =
         "No purchases saved in this browser";
     } else if (summary.profit === null) {
-      $("hero-pl").textContent = "Valuation unavailable";
+      $("hero-pl").textContent =
+        "Valuation unavailable";
     } else {
       const sign = summary.profit >= 0 ? "+" : "−";
 
-      const returnPercent =
-        (summary.profit / summary.invested * 100).toFixed(2);
+      const returnPercent = (
+        summary.profit / summary.invested * 100
+      ).toFixed(2);
 
       $("hero-pl").textContent =
         `${sign}${currency(Math.abs(summary.profit))}` +
@@ -203,8 +217,7 @@
     }
 
     $("hero-pl").className =
-      "hero-pl " +
-      (
+      "hero-pl " + (
         summary.count && summary.profit !== null
           ? summary.profit >= 0 ? "up" : "down"
           : ""
@@ -269,6 +282,268 @@
     $("pf-refresh")?.click();
   });
 
+  /*
+    Refine the performance presentation.
+    Existing chart elements and engine listeners are retained.
+  */
+
+  function setupPerformancePresentation() {
+    const chart = $("pf-chart");
+    const panel = chart?.closest("section");
+    const modes = $("pf-modes");
+    const note = $("pf-chart-note");
+
+    if (
+      !panel ||
+      !modes ||
+      !note ||
+      panel.classList.contains("performance-refined")
+    ) return;
+
+    panel.classList.add("performance-refined");
+
+    const heading = panel.querySelector(".pf-top h2");
+
+    if (heading) heading.textContent = "Performance";
+
+    panel.querySelector(".pf-top .pf-micro")?.remove();
+
+    const capital = modes.querySelector(
+      '[data-mode="capital"]'
+    );
+
+    const market = modes.querySelector(
+      '[data-mode="market"]'
+    );
+
+    if (capital) capital.textContent = "Your portfolio";
+    if (market) market.textContent = "ETF returns";
+
+    modes.setAttribute("role", "group");
+    modes.setAttribute(
+      "aria-label", "Performance calculation"
+    );
+
+    $("pf-periods")?.setAttribute("role", "group");
+    $("pf-periods")?.setAttribute(
+      "aria-label", "Chart timeframe"
+    );
+
+    $("pf-legend")?.setAttribute("role", "group");
+    $("pf-legend")?.setAttribute(
+      "aria-label", "Visible chart series"
+    );
+
+    const basis = document.createElement("p");
+
+    basis.className = "performance-basis";
+    basis.id = "performance-basis";
+
+    modes.after(basis);
+
+    function syncBasis() {
+      const marketMode =
+        market?.getAttribute("aria-pressed") === "true";
+
+      basis.textContent = marketMode
+        ? "ETF price returns · rebased at the start of the selected window"
+        : "Gain ÷ contributed capital · since first purchase · not time-weighted";
+    }
+
+    modes.addEventListener("click", () => {
+      queueMicrotask(syncBasis);
+    });
+
+    syncBasis();
+
+    const explanation = document.createElement("details");
+    explanation.className = "performance-explanation";
+
+    const toggle = document.createElement("summary");
+    toggle.textContent = "How this chart is calculated";
+
+    note.before(explanation);
+    explanation.append(toggle, note);
+
+    const style = document.createElement("style");
+
+    style.textContent = `
+      body.goal-enabled #view-investments #pf-root > .performance-refined {
+        column-gap: 24px;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined .pf-top {
+        margin-bottom: 18px;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined .pf-top h2 {
+        margin: 0;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-modes {
+        display: inline-flex;
+        width: fit-content;
+        max-width: 100%;
+        gap: 4px;
+        padding: 4px;
+        margin: 0;
+        border: 1px solid #a4b5c52a;
+        border-radius: 6px;
+        background: #070e16;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-modes button {
+        min-height: 46px;
+        padding: 11px 18px;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        background: transparent;
+        color: #acbac8;
+        font-size: 14px;
+        font-weight: 400;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-modes button.active {
+        border-color: #b8cbd52b;
+        background: #b9d6e510;
+        color: #f0e4cd;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined .performance-basis {
+        margin: 14px 0 20px;
+        color: #acbac8;
+        font-size: 13px;
+        line-height: 1.8;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-legend {
+        gap: 4px 16px;
+        align-content: center;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-legend button {
+        min-height: 44px;
+        padding: 10px 0;
+        font-size: 14px;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-legend button:not(.active) {
+        text-decoration: line-through;
+        color: #91a0b0;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-periods {
+        gap: 4px;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-periods button {
+        min-width: 44px;
+        min-height: 44px;
+        font-size: 13px;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-readout {
+        gap: 12px 22px;
+        min-height: 66px;
+        margin-top: 12px;
+        padding: 16px 0;
+        border-top: 1px solid #a4b5c51c;
+        border-bottom: 1px solid #a4b5c51c;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-readout time {
+        font-size: 12px;
+        color: #adbdcc;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-readout span,
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-readout b {
+        font-size: 14px;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-chart {
+        margin-top: 12px;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined .performance-explanation {
+        margin-top: 18px;
+        border-top: 1px solid #a4b5c522;
+      }
+
+      .performance-explanation > summary {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        min-height: 48px;
+        padding: 14px 0;
+        list-style: none;
+        color: #c6d0d8;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      .performance-explanation > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .performance-explanation > summary::after {
+        content: "+";
+        margin-left: auto;
+        color: #cdb78c;
+        font-size: 20px;
+      }
+
+      .performance-explanation[open] > summary::after {
+        content: "−";
+      }
+
+      .performance-explanation > summary:focus-visible {
+        outline: 2px solid #99dce4;
+        outline-offset: 4px;
+      }
+
+      body.goal-enabled #view-investments #pf-root .performance-refined #pf-chart-note {
+        max-width: 85ch;
+        margin: 4px 0 16px;
+        font-size: 14px;
+        line-height: 1.85;
+      }
+
+      @media (max-width: 740px) {
+        body.goal-enabled #view-investments #pf-root > .performance-refined {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        body.goal-enabled #view-investments #pf-root .performance-refined #pf-periods {
+          justify-content: flex-start;
+          margin-top: 8px;
+        }
+      }
+
+      @media (max-width: 620px) {
+        body.goal-enabled #view-investments #pf-root .performance-refined #pf-modes {
+          width: 100%;
+        }
+
+        body.goal-enabled #view-investments #pf-root .performance-refined #pf-modes button {
+          flex: 1;
+          padding-inline: 12px;
+        }
+
+        body.goal-enabled #view-investments #pf-root .performance-refined #pf-readout {
+          min-height: 108px;
+          gap: 12px 18px;
+        }
+
+        body.goal-enabled #view-investments #pf-root .performance-refined #pf-readout time {
+          width: 100%;
+        }
+      }
+    `;
+
+    document.head.append(style);
+  }
+
   document.addEventListener("northstar:ready", () => {
     const colors = [
       "#eaf2fa",
@@ -278,11 +553,12 @@
     ];
 
     queueMicrotask(() => {
+      setupPerformancePresentation();
+
       document.querySelectorAll("#pf-legend button")
         .forEach((button, index) => {
           button.style.setProperty(
-            "--series-color",
-            colors[index]
+            "--series-color", colors[index]
           );
         });
     });
