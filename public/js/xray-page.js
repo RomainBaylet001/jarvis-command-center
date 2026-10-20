@@ -51,7 +51,7 @@
 
   const REGIONS = {
     "North America": ["United States", "Canada"],
-    "Europe": [
+    Europe: [
       "United Kingdom", "France", "Switzerland", "Germany",
       "Netherlands", "Spain", "Italy"
     ],
@@ -68,54 +68,54 @@
 
   const REGION_COLORS = {
     "North America": "#87d2df",
-    "Europe": "#a7b8c9",
+    Europe: "#a7b8c9",
     "Asia-Pacific": "#cdb78c",
     "Latin America": "#87b9a4",
     "Middle East & Africa": "#bb968a",
     "Other markets": "#536779"
   };
 
-  /* Retained fallback snapshot from the existing application. */
+  // Retained fallback snapshot from the existing application.
   const FALLBACK = {
     funds: {
       VWCE: {
         asOf: "2026-09-30",
         countries: {
           "United States": 62.24,
-          "Japan": 6.06,
-          "Taiwan": 3.54,
+          Japan: 6.06,
+          Taiwan: 3.54,
           "United Kingdom": 3.12,
-          "Canada": 2.91,
-          "China": 2.67,
+          Canada: 2.91,
+          China: 2.67,
           "South Korea": 2.60,
-          "France": 1.89,
-          "Switzerland": 1.88,
-          "Germany": 1.78,
-          "Australia": 1.53,
-          "India": 1.50,
-          "Netherlands": 1.18,
-          "Spain": 0.84,
-          "Italy": 0.75
+          France: 1.89,
+          Switzerland: 1.88,
+          Germany: 1.78,
+          Australia: 1.53,
+          India: 1.50,
+          Netherlands: 1.18,
+          Spain: 0.84,
+          Italy: 0.75
         }
       },
       VFEA: {
         asOf: "2026-09-30",
         countries: {
-          "Taiwan": 35.36,
-          "China": 26.66,
-          "India": 15.07,
-          "Brazil": 4.48,
+          Taiwan: 35.36,
+          China: 26.66,
+          India: 15.07,
+          Brazil: 4.48,
           "South Africa": 3.66,
           "Saudi Arabia": 3.10,
-          "Mexico": 2.07,
+          Mexico: 2.07,
           "United Arab Emirates": 1.72,
-          "Malaysia": 1.51,
-          "Thailand": 1.46,
-          "Turkey": 0.79,
-          "Indonesia": 0.68,
-          "Kuwait": 0.66,
-          "Chile": 0.65,
-          "Qatar": 0.58
+          Malaysia: 1.51,
+          Thailand: 1.46,
+          Turkey: 0.79,
+          Indonesia: 0.68,
+          Kuwait: 0.66,
+          Chile: 0.65,
+          Qatar: 0.58
         }
       }
     }
@@ -176,6 +176,9 @@
   let accountError = "";
   let prices = null;
   let priceStatus = "Market prices not connected";
+  let priceLoading = false;
+  let priceAttempt = 0;
+  let priceTimer = 0;
   let mode = "ALL";
   let selected = "";
   let expanded = false;
@@ -187,7 +190,7 @@
     "(prefers-reduced-motion: reduce)"
   ).matches;
 
-  /* DATA VALIDATION */
+  // DATA VALIDATION
 
   function validateCountryData(payload) {
     if (!payload || !payload.funds) {
@@ -298,7 +301,7 @@
     }
   }
 
-  /* MARKET VALUATION */
+  // MARKET VALUATION
 
   function parsePrices(payload) {
     if (
@@ -349,14 +352,188 @@
     }
 
     const date = common[common.length - 1];
+    const quotes = {};
+
+    for (const asset of ASSETS) {
+      const candidate = payload.quotes?.[asset];
+      const timestamp = Date.parse(candidate?.asOf);
+      const price = Number(candidate?.price);
+
+      quotes[asset] =
+        candidate &&
+        validPriceDate(candidate.date) &&
+        candidate.date >= date &&
+        Number.isFinite(price) &&
+        price > 0 &&
+        Number.isFinite(timestamp) &&
+        timestamp <= Date.now() + 300000 &&
+        berlinDate(timestamp) === candidate.date &&
+        ["delayed", "closing"].includes(candidate.type)
+          ? {
+              price,
+              date: candidate.date,
+              asOf: new Date(timestamp).toISOString(),
+              type: candidate.type
+            }
+          : {
+              price: maps[asset].get(date),
+              date,
+              type: "closing"
+            };
+    }
+
+    const raw = payload.market;
+
+    const sessions = Array.isArray(raw?.sessions)
+      ? raw.sessions.filter(session =>
+          validPriceDate(session.date) &&
+          Number.isFinite(Date.parse(session.open)) &&
+          Number.isFinite(Date.parse(session.close)) &&
+          Date.parse(session.open) < Date.parse(session.close) &&
+          berlinDate(Date.parse(session.open)) === session.date
+        ).sort((a, b) => a.date.localeCompare(b.date))
+      : [];
+
+    const market =
+      raw?.timezone === "Europe/Berlin" &&
+      validPriceDate(raw.calendarStart) &&
+      validPriceDate(raw.calendarEnd) &&
+      sessions.length
+        ? { ...raw, sessions }
+        : null;
+
+    return { date, quotes, market };
+  }
+
+  function validPriceDate(value) {
+    return (
+      typeof value === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+      Number.isFinite(Date.parse(value + "T12:00:00Z")) &&
+      new Date(value + "T12:00:00Z")
+        .toISOString()
+        .slice(0, 10) === value
+    );
+  }
+
+  function berlinDate(timestamp = Date.now()) {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Berlin",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(new Date(timestamp));
+
+    const part = type =>
+      parts.find(item => item.type === type).value;
+
+    return (
+      part("year") + "-" +
+      part("month") + "-" +
+      part("day")
+    );
+  }
+
+  function marketState(now = Date.now()) {
+    const market = prices?.market;
+    const today = berlinDate(now);
+
+    if (
+      !market ||
+      today < market.calendarStart ||
+      today > market.calendarEnd
+    ) {
+      return { known: false, open: false };
+    }
+
+    const session = market.sessions.find(
+      item => item.date === today
+    );
 
     return {
-      date,
-      quotes: {
-        VWCE: maps.VWCE.get(date),
-        VFEA: maps.VFEA.get(date)
-      }
+      known: true,
+      open:
+        !!session &&
+        now >= Date.parse(session.open) &&
+        now < Date.parse(session.close),
+      previous: [...market.sessions].reverse().find(
+        item => Date.parse(item.close) <= now
+      )
     };
+  }
+
+  function quoteStale(quote, now = Date.now()) {
+    if (!quote || !validPriceDate(quote.date)) {
+      return true;
+    }
+
+    const state = marketState(now);
+    const timestamp = Date.parse(quote.asOf);
+
+    if (!state.known) {
+      return (
+        now - Date.parse(quote.date + "T12:00:00Z")
+      ) > 5 * 86400000;
+    }
+
+    if (state.open) {
+      return (
+        !Number.isFinite(timestamp) ||
+        now - timestamp > 90 * 60000
+      );
+    }
+
+    const last = state.previous;
+
+    if (!last) return false;
+    if (quote.date < last.date) return true;
+
+    return (
+      quote.type === "delayed" &&
+      now > Date.parse(last.close) + 60 * 60000 &&
+      timestamp < Date.parse(last.close) - 30 * 60000
+    );
+  }
+
+  function valuationLabel(portfolio) {
+    if (!portfolio.market) {
+      return portfolio.hasHoldings
+        ? "Invested capital estimate"
+        : "No saved holdings";
+    }
+
+    const quotes = ASSETS.filter(asset =>
+      portfolio.rows[asset].shares > 0 &&
+      (mode === "ALL" || mode === asset)
+    ).map(asset => portfolio.rows[asset].quoteInfo);
+
+    if (!quotes.length) return "No holding in this ETF";
+
+    const oldest = [...quotes].sort((a, b) =>
+      (a.asOf || a.date).localeCompare(b.asOf || b.date)
+    )[0];
+
+    const kind = quotes.every(q => q.type === "closing")
+      ? "Daily close"
+      : quotes.every(q => q.type === "delayed")
+        ? "Delayed quotes"
+        : quotes.every(q => q.type === "manual")
+          ? "Manual snapshot"
+          : "Mixed price snapshots";
+
+    const time = oldest.asOf
+      ? new Intl.DateTimeFormat("en-GB", {
+          timeZone: "Europe/Berlin",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(new Date(oldest.asOf)) + " Berlin"
+      : "";
+
+    return (
+      kind + " · " + dateLabel(oldest.date) +
+      (time ? " " + time : "") +
+      (quotes.some(q => quoteStale(q)) ? " · STALE" : "")
+    );
   }
 
   function portfolioSnapshot() {
@@ -365,7 +542,9 @@
     let totalInvested = 0;
 
     for (const asset of ASSETS) {
-      const own = trades.filter(trade => trade.asset === asset);
+      const own = trades.filter(
+        trade => trade.asset === asset
+      );
 
       const invested = own.reduce(
         (sum, trade) => sum + trade.amount, 0
@@ -385,23 +564,31 @@
 
       let quote = null;
       let quoteDate = "";
+      let quoteInfo = null;
 
       if (
-        prices?.quotes[asset] > 0 &&
-        prices.date >= latestPurchase
+        prices?.quotes[asset]?.price > 0 &&
+        prices.quotes[asset].date >= latestPurchase
       ) {
-        quote = prices.quotes[asset];
-        quoteDate = prices.date;
+        quoteInfo = prices.quotes[asset];
+        quote = quoteInfo.price;
+        quoteDate = quoteInfo.date;
       } else {
         const manual = Number(account?.quotes?.[asset]);
 
         if (
+          Number.isFinite(manual) &&
           manual > 0 &&
-          account.quoteDate &&
+          validPriceDate(account.quoteDate) &&
           account.quoteDate >= latestPurchase
         ) {
           quote = manual;
           quoteDate = account.quoteDate;
+          quoteInfo = {
+            price: manual,
+            date: quoteDate,
+            type: "manual"
+          };
         }
       }
 
@@ -410,6 +597,7 @@
         shares,
         quote,
         quoteDate,
+        quoteInfo,
         marketValue: quote !== null ? shares * quote : null
       };
     }
@@ -433,6 +621,7 @@
     }
 
     return {
+      rows,
       amounts,
       total: amounts.VWCE + amounts.VFEA,
       invested: totalInvested,
@@ -441,15 +630,19 @@
       count: trades.length,
       basis: canValue ? "Market value" : "Invested capital",
       priceDate: canValue
-        ? rows.VWCE.quoteDate || rows.VFEA.quoteDate
+        ? ASSETS.filter(asset => rows[asset].shares > 0)
+            .map(asset => rows[asset].quoteDate)
+            .sort()[0] || ""
         : ""
     };
   }
 
-  /* GEOGRAPHIC CALCULATIONS */
+  // GEOGRAPHIC CALCULATIONS
 
   function regionFor(country) {
-    if (country === "Other markets") return "Other markets";
+    if (country === "Other markets") {
+      return "Other markets";
+    }
 
     for (const [region, countries] of Object.entries(REGIONS)) {
       if (countries.includes(country)) return region;
@@ -485,6 +678,7 @@
           };
 
           const contribution = factor * weight;
+
           row.weight += contribution;
           row.parts[asset] += contribution;
           countries.set(name, row);
@@ -500,7 +694,10 @@
 
     for (const country of countryRows) {
       const name = regionFor(country.name);
-      const row = regions.get(name) || { name, weight: 0 };
+      const row = regions.get(name) || {
+        name,
+        weight: 0
+      };
 
       row.weight += country.weight;
       regions.set(name, row);
@@ -544,7 +741,7 @@
     )?.name || "";
   }
 
-  /* LINKED SELECTION */
+  // LINKED SELECTION
 
   function selectCountry(name, origin = "map") {
     selected = name;
@@ -572,7 +769,8 @@
 
     if (origin === "ranking") {
       const button = [
-        ...$("xray-country-list").querySelectorAll("[data-country]")
+        ...$("xray-country-list")
+          .querySelectorAll("[data-country]")
       ].find(button =>
         countryKey(button.dataset.country) === countryKey(name)
       );
@@ -593,7 +791,7 @@
     }
   }
 
-  /* SUMMARY */
+  // SUMMARY
 
   function renderMetrics(result) {
     const top = result.countries.find(
@@ -613,18 +811,17 @@
 
     $("xray-value-note").textContent =
       accountError || (
-        mode !== "ALL"
-          ? `${mode} holding · ${result.portfolio.basis.toLowerCase()}`
-          : result.portfolio.hasHoldings
-            ? result.portfolio.basis + (
-                result.portfolio.priceDate
-                  ? " · " + result.portfolio.priceDate
-                  : " estimate"
-              )
-            : "No purchases saved in this browser"
+        (mode !== "ALL" ? mode + " · " : "") +
+        valuationLabel(result.portfolio) +
+        (
+          priceStatus === "Refresh unavailable"
+            ? " · Refresh unavailable"
+            : ""
+        )
       );
 
-    $("xray-top-country").textContent = top?.name || "—";
+    $("xray-top-country").textContent =
+      top?.name || "—";
 
     $("xray-top-percent").textContent = top
       ? pct(top.weight) + " of selected exposure"
@@ -678,7 +875,7 @@
       });
   }
 
-  /* WORLD MAP */
+  // WORLD MAP
 
   function svgElement(tag, attributes = {}) {
     const node = document.createElementNS(
@@ -769,7 +966,10 @@
           "x", Math.max(70, Math.min(900, x + 13))
         );
 
-        label.setAttribute("y", Math.max(24, y - 13));
+        label.setAttribute(
+          "y", Math.max(24, y - 13)
+        );
+
         label.textContent = item.name;
       }
     }
@@ -897,7 +1097,9 @@
           event => showTooltip(event, name)
         );
 
-        country.addEventListener("pointerleave", hideTooltip);
+        country.addEventListener(
+          "pointerleave", hideTooltip
+        );
 
         country.addEventListener("click", () => {
           hideTooltip();
@@ -956,7 +1158,7 @@
     }
   }
 
-  /* COUNTRY PANEL */
+  // COUNTRY PANEL
 
   function renderInspector(result) {
     const target = $("xray-inspector-content");
@@ -973,14 +1175,8 @@
         dateLabel(issuer.funds[asset].asOf) +
         "</span></div>"
       ).join("") +
-      "<div>Valuation · <span>" + (
-        result.portfolio.market
-          ? dateLabel(result.portfolio.priceDate) +
-            " · daily close"
-          : result.portfolio.hasHoldings
-            ? "Invested capital"
-            : "No saved holdings"
-      ) +
+      "<div>Valuation · <span>" +
+      escapeHtml(valuationLabel(result.portfolio)) +
       "</span></div></div>";
 
     if (!selected) {
@@ -1032,47 +1228,52 @@
 
     const aggregate = row.name === "Other markets";
 
-    const split = mode !== "ALL" ? "" : funds.map(asset => {
-      const weight = issuer.funds[asset].countries[row.name];
-      const disclosed = Number.isFinite(weight);
-      const owned = result.portfolio.amounts[asset] > 0;
-      const part = row.parts[asset];
+    const split = mode !== "ALL"
+      ? ""
+      : funds.map(asset => {
+          const weight =
+            issuer.funds[asset].countries[row.name];
 
-      const share = row.weight > 0
-        ? part / row.weight * 100
-        : 0;
+          const disclosed = Number.isFinite(weight);
+          const owned = result.portfolio.amounts[asset] > 0;
+          const part = row.parts[asset];
 
-      const amount = result.value > 0
-        ? result.value * part / 100
-        : null;
+          const share = row.weight > 0
+            ? part / row.weight * 100
+            : 0;
 
-      const wording = !owned
-        ? "No holding in this ETF"
-        : disclosed
-          ? pct(share) + " comes through " + asset
-          : "Country weight not separately disclosed";
+          const amount = result.value > 0
+            ? result.value * part / 100
+            : null;
 
-      return `
-        <div class="atlas-fund"
-          style="--fund-color:${COLORS[asset]}">
-          <div class="atlas-fund-head">
-            <strong>${asset}</strong>
-            <span>${disclosed ? money(amount) : "—"}</span>
-          </div>
+          const wording = !owned
+            ? "No holding in this ETF"
+            : disclosed
+              ? pct(share) + " comes through " + asset
+              : "Country weight not separately disclosed";
 
-          <div class="atlas-fund-track" aria-hidden="true">
-            <span style="width:${
-              Math.max(0, Math.min(100, share))
-            }%"></span>
-          </div>
+          return `
+            <div class="atlas-fund"
+              style="--fund-color:${COLORS[asset]}">
+              <div class="atlas-fund-head">
+                <strong>${asset}</strong>
+                <span>${disclosed ? money(amount) : "—"}</span>
+              </div>
 
-          <p>${wording}</p>
-        </div>
-      `;
-    }).join("");
+              <div class="atlas-fund-track" aria-hidden="true">
+                <span style="width:${
+                  Math.max(0, Math.min(100, share))
+                }%"></span>
+              </div>
+
+              <p>${wording}</p>
+            </div>
+          `;
+        }).join("");
 
     const formula = funds.map(asset => {
-      const weight = issuer.funds[asset].countries[row.name];
+      const weight =
+        issuer.funds[asset].countries[row.name];
 
       return "<p><strong>" + asset + "</strong>: " + (
         Number.isFinite(weight)
@@ -1152,7 +1353,7 @@
     `;
   }
 
-  /* COUNTRY RANKING */
+  // COUNTRY RANKING
 
   function renderCountryList(result) {
     const list = $("xray-country-list");
@@ -1179,7 +1380,8 @@
       : result.countries.slice(0, 10);
 
     const maximum = Math.max(
-      1, ...result.countries.map(row => row.weight)
+      1,
+      ...result.countries.map(row => row.weight)
     );
 
     list.innerHTML = visible.map((row, index) => {
@@ -1192,7 +1394,9 @@
         : null;
 
       const dominant =
-        row.parts.VFEA > row.parts.VWCE ? "VFEA" : "VWCE";
+        row.parts.VFEA > row.parts.VWCE
+          ? "VFEA"
+          : "VWCE";
 
       const active =
         countryKey(row.name) === countryKey(selected);
@@ -1227,14 +1431,17 @@
     }).join("");
 
     showAll.hidden = result.countries.length <= 10;
-    showAll.setAttribute("aria-expanded", String(expanded));
+
+    showAll.setAttribute(
+      "aria-expanded", String(expanded)
+    );
 
     showAll.textContent = expanded
       ? "SHOW TOP 10 ↑"
       : "EXPLORE ALL COUNTRIES ↓";
   }
 
-  /* REGIONAL ALLOCATION */
+  // REGIONAL ALLOCATION
 
   function renderRegions(result) {
     const ring = $("xray-region-ring");
@@ -1245,7 +1452,8 @@
         "conic-gradient(#334451 0% 100%)";
 
       ring.setAttribute(
-        "aria-label", "No regional allocation available"
+        "aria-label",
+        "No regional allocation available"
       );
 
       list.innerHTML = `
@@ -1264,9 +1472,14 @@
     let position = 0;
 
     const segments = result.regions.map(row => {
-      const colour = REGION_COLORS[row.name] || "#536779";
-      const end = position + row.weight / total * 100;
-      const segment = `${colour} ${position}% ${end}%`;
+      const colour =
+        REGION_COLORS[row.name] || "#536779";
+
+      const end =
+        position + row.weight / total * 100;
+
+      const segment =
+        `${colour} ${position}% ${end}%`;
 
       position = end;
       return segment;
@@ -1283,7 +1496,8 @@
     );
 
     list.innerHTML = result.regions.map(row => {
-      const colour = REGION_COLORS[row.name] || "#536779";
+      const colour =
+        REGION_COLORS[row.name] || "#536779";
 
       return `
         <div class="xray-region-row">
@@ -1321,7 +1535,7 @@
     updateAtlas(result);
   }
 
-  /* CSV EXPORT */
+  // CSV EXPORT
 
   function csvCell(value) {
     return '"' +
@@ -1379,6 +1593,7 @@
     const link = document.createElement("a");
 
     link.href = url;
+
     link.download =
       "northstar-country-exposure-" +
       mode.toLowerCase() + "-" +
@@ -1389,10 +1604,12 @@
     link.click();
     link.remove();
 
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setTimeout(
+      () => URL.revokeObjectURL(url), 2000
+    );
   }
 
-  /* REMOTE DATA */
+  // REMOTE DATA
 
   async function fetchJson(url) {
     const controller = new AbortController();
@@ -1439,24 +1656,50 @@
   }
 
   async function loadPriceData() {
+    if (priceLoading || document.hidden) return;
+
+    priceLoading = true;
+    priceAttempt = Date.now();
+
     try {
-      prices = parsePrices(await fetchJson(PRICE_URL));
-      priceStatus = "EUR closing prices connected";
+      prices = parsePrices(
+        await fetchJson(
+          PRICE_URL + "?v=" + priceAttempt
+        )
+      );
+
+      priceStatus = "EUR quotes connected";
     } catch (error) {
       console.warn(
         "NORTHSTAR X-Ray: market feed unavailable",
         error
       );
 
-      prices = null;
-      priceStatus =
-        "Price feed unavailable; invested capital fallback";
+      // Retain previously validated prices.
+      priceStatus = "Refresh unavailable";
     }
 
+    priceLoading = false;
     render();
+    schedulePrices();
   }
 
-  /* CELESTIAL BACKGROUND */
+  function schedulePrices() {
+    clearTimeout(priceTimer);
+
+    if (document.hidden) return;
+
+    const state = marketState();
+
+    priceTimer = setTimeout(
+      loadPriceData,
+      state.known && !state.open
+        ? 30 * 60000
+        : 5 * 60000
+    );
+  }
+
+  // CELESTIAL BACKGROUND
 
   function setupSky() {
     const canvas = $("celestial-core");
@@ -1506,7 +1749,10 @@
       stars = Array.from({
         length: Math.max(
           100,
-          Math.min(340, Math.round(width * height / 4200))
+          Math.min(
+            340,
+            Math.round(width * height / 4200)
+          )
         )
       }, () => {
         const layer = random() < 0.65
@@ -1517,8 +1763,10 @@
           x: random() * width,
           y: random() * height,
           layer,
-          radius: 0.3 + random() * 0.4 + layer * 0.12,
-          alpha: 0.18 + random() * 0.25 + layer * 0.07,
+          radius:
+            0.3 + random() * 0.4 + layer * 0.12,
+          alpha:
+            0.18 + random() * 0.25 + layer * 0.07,
           phase: random() * TAU
         };
       });
@@ -1533,8 +1781,14 @@
 
       for (const star of stars) {
         const speed = [0.6, 2, 4][star.layer];
-        const x = wrap(star.x + time * speed, width);
-        const y = wrap(star.y - time * speed * 0.16, height);
+
+        const x = wrap(
+          star.x + time * speed, width
+        );
+
+        const y = wrap(
+          star.y - time * speed * 0.16, height
+        );
 
         const edge = Math.max(
           0,
@@ -1549,11 +1803,16 @@
 
         context.globalAlpha =
           star.alpha * edge * (
-            0.9 + 0.1 * Math.sin(time * 0.5 + star.phase)
+            0.9 +
+            0.1 * Math.sin(time * 0.5 + star.phase)
           );
 
         context.beginPath();
-        context.arc(x, y, star.radius, 0, TAU);
+
+        context.arc(
+          x, y, star.radius, 0, TAU
+        );
+
         context.fill();
       }
 
@@ -1578,7 +1837,10 @@
       }
 
       if (lastTime) {
-        time += Math.min(0.05, (now - lastTime) / 1000);
+        time += Math.min(
+          0.05,
+          (now - lastTime) / 1000
+        );
       }
 
       lastTime = now;
@@ -1592,7 +1854,11 @@
     }
 
     function wake() {
-      if (!frame && !isPaused() && !document.hidden) {
+      if (
+        !frame &&
+        !isPaused() &&
+        !document.hidden
+      ) {
         frame = requestAnimationFrame(animate);
       }
     }
@@ -1632,24 +1898,30 @@
       updateMotion();
     });
 
-    reduced.addEventListener("change", updateMotion);
+    reduced.addEventListener(
+      "change", updateMotion
+    );
 
-    document.addEventListener("visibilitychange", () => {
-      document.body.classList.toggle(
-        "tab-hidden", document.hidden
-      );
+    document.addEventListener(
+      "visibilitychange", () => {
+        document.body.classList.toggle(
+          "tab-hidden", document.hidden
+        );
 
-      if (document.hidden) stop();
-      else wake();
-    });
+        if (document.hidden) stop();
+        else wake();
+      }
+    );
 
-    addEventListener("resize", resize, { passive: true });
+    addEventListener(
+      "resize", resize, { passive: true }
+    );
 
     resize();
     updateMotion();
   }
 
-  /* NAVIGATION */
+  // NAVIGATION
 
   function setupNavigation() {
     const nav = document.querySelector(".nav");
@@ -1681,41 +1953,59 @@
   }
 
   function setupEvents() {
-    $("xray-filters").addEventListener("click", event => {
-      const button = event.target.closest("[data-xray-mode]");
-      if (!button) return;
+    $("xray-filters").addEventListener(
+      "click", event => {
+        const button = event.target.closest(
+          "[data-xray-mode]"
+        );
 
-      mode = button.dataset.xrayMode;
-      selected = "";
-      expanded = false;
+        if (!button) return;
 
-      hideTooltip();
-      render();
-    });
+        mode = button.dataset.xrayMode;
+        selected = "";
+        expanded = false;
 
-    $("xray-country-list").addEventListener("click", event => {
-      const button = event.target.closest("[data-country]");
-      if (!button) return;
-
-      selectCountry(button.dataset.country, "ranking");
-
-      if (mapReady) {
-        $("xray-map-stage").scrollIntoView({
-          behavior: motionPaused ? "instant" : "smooth",
-          block: "nearest"
-        });
+        hideTooltip();
+        render();
       }
-    });
+    );
 
-    $("xray-show-all").addEventListener("click", () => {
-      expanded = !expanded;
-      renderCountryList(currentResult);
-    });
+    $("xray-country-list").addEventListener(
+      "click", event => {
+        const button = event.target.closest(
+          "[data-country]"
+        );
 
-    $("xray-export").addEventListener("click", exportCsv);
+        if (!button) return;
+
+        selectCountry(
+          button.dataset.country, "ranking"
+        );
+
+        if (mapReady) {
+          $("xray-map-stage").scrollIntoView({
+            behavior: motionPaused
+              ? "instant"
+              : "smooth",
+            block: "nearest"
+          });
+        }
+      }
+    );
+
+    $("xray-show-all").addEventListener(
+      "click", () => {
+        expanded = !expanded;
+        renderCountryList(currentResult);
+      }
+    );
+
+    $("xray-export").addEventListener(
+      "click", exportCsv
+    );
   }
 
-  /* ATLAS CONTROLS AND PRESENTATION */
+  // ATLAS CONTROLS AND PRESENTATION
 
   function setupAtlas() {
     const style = document.createElement("style");
@@ -1979,7 +2269,9 @@
         width: 100px;
         height: 7px;
         border-radius: 2px;
-        background: linear-gradient(90deg, #2c4d5c, #99dce4);
+        background: linear-gradient(
+          90deg, #2c4d5c, #99dce4
+        );
       }
 
       .atlas-missing {
@@ -2032,7 +2324,9 @@
 
     tools.innerHTML = `
       <form class="atlas-search" id="atlas-search">
-        <label for="atlas-country">Find a country</label>
+        <label for="atlas-country">
+          Find a country
+        </label>
 
         <div class="atlas-search-row">
           <input
@@ -2064,6 +2358,7 @@
     const caption = document.createElement("div");
     caption.className = "atlas-selection";
     caption.id = "atlas-selection";
+
     $("xray-map-stage").after(caption);
 
     const live = document.createElement("p");
@@ -2073,49 +2368,63 @@
 
     document.querySelector(".xray-atlas").append(live);
 
-    $("atlas-search").addEventListener("submit", event => {
-      event.preventDefault();
+    $("atlas-search").addEventListener(
+      "submit", event => {
+        event.preventDefault();
 
-      const key = countryKey($("atlas-country").value);
-      const names = atlasNames();
+        const key = countryKey(
+          $("atlas-country").value
+        );
 
-      const exact = names.find(
-        name => countryKey(name) === key
-      );
+        const names = atlasNames();
 
-      const partial = key
-        ? names.filter(name => countryKey(name).includes(key))
-        : [];
+        const exact = names.find(
+          name => countryKey(name) === key
+        );
 
-      const name = exact ||
-        (partial.length === 1 ? partial[0] : "");
+        const partial = key
+          ? names.filter(name =>
+              countryKey(name).includes(key)
+            )
+          : [];
 
-      if (!name) {
-        $("atlas-live").textContent = partial.length > 1
-          ? "Several countries match. Choose a full country name."
-          : "Country not found. Choose a name from the suggestions.";
+        const name = exact || (
+          partial.length === 1 ? partial[0] : ""
+        );
 
-        $("atlas-country").focus();
-        return;
+        if (!name) {
+          $("atlas-live").textContent =
+            partial.length > 1
+              ? "Several countries match. Choose a full country name."
+              : "Country not found. Choose a name from the suggestions.";
+
+          $("atlas-country").focus();
+          return;
+        }
+
+        $("atlas-country").value = name;
+        selectCountry(name, "search");
       }
+    );
 
-      $("atlas-country").value = name;
-      selectCountry(name, "search");
-    });
+    $("atlas-clear").addEventListener(
+      "click", () => {
+        selected = "";
+        $("atlas-country").value = "";
 
-    $("atlas-clear").addEventListener("click", () => {
-      selected = "";
-      $("atlas-country").value = "";
+        renderMap(currentResult);
+        renderInspector(currentResult);
+        renderCountryList(currentResult);
+        updateAtlas(currentResult);
 
-      renderMap(currentResult);
-      renderInspector(currentResult);
-      renderCountryList(currentResult);
-      updateAtlas(currentResult);
+        $("atlas-live").textContent =
+          "Country selection cleared.";
+      }
+    );
 
-      $("atlas-live").textContent = "Country selection cleared.";
-    });
-
-    document.querySelector(".xray-map-legend").innerHTML = `
+    document.querySelector(
+      ".xray-map-legend"
+    ).innerHTML = `
       <span class="atlas-scale">
         Lower <i aria-hidden="true"></i> Higher
       </span>
@@ -2131,7 +2440,11 @@
 
   function atlasNames() {
     return [...new Set([
-      ...(currentResult?.countries.map(row => row.name) || []),
+      ...(
+        currentResult?.countries.map(
+          row => row.name
+        ) || []
+      ),
       ...mapCountries.map(item => item.name)
     ])].sort((a, b) => a.localeCompare(b));
   }
@@ -2142,7 +2455,9 @@
     const names = atlasNames();
     const signature = names.join("|");
 
-    if ($("atlas-countries").dataset.names !== signature) {
+    if (
+      $("atlas-countries").dataset.names !== signature
+    ) {
       $("atlas-countries").replaceChildren(
         ...names.map(name => {
           const option = document.createElement("option");
@@ -2170,21 +2485,23 @@
     $("atlas-selection").replaceChildren();
 
     const label = document.createElement("strong");
-    label.textContent = selected || "Select a country";
+    label.textContent =
+      selected || "Select a country";
 
     $("atlas-selection").append(
       label,
       document.createTextNode(
         selected
           ? row
-            ? " · " + pct(row.weight) + " disclosed exposure"
+            ? " · " + pct(row.weight) +
+              " disclosed exposure"
             : " · not individually disclosed"
           : " · use the map, finder or country ranking"
       )
     );
   }
 
-  /* INITIALIZATION */
+  // INITIALIZATION
 
   function initialize() {
     account = readAccount();
@@ -2200,6 +2517,41 @@
     loadIssuerData();
     loadPriceData();
 
+    const resumePrices = () => {
+      if (document.hidden) {
+        clearTimeout(priceTimer);
+        return;
+      }
+
+      account = readAccount();
+
+      if (Date.now() - priceAttempt > 60000) {
+        loadPriceData();
+      } else {
+        schedulePrices();
+      }
+
+      render();
+    };
+
+    document.addEventListener(
+      "visibilitychange", resumePrices
+    );
+
+    addEventListener(
+      "focus", resumePrices
+    );
+
+    addEventListener("storage", event => {
+      if (
+        event.key === STORAGE_KEY ||
+        event.key === null
+      ) {
+        account = readAccount();
+        render();
+      }
+    });
+
     addEventListener("pageshow", event => {
       if (!event.persisted) return;
 
@@ -2211,7 +2563,9 @@
 
   if (document.readyState === "loading") {
     document.addEventListener(
-      "DOMContentLoaded", initialize, { once: true }
+      "DOMContentLoaded",
+      initialize,
+      { once: true }
     );
   } else {
     initialize();
