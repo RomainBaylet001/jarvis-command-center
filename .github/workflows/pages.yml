@@ -1,5 +1,4 @@
-
-name: Deploy JARVIS frontend
+name: Deploy NORTHSTAR
 
 on:
   push:
@@ -18,6 +17,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -26,11 +26,62 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify website files
+      - name: Verify pages and dependencies
+        shell: bash
         run: |
-          test -s public/index.html
-          test -s public/styles.css
-          test -s public/js/app.js
+          set -euo pipefail
+
+          required_files=(
+            public/index.html
+            public/performance.html
+            public/goal.html
+            public/xray.html
+            public/holdings.html
+            public/ledger.html
+            public/portfolio.css
+            public/observatory.css
+            public/celestial.css
+            public/xray-page.css
+            public/manifest.webmanifest
+            public/assets/northstar-mark.svg
+            public/data/etf-history.json
+            public/data/country-exposure.json
+            public/js/pages.js
+            public/js/finance-utils.js
+            public/js/observatory.js
+            public/js/celestial.js
+            public/js/goal.js
+            public/js/portfolio-observatory.js
+            public/js/transactions.js
+            public/js/xray-page.js
+          )
+
+          for file in "${required_files[@]}"; do
+            if [[ ! -s "$file" ]]; then
+              echo "::error file=$file::Required file is missing or empty."
+              exit 1
+            fi
+          done
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          scripts=(
+            pages
+            finance-utils
+            observatory
+            celestial
+            goal
+            portfolio-observatory
+            transactions
+            xray-page
+          )
+
+          for script in "${scripts[@]}"; do
+            node --check "public/js/$script.js"
+          done
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
