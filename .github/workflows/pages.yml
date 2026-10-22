@@ -12,7 +12,8 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   deploy:
@@ -23,8 +24,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout latest main
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Verify pages and dependencies
         shell: bash
@@ -54,6 +57,7 @@ jobs:
             public/js/portfolio-observatory.js
             public/js/transactions.js
             public/js/xray-page.js
+            public/js/xray-polish.js
           )
 
           for file in "${required_files[@]}"; do
@@ -77,6 +81,7 @@ jobs:
             portfolio-observatory
             transactions
             xray-page
+            xray-polish
           )
 
           for script in "${scripts[@]}"; do
