@@ -207,3 +207,147 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* NORTHSTAR / open, readable holdings. */
+
+body.goal-enabled #view-investments #pf-root > section.pf-panel:has(#pf-holdings) {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 28px 0 32px;
+  margin: 0 0 40px;
+}
+
+body.goal-enabled #view-investments #pf-root > section.pf-panel:has(#pf-holdings)::before {
+  display: none;
+}
+
+body.goal-enabled #view-investments #pf-root > section:has(#pf-holdings) > h2 {
+  margin: 0 0 24px;
+  font: normal 28px/1.2 Georgia, "Times New Roman", serif;
+  letter-spacing: -.025em;
+  color: #e7ecef;
+}
+
+body.goal-enabled #view-investments #pf-root #pf-bar {
+  height: 4px;
+  margin: 0 0 14px;
+  border: 0;
+  border-radius: 2px;
+  opacity: .85;
+}
+
+body.goal-enabled #view-investments #pf-root #pf-allocation {
+  margin: 0 0 28px;
+  color: #a9b7c4;
+  font-size: 13px;
+  line-height: 1.8;
+  letter-spacing: 0;
+}
+
+body.goal-enabled #view-investments #pf-root section:has(#pf-holdings) .pf-table {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #8c795450 transparent;
+}
+
+body.goal-enabled #view-investments #pf-root section:has(#pf-holdings) table {
+  width: 100%;
+  min-width: 680px;
+  border: 0;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+body.goal-enabled #view-investments #pf-root section:has(#pf-holdings) thead th {
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid #cdb78c30;
+  background: transparent;
+  color: #9dabb7;
+  font: 10px/1.6 var(--mono, monospace);
+  letter-spacing: .075em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+body.goal-enabled #view-investments #pf-root #pf-holdings td {
+  padding: 28px 16px;
+  border: 0;
+  border-bottom: 1px solid #a4b5c51a;
+  background: transparent;
+  color: #d4dce3;
+  text-align: right;
+  font-size: 14px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+body.goal-enabled #view-investments #pf-root section:has(#pf-holdings) thead th:first-child,
+body.goal-enabled #view-investments #pf-root #pf-holdings td:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+
+body.goal-enabled #view-investments #pf-root section:has(#pf-holdings) thead th:last-child,
+body.goal-enabled #view-investments #pf-root #pf-holdings td:last-child {
+  padding-right: 0;
+}
+
+body.goal-enabled #view-investments #pf-root #pf-holdings td:first-child b {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: .035em;
+}
+
+body.goal-enabled #view-investments #pf-root #pf-holdings td:nth-child(2),
+body.goal-enabled #view-investments #pf-root #pf-holdings td:nth-child(3),
+body.goal-enabled #view-investments #pf-root #pf-holdings td:nth-child(4) {
+  color: #aab8c5;
+  font-size: 13px;
+}
+
+body.goal-enabled #view-investments #pf-root #pf-holdings td:nth-child(5) {
+  color: #edf0f3;
+  font-size: 18px;
+  font-weight: 450;
+  letter-spacing: -.02em;
+}
+
+body.goal-enabled #view-investments #pf-root #pf-holdings td:last-child {
+  font-weight: 500;
+}
+
+body.goal-enabled #view-investments #pf-root #pf-holdings tr:hover {
+  background: #cdb78c06;
+}
+
+body.goal-enabled #view-investments #pf-root section:has(#pf-holdings) > .pf-sub:last-child {
+  max-width: 76ch;
+  margin: 20px 0 0;
+  color: #95a5b4;
+  font-size: 12px;
+  line-height: 1.85;
+}
+
+@media (max-width: 740px) {
+  body.goal-enabled #view-investments #pf-root > section.pf-panel:has(#pf-holdings) {
+    padding: 24px 0;
+    margin-bottom: 28px;
+  }
+
+  body.goal-enabled #view-investments #pf-root section:has(#pf-holdings) thead th {
+    padding-inline: 12px;
+  }
+
+  body.goal-enabled #view-investments #pf-root #pf-holdings td {
+    padding: 24px 12px;
+  }
+
+  body.goal-enabled #view-investments #pf-root #pf-holdings td:nth-child(5) {
+    font-size: 17px;
+  }
+}
