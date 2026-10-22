@@ -5,7 +5,7 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
+    content="width=device-width,initial-scale=1,viewport-fit=cover"
   >
 
   <meta name="theme-color" content="#070b11">
@@ -24,14 +24,12 @@
   >
 
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./portfolio.css">
-  <link rel="stylesheet" href="./observatory.css">
-  <link rel="stylesheet" href="./celestial.css">
-  <link rel="stylesheet" href="./xray-page.css">
+  <link rel="stylesheet" href="./portfolio.css?v=pages-1">
+  <link rel="stylesheet" href="./observatory.css?v=pages-1">
+  <link rel="stylesheet" href="./celestial.css?v=pages-1">
+  <link rel="stylesheet" href="./xray-page.css?v=pages-1">
 
   <style>
-    /* Readability adjustments scoped to X-Ray. */
-
     .readability .xray-intro {
       padding: 0 0 34px;
     }
@@ -320,11 +318,14 @@
     src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"
   ></script>
 
-  <script defer src="./js/xray-page.js"></script>
+  <script defer src="./js/pages.js?v=pages-1"></script>
+  <script defer src="./js/xray-page.js?v=pages-1"></script>
 </head>
 
-<body class="xray-page readability">
-
+<body
+  class="xray-page readability"
+  data-northstar-page="xray"
+>
   <a class="skip" href="#xray-main">
     Skip to Portfolio X-Ray
   </a>
@@ -358,25 +359,20 @@
     <nav class="nav" aria-label="Northstar navigation">
       <span class="nav-beacon" aria-hidden="true"></span>
 
-      <a href="./index.html#top">
-        <span>01</span> Overview
-      </a>
-
-      <a href="./index.html#pf-chart">
-        <span>02</span> Performance
-      </a>
+      <a href="./index.html">Overview</a>
+      <a href="./performance.html">Performance</a>
+      <a href="./goal.html">Goal</a>
 
       <a
         href="./xray.html"
         class="active"
         aria-current="page"
       >
-        <span>03</span> X-Ray
+        X-Ray
       </a>
 
-      <a href="./index.html#pf-holdings">
-        <span>04</span> Holdings
-      </a>
+      <a href="./holdings.html">Holdings</a>
+      <a href="./ledger.html">Ledger</a>
     </nav>
 
     <button
@@ -391,12 +387,9 @@
   </header>
 
   <main id="xray-main" class="xray-shell">
-
-    <!-- Introduction -->
     <section class="xray-intro">
       <div class="xray-intro-grid">
         <div class="xray-intro-copy">
-
           <div class="xray-eyebrow">
             <span class="xray-status-dot"></span>
             PORTFOLIO X-RAY
@@ -430,17 +423,12 @@
           </div>
 
           <div class="xray-snapshot-body">
-            <span class="xray-small-label">
-              Issuer date
-            </span>
-
+            <span class="xray-small-label">Issuer date</span>
             <strong id="xray-asof">Loading…</strong>
 
             <div class="xray-snapshot-rule"></div>
 
-            <span class="xray-small-label">
-              Data status
-            </span>
+            <span class="xray-small-label">Data status</span>
 
             <p id="xray-data-status" aria-live="polite">
               Connecting to Vanguard country allocations…
@@ -450,7 +438,6 @@
       </div>
     </section>
 
-    <!-- Summary -->
     <section
       class="xray-metrics"
       aria-label="Geographic exposure summary"
@@ -480,7 +467,6 @@
       </div>
     </section>
 
-    <!-- Investment map -->
     <section
       class="xray-atlas"
       aria-labelledby="xray-atlas-title"
@@ -515,7 +501,6 @@
       </div>
 
       <div class="xray-atlas-grid">
-
         <div class="xray-map-panel">
           <div class="xray-panel-toolbar">
             <div class="xray-panel-label">
@@ -556,10 +541,7 @@
             </div>
           </div>
 
-          <div
-            class="xray-map-stage"
-            id="xray-map-stage"
-          >
+          <div class="xray-map-stage" id="xray-map-stage">
             <div
               class="xray-map-gridlines"
               aria-hidden="true"
@@ -602,7 +584,6 @@
           </div>
         </div>
 
-        <!-- Country detail -->
         <aside
           class="xray-inspector"
           aria-labelledby="xray-inspector-title"
@@ -638,7 +619,6 @@
       </div>
     </section>
 
-    <!-- Country and regional breakdown -->
     <section
       class="xray-details"
       aria-label="Detailed country and regional exposures"
@@ -647,9 +627,7 @@
         <div class="xray-detail-heading">
           <div>
             <span class="xray-overline">02 / COUNTRIES</span>
-
             <h2>Country ranking<span>.</span></h2>
-
             <p>Your largest country allocations, in order.</p>
           </div>
 
@@ -690,9 +668,7 @@
         <div class="xray-detail-heading">
           <div>
             <span class="xray-overline">03 / REGIONS</span>
-
             <h2>Regional allocation<span>.</span></h2>
-
             <p>A broader view of your allocation.</p>
           </div>
         </div>
@@ -724,7 +700,6 @@
       </aside>
     </section>
 
-    <!-- Methodology: available on demand -->
     <details class="xray-methodology xray-explanation">
       <summary>
         <h2 id="xray-methodology-title">
@@ -806,10 +781,7 @@
 
       <p>Your holdings stay in this browser.</p>
 
-      <a
-        class="xray-return"
-        href="./index.html"
-      >
+      <a class="xray-return" href="./index.html">
         Back to portfolio ↗
       </a>
     </footer>
