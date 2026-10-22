@@ -1,4 +1,3 @@
-
 name: NORTHSTAR - Vanguard Country Exposure
 
 on:
@@ -14,6 +13,7 @@ permissions:
 concurrency:
   group: pages
   cancel-in-progress: false
+  queue: max
 
 jobs:
   update-country-exposure:
