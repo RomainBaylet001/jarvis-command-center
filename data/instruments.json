@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "baseCurrency": "EUR",
+  "legacyAssets": {
+    "VWCE": "yahoo:XETR:VWCE.DE:EUR",
+    "VFEA": "yahoo:XETR:VFEA.DE:EUR"
+  },
+  "benchmarks": {
+    "sp500": "yahoo:XETR:SXR8.DE:EUR"
+  },
+  "instruments": [
+    {
+      "id": "yahoo:XETR:VWCE.DE:EUR",
+      "provider": "yahoo",
+      "symbol": "VWCE.DE",
+      "exchange": "XETR",
+      "currency": "EUR",
+      "type": "ETF",
+      "name": "Vanguard FTSE All-World UCITS ETF",
+      "isin": "IE00BK5BQT80"
+    },
+    {
+      "id": "yahoo:XETR:VFEA.DE:EUR",
+      "provider": "yahoo",
+      "symbol": "VFEA.DE",
+      "exchange": "XETR",
+      "currency": "EUR",
+      "type": "ETF",
+      "name": "Vanguard FTSE Emerging Markets UCITS ETF",
+      "isin": "IE00BK5BR733"
+    },
+    {
+      "id": "yahoo:XETR:SXR8.DE:EUR",
+      "provider": "yahoo",
+      "symbol": "SXR8.DE",
+      "exchange": "XETR",
+      "currency": "EUR",
+      "type": "ETF",
+      "name": "iShares Core S&P 500 UCITS ETF USD (Acc)",
+      "isin": "IE00B5BMR087"
+    },
+    {
+      "id": "yahoo:XETR:IUSN.DE:EUR",
+      "provider": "yahoo",
+      "symbol": "IUSN.DE",
+      "exchange": "XETR",
+      "currency": "EUR",
+      "type": "ETF",
+      "name": "iShares MSCI World Small Cap UCITS ETF USD (Acc)",
+      "isin": "IE00BF4RFH31"
+    },
+    {
+      "id": "yahoo:XETR:FLXI.DE:EUR",
+      "provider": "yahoo",
+      "symbol": "FLXI.DE",
+      "exchange": "XETR",
+      "currency": "EUR",
+      "type": "ETF",
+      "name": "Franklin FTSE India UCITS ETF",
+      "isin": "IE00BHZRQZ17"
+    },
+    {
+      "id": "yahoo:NMS:AAPL:USD",
+      "provider": "yahoo",
+      "symbol": "AAPL",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Apple Inc.",
+      "isin": "US0378331005"
+    },
+    {
+      "id": "yahoo:NMS:MSFT:USD",
+      "provider": "yahoo",
+      "symbol": "MSFT",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Microsoft Corporation",
+      "isin": "US5949181045"
+    },
+    {
+      "id": "yahoo:NMS:NVDA:USD",
+      "provider": "yahoo",
+      "symbol": "NVDA",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "NVIDIA Corporation",
+      "isin": "US67066G1040"
+    }
+  ]
+}
