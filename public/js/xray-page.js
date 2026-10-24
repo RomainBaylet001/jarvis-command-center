@@ -10,7 +10,14 @@
   const ASSETS = ["VWCE", "VFEA"];
   const STORAGE_KEY = "jarvis-private-portfolio-v1";
   const COUNTRY_URL = "./data/country-exposure.json";
-  const PRICE_URL = "./data/etf-history.json";
+
+  const SCRIPT_URL = document.currentScript?.src ||
+    new URL("./js/xray-page.js", document.baseURI).href;
+
+  let Assets;
+  let Market;
+  let Model;
+
   const WORLD_URL =
     "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json";
 
@@ -51,18 +58,42 @@
 
   const REGIONS = {
     "North America": ["United States", "Canada"],
+
     Europe: [
-      "United Kingdom", "France", "Switzerland", "Germany",
-      "Netherlands", "Spain", "Italy"
+      "United Kingdom",
+      "France",
+      "Switzerland",
+      "Germany",
+      "Netherlands",
+      "Spain",
+      "Italy"
     ],
+
     "Asia-Pacific": [
-      "Japan", "Taiwan", "China", "South Korea", "India",
-      "Australia", "Malaysia", "Thailand", "Indonesia"
+      "Japan",
+      "Taiwan",
+      "China",
+      "South Korea",
+      "India",
+      "Australia",
+      "Malaysia",
+      "Thailand",
+      "Indonesia"
     ],
-    "Latin America": ["Brazil", "Mexico", "Chile"],
+
+    "Latin America": [
+      "Brazil",
+      "Mexico",
+      "Chile"
+    ],
+
     "Middle East & Africa": [
-      "South Africa", "Saudi Arabia", "United Arab Emirates",
-      "Turkey", "Kuwait", "Qatar"
+      "South Africa",
+      "Saudi Arabia",
+      "United Arab Emirates",
+      "Turkey",
+      "Kuwait",
+      "Qatar"
     ]
   };
 
@@ -72,7 +103,8 @@
     "Asia-Pacific": "#cdb78c",
     "Latin America": "#87b9a4",
     "Middle East & Africa": "#bb968a",
-    "Other markets": "#536779"
+    "Other markets": "#536779",
+    "Unanalysed holdings": "#37434f"
   };
 
   // Retained fallback snapshot from the existing application.
@@ -80,6 +112,7 @@
     funds: {
       VWCE: {
         asOf: "2026-09-30",
+
         countries: {
           "United States": 62.24,
           Japan: 6.06,
@@ -98,8 +131,10 @@
           Italy: 0.75
         }
       },
+
       VFEA: {
         asOf: "2026-09-30",
+
         countries: {
           Taiwan: 35.36,
           China: 26.66,
@@ -133,7 +168,9 @@
   });
 
   const money = value =>
-    Number.isFinite(value) ? euroFormatter.format(value) : "—";
+    Number.isFinite(value)
+      ? euroFormatter.format(value)
+      : "—";
 
   const pct = value =>
     Number.isFinite(value)
@@ -174,7 +211,8 @@
   let issuerStatus = "Verified issuer snapshot";
   let account = null;
   let accountError = "";
-  let prices = null;
+  let marketData = null;
+  let calculationError = "";
   let priceStatus = "Market prices not connected";
   let priceLoading = false;
   let priceAttempt = 0;
@@ -259,7 +297,11 @@
       const raw = localStorage.getItem(STORAGE_KEY);
 
       if (raw === null) {
-        return { trades: [], quotes: {}, quoteDate: "" };
+        return {
+          trades: [],
+          quotes: {},
+          quoteDate: ""
+        };
       }
 
       const saved = JSON.parse(raw);
@@ -268,22 +310,8 @@
         throw Error("Invalid saved portfolio structure");
       }
 
-      const valid = saved.trades.every(trade =>
-        trade &&
-        ASSETS.includes(trade.asset) &&
-        Number.isFinite(trade.amount) &&
-        trade.amount > 0 &&
-        Number.isFinite(trade.shares) &&
-        trade.shares > 0 &&
-        /^\d{4}-\d{2}-\d{2}$/.test(trade.date || "")
-      );
-
-      if (!valid) {
-        throw Error("Saved purchases failed validation");
-      }
-
       return {
-        trades: saved.trades,
+        trades: Model.validateTrades(saved.trades),
         quotes: saved.quotes || {},
         quoteDate: saved.quoteDate || ""
       };
@@ -297,217 +325,96 @@
         "Saved portfolio could not be read. " +
         "Original browser storage was not changed.";
 
-      return { trades: [], quotes: {}, quoteDate: "" };
+      return {
+        trades: [],
+        quotes: {},
+        quoteDate: ""
+      };
     }
   }
 
   // MARKET VALUATION
 
-  function parsePrices(payload) {
-    if (
-      !payload ||
-      payload.currency !== "EUR" ||
-      !payload.prices
-    ) {
-      throw Error("Invalid EUR market feed");
-    }
+  async function loadHelpers() {
+    for (const [name, filename] of [
+      ["NorthstarAssets", "assets.js"],
+      ["NorthstarMarket", "market-data.js"],
+      ["NorthstarPortfolio", "portfolio-model.js"]
+    ]) {
+      if (window[name]) continue;
 
-    const maps = {};
+      await new Promise((resolve, reject) => {
+        const script = document.createElement("script");
 
-    for (const asset of ["VWCE", "VFEA", "SXR8"]) {
-      const rows = payload.prices[asset];
+        const timeout = setTimeout(() => {
+          script.remove();
 
-      if (!Array.isArray(rows) || rows.length < 3) {
-        throw Error("Missing " + asset + " price history");
-      }
+          reject(
+            Error("Portfolio helper timed out: " + filename)
+          );
+        }, 15000);
 
-      const entries = rows.map(row => {
-        if (
-          !Array.isArray(row) ||
-          !/^\d{4}-\d{2}-\d{2}$/.test(row[0] || "") ||
-          !Number.isFinite(Number(row[1])) ||
-          Number(row[1]) <= 0
-        ) {
-          throw Error("Invalid market price");
-        }
+        script.src = new URL(
+          filename + "?v=multi-asset-1",
+          SCRIPT_URL
+        ).href;
 
-        return [row[0], Number(row[1])];
+        script.onload = () => {
+          clearTimeout(timeout);
+
+          window[name]
+            ? resolve()
+            : reject(Error("Portfolio helper unavailable"));
+        };
+
+        script.onerror = () => {
+          clearTimeout(timeout);
+          script.remove();
+
+          reject(
+            Error("Portfolio helper unavailable: " + filename)
+          );
+        };
+
+        document.head.append(script);
       });
-
-      maps[asset] = new Map(entries);
-
-      if (maps[asset].size !== rows.length) {
-        throw Error("Duplicate market dates");
-      }
     }
 
-    const common = [...maps.VWCE.keys()]
-      .filter(date =>
-        maps.VFEA.has(date) && maps.SXR8.has(date)
-      )
-      .sort();
-
-    if (!common.length) {
-      throw Error("No common ETF closing date");
-    }
-
-    const date = common[common.length - 1];
-    const quotes = {};
-
-    for (const asset of ASSETS) {
-      const candidate = payload.quotes?.[asset];
-      const timestamp = Date.parse(candidate?.asOf);
-      const price = Number(candidate?.price);
-
-      quotes[asset] =
-        candidate &&
-        validPriceDate(candidate.date) &&
-        candidate.date >= date &&
-        Number.isFinite(price) &&
-        price > 0 &&
-        Number.isFinite(timestamp) &&
-        timestamp <= Date.now() + 300000 &&
-        berlinDate(timestamp) === candidate.date &&
-        ["delayed", "closing"].includes(candidate.type)
-          ? {
-              price,
-              date: candidate.date,
-              asOf: new Date(timestamp).toISOString(),
-              type: candidate.type
-            }
-          : {
-              price: maps[asset].get(date),
-              date,
-              type: "closing"
-            };
-    }
-
-    const raw = payload.market;
-
-    const sessions = Array.isArray(raw?.sessions)
-      ? raw.sessions.filter(session =>
-          validPriceDate(session.date) &&
-          Number.isFinite(Date.parse(session.open)) &&
-          Number.isFinite(Date.parse(session.close)) &&
-          Date.parse(session.open) < Date.parse(session.close) &&
-          berlinDate(Date.parse(session.open)) === session.date
-        ).sort((a, b) => a.date.localeCompare(b.date))
-      : [];
-
-    const market =
-      raw?.timezone === "Europe/Berlin" &&
-      validPriceDate(raw.calendarStart) &&
-      validPriceDate(raw.calendarEnd) &&
-      sessions.length
-        ? { ...raw, sessions }
-        : null;
-
-    return { date, quotes, market };
-  }
-
-  function validPriceDate(value) {
-    return (
-      typeof value === "string" &&
-      /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-      Number.isFinite(Date.parse(value + "T12:00:00Z")) &&
-      new Date(value + "T12:00:00Z")
-        .toISOString()
-        .slice(0, 10) === value
-    );
-  }
-
-  function berlinDate(timestamp = Date.now()) {
-    const parts = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Europe/Berlin",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    }).formatToParts(new Date(timestamp));
-
-    const part = type =>
-      parts.find(item => item.type === type).value;
-
-    return (
-      part("year") + "-" +
-      part("month") + "-" +
-      part("day")
-    );
+    Assets = window.NorthstarAssets;
+    Market = window.NorthstarMarket;
+    Model = window.NorthstarPortfolio;
   }
 
   function marketState(now = Date.now()) {
-    const market = prices?.market;
-    const today = berlinDate(now);
-
-    if (
-      !market ||
-      today < market.calendarStart ||
-      today > market.calendarEnd
-    ) {
-      return { known: false, open: false };
-    }
-
-    const session = market.sessions.find(
-      item => item.date === today
-    );
-
-    return {
-      known: true,
-      open:
-        !!session &&
-        now >= Date.parse(session.open) &&
-        now < Date.parse(session.close),
-      previous: [...market.sessions].reverse().find(
-        item => Date.parse(item.close) <= now
-      )
-    };
-  }
-
-  function quoteStale(quote, now = Date.now()) {
-    if (!quote || !validPriceDate(quote.date)) {
-      return true;
-    }
-
-    const state = marketState(now);
-    const timestamp = Date.parse(quote.asOf);
-
-    if (!state.known) {
-      return (
-        now - Date.parse(quote.date + "T12:00:00Z")
-      ) > 5 * 86400000;
-    }
-
-    if (state.open) {
-      return (
-        !Number.isFinite(timestamp) ||
-        now - timestamp > 90 * 60000
-      );
-    }
-
-    const last = state.previous;
-
-    if (!last) return false;
-    if (quote.date < last.date) return true;
-
-    return (
-      quote.type === "delayed" &&
-      now > Date.parse(last.close) + 60 * 60000 &&
-      timestamp < Date.parse(last.close) - 30 * 60000
-    );
+    return Market && marketData
+      ? Market.sessionState(marketData, "XETR", now)
+      : {
+          known: false,
+          open: false
+        };
   }
 
   function valuationLabel(portfolio) {
-    if (!portfolio.market) {
-      return portfolio.hasHoldings
-        ? "Invested capital estimate"
-        : "No saved holdings";
+    if (!portfolio.hasHoldings) {
+      return "No saved holdings";
     }
 
-    const quotes = ASSETS.filter(asset =>
-      portfolio.rows[asset].shares > 0 &&
-      (mode === "ALL" || mode === asset)
-    ).map(asset => portfolio.rows[asset].quoteInfo);
+    if (!portfolio.market) {
+      return "Invested capital estimate";
+    }
 
-    if (!quotes.length) return "No holding in this ETF";
+    const rows = Object.values(portfolio.rows).filter(row =>
+      row.invested > 0 &&
+      (mode === "ALL" || row.key === mode)
+    );
+
+    const quotes = rows
+      .map(row => row.quoteInfo)
+      .filter(Boolean);
+
+    if (!quotes.length) {
+      return "No holding in this ETF";
+    }
 
     const oldest = [...quotes].sort((a, b) =>
       (a.asOf || a.date).localeCompare(b.asOf || b.date)
@@ -521,85 +428,66 @@
           ? "Manual snapshot"
           : "Mixed price snapshots";
 
-    const time = oldest.asOf
-      ? new Intl.DateTimeFormat("en-GB", {
-          timeZone: "Europe/Berlin",
-          hour: "2-digit",
-          minute: "2-digit"
-        }).format(new Date(oldest.asOf)) + " Berlin"
-      : "";
-
     return (
       kind + " · " + dateLabel(oldest.date) +
-      (time ? " " + time : "") +
-      (quotes.some(q => quoteStale(q)) ? " · STALE" : "")
+      (
+        rows.some(row => row.stale)
+          ? " · Check price freshness in Holdings"
+          : ""
+      )
     );
   }
 
   function portfolioSnapshot() {
     const trades = account?.trades || [];
-    const rows = {};
-    let totalInvested = 0;
 
-    for (const asset of ASSETS) {
-      const own = trades.filter(
-        trade => trade.asset === asset
-      );
+    let summary;
+    calculationError = "";
 
-      const invested = own.reduce(
-        (sum, trade) => sum + trade.amount, 0
-      );
+    try {
+      summary = Model.summarize(trades, marketData);
+    } catch (error) {
+      calculationError =
+        "Portfolio figures unavailable. Original purchases are unchanged.";
 
-      const shares = own.reduce(
-        (sum, trade) => sum + trade.shares, 0
-      );
+      summary = Model.summarize([], marketData);
+    }
 
-      const latestPurchase = own.reduce(
-        (latest, trade) =>
-          trade.date > latest ? trade.date : latest,
-        ""
-      );
-
-      totalInvested += invested;
-
-      let quote = null;
-      let quoteDate = "";
-      let quoteInfo = null;
-
-      if (
-        prices?.quotes[asset]?.price > 0 &&
-        prices.quotes[asset].date >= latestPurchase
-      ) {
-        quoteInfo = prices.quotes[asset];
-        quote = quoteInfo.price;
-        quoteDate = quoteInfo.date;
-      } else {
-        const manual = Number(account?.quotes?.[asset]);
+    // Match the other pages' manual EUR fallback only when
+    // the published feed is absent.
+    if (!marketData) {
+      for (const row of summary.holdings) {
+        const price = Number(account?.quotes?.[row.key]);
+        const date = account?.quoteDate;
 
         if (
-          Number.isFinite(manual) &&
-          manual > 0 &&
-          validPriceDate(account.quoteDate) &&
-          account.quoteDate >= latestPurchase
+          !ASSETS.includes(row.key) ||
+          !Number.isFinite(price) ||
+          price <= 0 ||
+          !Model.validDate(date) ||
+          date > new Date().toISOString().slice(0, 10) ||
+          row.trades.some(trade => trade.date > date)
         ) {
-          quote = manual;
-          quoteDate = account.quoteDate;
-          quoteInfo = {
-            price: manual,
-            date: quoteDate,
-            type: "manual"
-          };
+          continue;
         }
-      }
 
-      rows[asset] = {
-        invested,
-        shares,
-        quote,
-        quoteDate,
-        quoteInfo,
-        marketValue: quote !== null ? shares * quote : null
-      };
+        const value = row.recordedShares * price;
+
+        if (!Number.isFinite(value)) continue;
+
+        row.value = value;
+        row.shares = row.recordedShares;
+
+        row.quote = {
+          price,
+          priceEUR: price,
+          date,
+          asOf: "",
+          type: "manual"
+        };
+
+        row.stale = true;
+      }
     }
 
     const hasHoldings = trades.length > 0;
@@ -607,33 +495,76 @@
     const canValue =
       hasHoldings &&
       !accountError &&
-      ASSETS.every(asset =>
-        rows[asset].invested === 0 ||
-        rows[asset].marketValue !== null
-      );
+      !calculationError &&
+      summary.holdings.every(row => row.value !== null);
 
+    const rows = {};
     const amounts = {};
 
-    for (const asset of ASSETS) {
-      amounts[asset] = canValue
-        ? rows[asset].marketValue || 0
-        : rows[asset].invested;
+    for (const holding of summary.holdings) {
+      rows[holding.key] = {
+        ...holding,
+        quoteInfo: holding.quote,
+        quoteDate: holding.quote?.date || "",
+        marketValue: holding.value
+      };
+
+      amounts[holding.key] = canValue
+        ? holding.value
+        : holding.invested;
     }
+
+    for (const asset of ASSETS) {
+      if (rows[asset]) continue;
+
+      rows[asset] = {
+        key: asset,
+        invested: 0,
+        shares: 0,
+        quoteInfo: null,
+        marketValue: null
+      };
+
+      amounts[asset] = 0;
+    }
+
+    const total = Object.values(amounts).reduce(
+      (sum, value) => sum + value,
+      0
+    );
+
+    const coveredValue = amounts.VWCE + amounts.VFEA;
+
+    const unanalysed = summary.holdings.filter(
+      row => !ASSETS.includes(row.key)
+    );
+
+    const unanalysedValue = unanalysed.reduce(
+      (sum, row) => sum + amounts[row.key],
+      0
+    );
 
     return {
       rows,
       amounts,
-      total: amounts.VWCE + amounts.VFEA,
-      invested: totalInvested,
+      total,
+      coveredValue,
+      unanalysed,
+      unanalysedValue,
+
+      coveredPercent: total > 0
+        ? coveredValue / total * 100
+        : 0,
+
+      unanalysedPercent: total > 0
+        ? unanalysedValue / total * 100
+        : 0,
+
+      invested: summary.invested,
       market: canValue,
       hasHoldings,
       count: trades.length,
-      basis: canValue ? "Market value" : "Invested capital",
-      priceDate: canValue
-        ? ASSETS.filter(asset => rows[asset].shares > 0)
-            .map(asset => rows[asset].quoteDate)
-            .sort()[0] || ""
-        : ""
+      basis: canValue ? "Market value" : "Invested capital"
     };
   }
 
@@ -661,7 +592,12 @@
           VFEA: mode === "VFEA" ? 1 : 0
         };
 
-    const totalWeight = weights.VWCE + weights.VFEA;
+    // Unsupported holdings stay in the denominator.
+    // Known countries must not be inflated to 100%.
+    const totalWeight = mode === "ALL"
+      ? portfolio.total
+      : weights.VWCE + weights.VFEA;
+
     const countries = new Map();
 
     if (totalWeight > 0) {
@@ -674,13 +610,17 @@
           const row = countries.get(name) || {
             name,
             weight: 0,
-            parts: { VWCE: 0, VFEA: 0 }
+            parts: {
+              VWCE: 0,
+              VFEA: 0
+            }
           };
 
           const contribution = factor * weight;
 
           row.weight += contribution;
           row.parts[asset] += contribution;
+
           countries.set(name, row);
         }
       }
@@ -694,6 +634,7 @@
 
     for (const country of countryRows) {
       const name = regionFor(country.name);
+
       const row = regions.get(name) || {
         name,
         weight: 0
@@ -703,13 +644,26 @@
       regions.set(name, row);
     }
 
+    if (
+      mode === "ALL" &&
+      portfolio.unanalysedPercent > 0
+    ) {
+      regions.set("Unanalysed holdings", {
+        name: "Unanalysed holdings",
+        weight: portfolio.unanalysedPercent
+      });
+    }
+
     return {
       countries: countryRows,
+
       regions: [...regions.values()]
         .sort((a, b) => b.weight - a.weight),
+
       value: mode === "ALL"
         ? portfolio.total
         : portfolio.amounts[mode],
+
       portfolio,
       totalWeight
     };
@@ -775,7 +729,7 @@
         countryKey(button.dataset.country) === countryKey(name)
       );
 
-      button?.focus({ preventScroll: true });
+      button?.focus({preventScroll: true});
     }
 
     const target = $("xray-inspector-content");
@@ -783,12 +737,191 @@
     if (!motionPaused && target.animate) {
       target.animate(
         [
-          { opacity: 0.65, transform: "translateY(5px)" },
-          { opacity: 1, transform: "none" }
+          {
+            opacity: 0.65,
+            transform: "translateY(5px)"
+          },
+          {
+            opacity: 1,
+            transform: "none"
+          }
         ],
-        { duration: 220, easing: "ease-out" }
+        {
+          duration: 220,
+          easing: "ease-out"
+        }
       );
     }
+  }
+
+  // COVERAGE
+
+  function setupCoverage() {
+    const style = document.createElement("style");
+
+    style.textContent = `
+      .xray-coverage {
+        margin: 18px 0 30px;
+        padding: 16px 0;
+        border-block: 1px solid #a4b5c522;
+        color: #b7c4d0;
+        font: 14px/1.8 system-ui, sans-serif;
+      }
+
+      .xray-coverage > p {
+        margin: 0;
+      }
+
+      .xray-coverage strong {
+        font-weight: 500;
+        color: #e4dbc7;
+      }
+
+      .xray-coverage details {
+        margin-top: 8px;
+      }
+
+      .xray-coverage summary {
+        cursor: pointer;
+        width: fit-content;
+        color: #cdb78c;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+      }
+
+      .xray-coverage ul {
+        list-style: none;
+        padding: 0;
+        margin: 4px 0 12px;
+      }
+
+      .xray-coverage li {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 8px 0;
+        border-bottom: 1px solid #a4b5c512;
+      }
+
+      .xray-coverage li span:first-child {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .xray-coverage li span:last-child {
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .xray-coverage[hidden] {
+        display: none;
+      }
+    `;
+
+    document.head.append(style);
+
+    const section = document.createElement("section");
+
+    section.id = "xray-coverage";
+    section.className = "xray-coverage";
+
+    section.setAttribute(
+      "aria-label",
+      "Country data coverage"
+    );
+
+    section.hidden = true;
+
+    section.innerHTML =
+      '<p id="xray-coverage-summary"></p>' +
+      '<details id="xray-coverage-details">' +
+      '<summary>View unanalysed holdings</summary>' +
+      '<ul id="xray-unanalysed-list"></ul>' +
+      '<p id="xray-coverage-basis"></p>' +
+      '</details>';
+
+    document.querySelector(".xray-metrics").after(section);
+
+    const methods = document.querySelectorAll(
+      ".xray-methodology-grid > div > p"
+    );
+
+    if (methods[0]) {
+      methods[0].textContent =
+        "VWCE and VFEA are weighted against your full portfolio value in EUR. " +
+        "If any holding cannot be valued, invested capital is used consistently " +
+        "for every holding and labelled. The SXR8 reference is excluded unless " +
+        "purchased as a holding.";
+    }
+
+    if (methods[2]) {
+      methods[2].textContent =
+        "Only VWCE and VFEA currently have verified country allocations. " +
+        "Other listings remain unanalysed; their country is not guessed from " +
+        "the listing exchange or fund domicile. Other markets is the issuer's " +
+        "undisclosed country remainder. Neither category means zero exposure.";
+    }
+  }
+
+  function renderCoverage(result) {
+    const section = $("xray-coverage");
+    const portfolio = result.portfolio;
+
+    section.hidden =
+      mode !== "ALL" ||
+      !portfolio.hasHoldings ||
+      (
+        !portfolio.unanalysed.length &&
+        portfolio.market
+      );
+
+    const summary = $("xray-coverage-summary");
+    summary.replaceChildren();
+
+    const lead = document.createElement("strong");
+
+    lead.textContent =
+      pct(portfolio.coveredPercent) +
+      " covered by country data";
+
+    summary.append(
+      lead,
+      document.createTextNode(
+        portfolio.unanalysed.length
+          ? " · " + pct(portfolio.unanalysedPercent) + " unanalysed"
+          : " · using invested capital"
+      )
+    );
+
+    $("xray-coverage-details").hidden =
+      !portfolio.unanalysed.length;
+
+    $("xray-coverage-basis").textContent = portfolio.market
+      ? "Shares of the full portfolio market value in EUR. Country data is currently available for VWCE and VFEA only."
+      : "Shares use invested capital for every holding because a complete market valuation is unavailable. Country data is currently available for VWCE and VFEA only.";
+
+    const list = $("xray-unanalysed-list");
+
+    list.replaceChildren(
+      ...portfolio.unanalysed.map(row => {
+        const item = document.createElement("li");
+        const label = document.createElement("span");
+        const value = document.createElement("span");
+
+        label.textContent =
+          row.instrument.symbol + " · " + row.instrument.name;
+
+        value.textContent = pct(
+          portfolio.total > 0
+            ? portfolio.amounts[row.key] / portfolio.total * 100
+            : 0
+        );
+
+        item.append(label, value);
+        return item;
+      })
+    );
   }
 
   // SUMMARY
@@ -806,11 +939,26 @@
       row => row.name !== "Other markets"
     ).length;
 
+    const analysed = mode === "ALL"
+      ? result.portfolio.coveredValue
+      : result.value;
+
     $("xray-value").textContent =
-      result.value > 0 ? money(result.value) : "—";
+      analysed > 0 ? money(analysed) : "—";
+
+    $("xray-value")
+      .parentElement
+      .querySelector(":scope > span")
+      .textContent = result.portfolio.market
+        ? "Analysed value"
+        : "Analysed invested capital";
+
+    renderCoverage(result);
 
     $("xray-value-note").textContent =
-      accountError || (
+      accountError ||
+      calculationError ||
+      (
         (mode !== "ALL" ? mode + " · " : "") +
         valuationLabel(result.portfolio) +
         (
@@ -824,7 +972,11 @@
       top?.name || "—";
 
     $("xray-top-percent").textContent = top
-      ? pct(top.weight) + " of selected exposure"
+      ? pct(top.weight) + (
+          mode === "ALL"
+            ? " of your portfolio"
+            : " of " + mode
+        )
       : "Awaiting portfolio allocation";
 
     $("xray-country-count").textContent =
@@ -840,8 +992,10 @@
     ).sort()[0];
 
     const age = Math.floor(
-      (Date.now() - Date.parse(oldest + "T12:00:00Z")) /
-      86400000
+      (
+        Date.now() -
+        Date.parse(oldest + "T12:00:00Z")
+      ) / 86400000
     );
 
     $("xray-data-status").textContent =
@@ -851,16 +1005,18 @@
 
     $("xray-method-status").textContent =
       "Country allocations as of " +
-      formatIssuerDate() + " · " + (
+      formatIssuerDate() + " · " +
+      (
         result.portfolio.market
           ? "Portfolio based on EUR price snapshots."
           : "Portfolio weights use invested capital when valuation is unavailable."
       ) +
-      " Regional groupings are Northstar classifications.";
+      " Country data covers VWCE and VFEA only. Other held listings remain unanalysed. " +
+      "Regional groupings are Northstar classifications.";
 
     $("xray-map-footnote").textContent =
       mode === "ALL"
-        ? "Weighted portfolio exposure · issuer top-15 countries"
+        ? "Share of the full portfolio · VWCE / VFEA issuer disclosures"
         : `${mode} underlying market allocation · issuer snapshot`;
   }
 
@@ -879,7 +1035,8 @@
 
   function svgElement(tag, attributes = {}) {
     const node = document.createElementNS(
-      "http://www.w3.org/2000/svg", tag
+      "http://www.w3.org/2000/svg",
+      tag
     );
 
     for (const [key, value] of Object.entries(attributes)) {
@@ -893,11 +1050,15 @@
     if (!row || !window.d3) return "#263441";
 
     const strength = 0.22 + 0.78 * Math.sqrt(
-      Math.min(1, row.weight / Math.max(1, maximum))
+      Math.min(
+        1,
+        row.weight / Math.max(1, maximum)
+      )
     );
 
     return d3.interpolateRgb(
-      "#203542", COLORS.VWCE
+      "#203542",
+      COLORS.VWCE
     )(strength);
   }
 
@@ -918,7 +1079,8 @@
         !!row && row.name !== "Other markets";
 
       item.element.classList.toggle(
-        "is-unreported", !reported
+        "is-unreported",
+        !reported
       );
 
       item.element.classList.toggle(
@@ -949,11 +1111,13 @@
 
     if (marker && label) {
       marker.setAttribute(
-        "visibility", valid ? "visible" : "hidden"
+        "visibility",
+        valid ? "visible" : "hidden"
       );
 
       label.setAttribute(
-        "visibility", valid ? "visible" : "hidden"
+        "visibility",
+        valid ? "visible" : "hidden"
       );
 
       if (valid) {
@@ -963,11 +1127,13 @@
         marker.setAttribute("cy", y);
 
         label.setAttribute(
-          "x", Math.max(70, Math.min(900, x + 13))
+          "x",
+          Math.max(70, Math.min(900, x + 13))
         );
 
         label.setAttribute(
-          "y", Math.max(24, y - 13)
+          "y",
+          Math.max(24, y - 13)
         );
 
         label.textContent = item.name;
@@ -987,9 +1153,13 @@
 
     tooltip.innerHTML = `
       <strong>${escapeHtml(name)}</strong>
+
       <span>${
-        row ? pct(row.weight) : "Not individually reported"
+        row
+          ? pct(row.weight)
+          : "Not individually reported"
       }</span>
+
       <small>${
         row
           ? "Select to inspect allocation"
@@ -1002,12 +1172,18 @@
     const rect = stage.getBoundingClientRect();
 
     tooltip.style.left = Math.min(
-      Math.max(12, event.clientX - rect.left + 16),
+      Math.max(
+        12,
+        event.clientX - rect.left + 16
+      ),
       Math.max(12, rect.width - 235)
     ) + "px";
 
     tooltip.style.top = Math.min(
-      Math.max(12, event.clientY - rect.top + 12),
+      Math.max(
+        12,
+        event.clientY - rect.top + 12
+      ),
       Math.max(12, rect.height - 100)
     ) + "px";
   }
@@ -1017,11 +1193,15 @@
   }
 
   function mapName(feature) {
-    const code = String(feature.id ?? "").padStart(3, "0");
+    const code = String(
+      feature.id ?? ""
+    ).padStart(3, "0");
 
-    return ISO_NAMES[code] ||
+    return (
+      ISO_NAMES[code] ||
       feature.properties?.name ||
-      "Unknown country";
+      "Unknown country"
+    );
   }
 
   async function loadWorldMap() {
@@ -1045,7 +1225,8 @@
       }
 
       const geo = topojson.feature(
-        topology, topology.objects.countries
+        topology,
+        topology.objects.countries
       );
 
       const svg = $("xray-map");
@@ -1054,20 +1235,24 @@
       const projection = d3.geoNaturalEarth1()
         .fitExtent(
           [[25, 30], [975, 525]],
-          { type: "Sphere" }
+          {type: "Sphere"}
         );
 
       const path = d3.geoPath(projection);
 
-      svg.append(svgElement("path", {
-        class: "xray-sphere",
-        d: path({ type: "Sphere" })
-      }));
+      svg.append(
+        svgElement("path", {
+          class: "xray-sphere",
+          d: path({type: "Sphere"})
+        })
+      );
 
-      svg.append(svgElement("path", {
-        class: "xray-graticule",
-        d: path(d3.geoGraticule10())
-      }));
+      svg.append(
+        svgElement("path", {
+          class: "xray-graticule",
+          d: path(d3.geoGraticule10())
+        })
+      );
 
       const group = svgElement("g", {
         class: "xray-world-countries"
@@ -1082,6 +1267,7 @@
           class: "xray-country",
           d: path(feature),
           role: "button",
+
           tabindex: ISO_NAMES[
             String(feature.id ?? "").padStart(3, "0")
           ] ? "0" : "-1"
@@ -1098,7 +1284,8 @@
         );
 
         country.addEventListener(
-          "pointerleave", hideTooltip
+          "pointerleave",
+          hideTooltip
         );
 
         country.addEventListener("click", () => {
@@ -1107,7 +1294,10 @@
         });
 
         country.addEventListener("keydown", event => {
-          if (event.key === "Enter" || event.key === " ") {
+          if (
+            event.key === "Enter" ||
+            event.key === " "
+          ) {
             event.preventDefault();
             selectCountry(name);
           }
@@ -1124,33 +1314,39 @@
 
       svg.append(group);
 
-      svg.append(svgElement("circle", {
-        id: "atlas-map-marker",
-        class: "atlas-marker",
-        r: 7,
-        visibility: "hidden",
-        "aria-hidden": "true"
-      }));
+      svg.append(
+        svgElement("circle", {
+          id: "atlas-map-marker",
+          class: "atlas-marker",
+          r: 7,
+          visibility: "hidden",
+          "aria-hidden": "true"
+        })
+      );
 
-      svg.append(svgElement("text", {
-        id: "atlas-map-label",
-        class: "atlas-selected-name",
-        visibility: "hidden",
-        "aria-hidden": "true"
-      }));
+      svg.append(
+        svgElement("text", {
+          id: "atlas-map-label",
+          class: "atlas-selected-name",
+          visibility: "hidden",
+          "aria-hidden": "true"
+        })
+      );
 
       mapReady = true;
       loading.hidden = true;
       render();
     } catch (error) {
       console.warn(
-        "NORTHSTAR X-Ray: map unavailable", error
+        "NORTHSTAR X-Ray: map unavailable",
+        error
       );
 
       loading.innerHTML = `
         <span style="color:#cdb78c">
           WORLD ATLAS UNAVAILABLE
         </span>
+
         <span>
           Country rankings remain available below.
         </span>
@@ -1171,7 +1367,9 @@
     const dates =
       '<div class="atlas-dates">' +
       funds.map(asset =>
-        "<div>" + asset + " holdings · <span>" +
+        "<div>" +
+        asset +
+        " holdings · <span>" +
         dateLabel(issuer.funds[asset].asOf) +
         "</span></div>"
       ).join("") +
@@ -1204,7 +1402,12 @@
         "<strong>—</strong>" +
         "<span>Not separately disclosed</span></div>" +
         '<p class="atlas-disclosure">' +
-        "May be included in Other markets. " +
+        (
+          mode === "ALL" &&
+          result.portfolio.unanalysed.length
+            ? "May be included in Other markets or unanalysed holdings. "
+            : "May be included in Other markets. "
+        ) +
         "An unavailable weight does not mean zero exposure." +
         "</p>" +
         dates;
@@ -1235,7 +1438,10 @@
             issuer.funds[asset].countries[row.name];
 
           const disclosed = Number.isFinite(weight);
-          const owned = result.portfolio.amounts[asset] > 0;
+
+          const owned =
+            result.portfolio.amounts[asset] > 0;
+
           const part = row.parts[asset];
 
           const share = row.weight > 0
@@ -1253,14 +1459,22 @@
               : "Country weight not separately disclosed";
 
           return `
-            <div class="atlas-fund"
-              style="--fund-color:${COLORS[asset]}">
+            <div
+              class="atlas-fund"
+              style="--fund-color:${COLORS[asset]}"
+            >
               <div class="atlas-fund-head">
                 <strong>${asset}</strong>
-                <span>${disclosed ? money(amount) : "—"}</span>
+
+                <span>${
+                  disclosed ? money(amount) : "—"
+                }</span>
               </div>
 
-              <div class="atlas-fund-track" aria-hidden="true">
+              <div
+                class="atlas-fund-track"
+                aria-hidden="true"
+              >
                 <span style="width:${
                   Math.max(0, Math.min(100, share))
                 }%"></span>
@@ -1275,14 +1489,20 @@
       const weight =
         issuer.funds[asset].countries[row.name];
 
-      return "<p><strong>" + asset + "</strong>: " + (
-        Number.isFinite(weight)
-          ? pct(weight) +
-            " within the ETF; contributes " +
-            percentFormatter.format(row.parts[asset]) +
-            " percentage points to this view."
-          : "No separate country weight disclosed."
-      ) + "</p>";
+      return (
+        "<p><strong>" +
+        asset +
+        "</strong>: " +
+        (
+          Number.isFinite(weight)
+            ? pct(weight) +
+              " within the ETF; contributes " +
+              percentFormatter.format(row.parts[asset]) +
+              " percentage points to this view."
+            : "No separate country weight disclosed."
+        ) +
+        "</p>"
+      );
     }).join("");
 
     target.innerHTML = `
@@ -1294,6 +1514,7 @@
 
       <div class="xray-inspector-big">
         <strong>${pct(row.weight)}</strong>
+
         <span>${
           missing ? "Disclosed share of " : "of "
         }${
@@ -1307,6 +1528,7 @@
             ? "Estimated value"
             : "Invested capital estimate"
         }</span>
+
         <strong>${money(implied)}</strong>
       </div>
 
@@ -1332,6 +1554,13 @@
           : ""
       }
 
+      ${
+        mode === "ALL" &&
+        result.portfolio.unanalysed.length
+          ? '<p class="atlas-disclosure">Exposure through unanalysed holdings is not included in this country figure.</p>'
+          : ""
+      }
+
       ${dates}
 
       <details class="atlas-calculation">
@@ -1346,7 +1575,9 @@
             ETF’s share of the disclosed exposure to this
             country. Country classifications do not describe
             every company’s revenue sources.
-            SXR8 is excluded.
+            Only VWCE and VFEA currently have country data.
+            Any purchased SXR8 listing remains part of your
+            portfolio total and is shown as unanalysed.
           </p>
         </div>
       </details>
@@ -1364,12 +1595,21 @@
         <div class="xray-list-loading">${
           accountError
             ? escapeHtml(accountError)
-            : "No portfolio allocation yet. Choose VWCE or VFEA above to inspect the issuer's country weights."
+            : calculationError
+              ? escapeHtml(calculationError)
+              : result.portfolio.unanalysed.length
+                ? "These holdings do not have a country breakdown yet. Choose VWCE or VFEA above to inspect issuer country weights."
+                : "No portfolio allocation yet. Choose VWCE or VFEA above to inspect the issuer's country weights."
         }</div>
       `;
 
       showAll.hidden = true;
-      $("xray-export").disabled = true;
+
+      $("xray-export").disabled = !(
+        mode === "ALL" &&
+        result.portfolio.unanalysedPercent > 0
+      );
+
       return;
     }
 
@@ -1386,7 +1626,8 @@
 
     list.innerHTML = visible.map((row, index) => {
       const width = Math.min(
-        100, row.weight / maximum * 100
+        100,
+        row.weight / maximum * 100
       );
 
       const implied = result.value > 0
@@ -1415,6 +1656,7 @@
             <span class="xray-rank-index">${
               String(index + 1).padStart(2, "0")
             }</span>
+
             <span>${escapeHtml(row.name)}</span>
           </span>
 
@@ -1433,7 +1675,8 @@
     showAll.hidden = result.countries.length <= 10;
 
     showAll.setAttribute(
-      "aria-expanded", String(expanded)
+      "aria-expanded",
+      String(expanded)
     );
 
     showAll.textContent = expanded
@@ -1466,7 +1709,8 @@
     }
 
     const total = result.regions.reduce(
-      (sum, row) => sum + row.weight, 0
+      (sum, row) => sum + row.weight,
+      0
     );
 
     let position = 0;
@@ -1538,18 +1782,31 @@
   // CSV EXPORT
 
   function csvCell(value) {
-    return '"' +
+    return (
+      '"' +
       String(value ?? "").replace(/"/g, '""') +
-      '"';
+      '"'
+    );
   }
 
   function exportCsv() {
-    if (!currentResult?.countries.length) return;
+    if (
+      !currentResult ||
+      (
+        !currentResult.countries.length &&
+        !(
+          mode === "ALL" &&
+          currentResult.portfolio.unanalysedPercent > 0
+        )
+      )
+    ) {
+      return;
+    }
 
     const result = currentResult;
 
     const rows = [[
-      "Country",
+      "Country or coverage category",
       "Region",
       "Weight (%)",
       "Implied EUR",
@@ -1580,13 +1837,33 @@
       ]);
     }
 
+    if (
+      mode === "ALL" &&
+      result.portfolio.unanalysedPercent > 0
+    ) {
+      rows.push([
+        "Unanalysed holdings",
+        "Not analysed",
+        result.portfolio.unanalysedPercent.toFixed(6),
+        result.portfolio.unanalysedValue.toFixed(2),
+        "0.000000",
+        "0.000000",
+        "Portfolio",
+        result.portfolio.basis,
+        issuer.funds.VWCE.asOf,
+        issuer.funds.VFEA.asOf
+      ]);
+    }
+
     const csv = rows.map(
       row => row.map(csvCell).join(",")
     ).join("\r\n");
 
     const blob = new Blob(
       ["\ufeff", csv],
-      { type: "text/csv;charset=utf-8" }
+      {
+        type: "text/csv;charset=utf-8"
+      }
     );
 
     const url = URL.createObjectURL(blob);
@@ -1601,11 +1878,13 @@
       ".csv";
 
     document.body.append(link);
+
     link.click();
     link.remove();
 
     setTimeout(
-      () => URL.revokeObjectURL(url), 2000
+      () => URL.revokeObjectURL(url),
+      2000
     );
   }
 
@@ -1615,7 +1894,8 @@
     const controller = new AbortController();
 
     const timeout = setTimeout(
-      () => controller.abort(), 15000
+      () => controller.abort(),
+      15000
     );
 
     try {
@@ -1662,13 +1942,8 @@
     priceAttempt = Date.now();
 
     try {
-      prices = parsePrices(
-        await fetchJson(
-          PRICE_URL + "?v=" + priceAttempt
-        )
-      );
-
-      priceStatus = "EUR quotes connected";
+      marketData = await Market.load();
+      priceStatus = "Investment prices connected";
     } catch (error) {
       console.warn(
         "NORTHSTAR X-Ray: market feed unavailable",
@@ -1680,6 +1955,7 @@
     }
 
     priceLoading = false;
+
     render();
     schedulePrices();
   }
@@ -1735,7 +2011,11 @@
     function resize() {
       width = innerWidth;
       height = innerHeight;
-      dpr = Math.min(devicePixelRatio || 1, 1.75);
+
+      dpr = Math.min(
+        devicePixelRatio || 1,
+        1.75
+      );
 
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
@@ -1743,39 +2023,56 @@
       let seed = 7341;
 
       const random = () =>
-        ((seed = seed * 16807 % 2147483647) - 1) /
-        2147483646;
+        (
+          (seed = seed * 16807 % 2147483647) - 1
+        ) / 2147483646;
 
-      stars = Array.from({
-        length: Math.max(
-          100,
-          Math.min(
-            340,
-            Math.round(width * height / 4200)
+      stars = Array.from(
+        {
+          length: Math.max(
+            100,
+            Math.min(
+              340,
+              Math.round(width * height / 4200)
+            )
           )
-        )
-      }, () => {
-        const layer = random() < 0.65
-          ? 0
-          : random() < 0.8 ? 1 : 2;
+        },
+        () => {
+          const layer = random() < 0.65
+            ? 0
+            : random() < 0.8
+              ? 1
+              : 2;
 
-        return {
-          x: random() * width,
-          y: random() * height,
-          layer,
-          radius:
-            0.3 + random() * 0.4 + layer * 0.12,
-          alpha:
-            0.18 + random() * 0.25 + layer * 0.07,
-          phase: random() * TAU
-        };
-      });
+          return {
+            x: random() * width,
+            y: random() * height,
+            layer,
+
+            radius:
+              0.3 + random() * 0.4 + layer * 0.12,
+
+            alpha:
+              0.18 + random() * 0.25 + layer * 0.07,
+
+            phase: random() * TAU
+          };
+        }
+      );
 
       paint();
     }
 
     function paint() {
-      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      context.setTransform(
+        dpr,
+        0,
+        0,
+        dpr,
+        0,
+        0
+      );
+
       context.clearRect(0, 0, width, height);
       context.fillStyle = "#c4d4e2";
 
@@ -1783,11 +2080,13 @@
         const speed = [0.6, 2, 4][star.layer];
 
         const x = wrap(
-          star.x + time * speed, width
+          star.x + time * speed,
+          width
         );
 
         const y = wrap(
-          star.y - time * speed * 0.16, height
+          star.y - time * speed * 0.16,
+          height
         );
 
         const edge = Math.max(
@@ -1804,13 +2103,19 @@
         context.globalAlpha =
           star.alpha * edge * (
             0.9 +
-            0.1 * Math.sin(time * 0.5 + star.phase)
+            0.1 * Math.sin(
+              time * 0.5 + star.phase
+            )
           );
 
         context.beginPath();
 
         context.arc(
-          x, y, star.radius, 0, TAU
+          x,
+          y,
+          star.radius,
+          0,
+          TAU
         );
 
         context.fill();
@@ -1868,11 +2173,13 @@
       motionPaused = paused;
 
       document.body.classList.toggle(
-        "motion-paused", paused
+        "motion-paused",
+        paused
       );
 
       button.setAttribute(
-        "aria-pressed", String(paused)
+        "aria-pressed",
+        String(paused)
       );
 
       button.setAttribute(
@@ -1899,22 +2206,30 @@
     });
 
     reduced.addEventListener(
-      "change", updateMotion
+      "change",
+      updateMotion
     );
 
     document.addEventListener(
-      "visibilitychange", () => {
+      "visibilitychange",
+      () => {
         document.body.classList.toggle(
-          "tab-hidden", document.hidden
+          "tab-hidden",
+          document.hidden
         );
 
-        if (document.hidden) stop();
-        else wake();
+        if (document.hidden) {
+          stop();
+        } else {
+          wake();
+        }
       }
     );
 
     addEventListener(
-      "resize", resize, { passive: true }
+      "resize",
+      resize,
+      {passive: true}
     );
 
     resize();
@@ -1946,7 +2261,9 @@
     }
 
     addEventListener(
-      "resize", positionBeacon, { passive: true }
+      "resize",
+      positionBeacon,
+      {passive: true}
     );
 
     requestAnimationFrame(positionBeacon);
@@ -1954,7 +2271,8 @@
 
   function setupEvents() {
     $("xray-filters").addEventListener(
-      "click", event => {
+      "click",
+      event => {
         const button = event.target.closest(
           "[data-xray-mode]"
         );
@@ -1971,7 +2289,8 @@
     );
 
     $("xray-country-list").addEventListener(
-      "click", event => {
+      "click",
+      event => {
         const button = event.target.closest(
           "[data-country]"
         );
@@ -1979,7 +2298,8 @@
         if (!button) return;
 
         selectCountry(
-          button.dataset.country, "ranking"
+          button.dataset.country,
+          "ranking"
         );
 
         if (mapReady) {
@@ -1987,6 +2307,7 @@
             behavior: motionPaused
               ? "instant"
               : "smooth",
+
             block: "nearest"
           });
         }
@@ -1994,14 +2315,16 @@
     );
 
     $("xray-show-all").addEventListener(
-      "click", () => {
+      "click",
+      () => {
         expanded = !expanded;
         renderCountryList(currentResult);
       }
     );
 
     $("xray-export").addEventListener(
-      "click", exportCsv
+      "click",
+      exportCsv
     );
   }
 
@@ -2270,7 +2593,9 @@
         height: 7px;
         border-radius: 2px;
         background: linear-gradient(
-          90deg, #2c4d5c, #99dce4
+          90deg,
+          #2c4d5c,
+          #99dce4
         );
       }
 
@@ -2356,12 +2681,14 @@
     $("xray-map-stage").before(tools);
 
     const caption = document.createElement("div");
+
     caption.className = "atlas-selection";
     caption.id = "atlas-selection";
 
     $("xray-map-stage").after(caption);
 
     const live = document.createElement("p");
+
     live.id = "atlas-live";
     live.className = "atlas-live";
     live.setAttribute("role", "status");
@@ -2369,7 +2696,8 @@
     document.querySelector(".xray-atlas").append(live);
 
     $("atlas-search").addEventListener(
-      "submit", event => {
+      "submit",
+      event => {
         event.preventDefault();
 
         const key = countryKey(
@@ -2389,7 +2717,9 @@
           : [];
 
         const name = exact || (
-          partial.length === 1 ? partial[0] : ""
+          partial.length === 1
+            ? partial[0]
+            : ""
         );
 
         if (!name) {
@@ -2408,7 +2738,8 @@
     );
 
     $("atlas-clear").addEventListener(
-      "click", () => {
+      "click",
+      () => {
         selected = "";
         $("atlas-country").value = "";
 
@@ -2445,6 +2776,7 @@
           row => row.name
         ) || []
       ),
+
       ...mapCountries.map(item => item.name)
     ])].sort((a, b) => a.localeCompare(b));
   }
@@ -2485,6 +2817,7 @@
     $("atlas-selection").replaceChildren();
 
     const label = document.createElement("strong");
+
     label.textContent =
       selected || "Select a country";
 
@@ -2493,8 +2826,7 @@
       document.createTextNode(
         selected
           ? row
-            ? " · " + pct(row.weight) +
-              " disclosed exposure"
+            ? " · " + pct(row.weight) + " disclosed exposure"
             : " · not individually disclosed"
           : " · use the map, finder or country ranking"
       )
@@ -2503,13 +2835,31 @@
 
   // INITIALIZATION
 
-  function initialize() {
+  async function initialize() {
+    try {
+      await loadHelpers();
+    } catch (error) {
+      console.warn(
+        "NORTHSTAR X-Ray: helpers unavailable",
+        error
+      );
+
+      $("xray-value-note").textContent =
+        "Portfolio helpers unavailable. Reload after updating the shared files.";
+
+      $("xray-map-loading").textContent =
+        "X-Ray could not load. Your saved purchases are unchanged.";
+
+      return;
+    }
+
     account = readAccount();
 
     setupSky();
     setupNavigation();
     setupAtlas();
     setupEvents();
+    setupCoverage();
 
     render();
 
@@ -2535,11 +2885,13 @@
     };
 
     document.addEventListener(
-      "visibilitychange", resumePrices
+      "visibilitychange",
+      resumePrices
     );
 
     addEventListener(
-      "focus", resumePrices
+      "focus",
+      resumePrices
     );
 
     addEventListener("storage", event => {
@@ -2565,7 +2917,7 @@
     document.addEventListener(
       "DOMContentLoaded",
       initialize,
-      { once: true }
+      {once: true}
     );
   } else {
     initialize();
