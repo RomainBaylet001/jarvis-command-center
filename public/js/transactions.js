@@ -386,7 +386,7 @@
           </div>
 
           <p id="trade-coverage" class="trade-search-status" hidden>
-            X-Ray is temporarily unavailable for portfolios with additional investments.
+            Country data is currently available for VWCE and VFEA. Other holdings remain unanalysed.
           </p>
         </div>
 
@@ -591,10 +591,12 @@
     const undoBar = document.createElement('div');
     undoBar.className = 'trade-undo';
     undoBar.hidden = true;
+
     undoBar.innerHTML = `
       <span>Last change saved.</span>
       <button type="button" id="trade-undo">Undo last change</button>
     `;
+
     status.after(undoBar);
 
     const Assets = window.NorthstarAssets;
@@ -634,10 +636,8 @@
 
     function closeResults() {
       $('trade-results').hidden = true;
-
       $('trade-search').setAttribute('aria-expanded', 'false');
       $('trade-search').removeAttribute('aria-activedescendant');
-
       active = -1;
     }
 
@@ -854,7 +854,10 @@
       }
     });
 
-    document.addEventListener('northstar:catalogue', updateCatalogue);
+    document.addEventListener(
+      'northstar:catalogue',
+      updateCatalogue
+    );
 
     function read() {
       const raw = localStorage.getItem(KEY);
@@ -902,7 +905,6 @@
       } catch (error) {
         snapshot = null;
         $('trade-submit').disabled = true;
-
         message(error.message, true);
       }
 
@@ -965,7 +967,10 @@
           `Edit ${tradeName(item.trade)} purchase dated ${item.trade.date}`
         );
 
-        edit.addEventListener('click', () => startEdit(item.index));
+        edit.addEventListener(
+          'click',
+          () => startEdit(item.index)
+        );
 
         const remove = document.createElement('button');
         remove.type = 'button';
@@ -977,7 +982,10 @@
           `Delete ${tradeName(item.trade)} purchase dated ${item.trade.date}`
         );
 
-        remove.addEventListener('click', () => deleteTrade(item.index));
+        remove.addEventListener(
+          'click',
+          () => deleteTrade(item.index)
+        );
 
         actions.append(edit, remove);
         cell.append(actions);
@@ -1012,7 +1020,9 @@
 
       editor.open = true;
 
-      message('Editing this purchase. Nothing changes until you save.');
+      message(
+        'Editing this purchase. Nothing changes until you save.'
+      );
 
       $('trade-date').focus({preventScroll: true});
 
