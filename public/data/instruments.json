@@ -88,6 +88,176 @@
       "type": "STOCK",
       "name": "NVIDIA Corporation",
       "isin": "US67066G1040"
+    },
+    {
+      "id": "yahoo:XETR:EUNL.DE:EUR",
+      "provider": "yahoo",
+      "symbol": "EUNL.DE",
+      "exchange": "XETR",
+      "currency": "EUR",
+      "type": "ETF",
+      "name": "iShares Core MSCI World UCITS ETF USD (Acc)",
+      "isin": "IE00B4L5Y983"
+    },
+    {
+      "id": "yahoo:XETR:IS3N.DE:EUR",
+      "provider": "yahoo",
+      "symbol": "IS3N.DE",
+      "exchange": "XETR",
+      "currency": "EUR",
+      "type": "ETF",
+      "name": "iShares Core MSCI Emerging Markets IMI UCITS ETF USD (Acc)",
+      "isin": "IE00BKM4GZ66"
+    },
+    {
+      "id": "yahoo:XETR:SXRV.DE:EUR",
+      "provider": "yahoo",
+      "symbol": "SXRV.DE",
+      "exchange": "XETR",
+      "currency": "EUR",
+      "type": "ETF",
+      "name": "iShares NASDAQ 100 UCITS ETF USD (Acc)",
+      "isin": "IE00B53SZB19"
+    },
+    {
+      "id": "yahoo:XETR:IUSQ.DE:EUR",
+      "provider": "yahoo",
+      "symbol": "IUSQ.DE",
+      "exchange": "XETR",
+      "currency": "EUR",
+      "type": "ETF",
+      "name": "iShares MSCI ACWI UCITS ETF USD (Acc)",
+      "isin": "IE00B6R52259"
+    },
+    {
+      "id": "yahoo:XETR:VUAA.DE:EUR",
+      "provider": "yahoo",
+      "symbol": "VUAA.DE",
+      "exchange": "XETR",
+      "currency": "EUR",
+      "type": "ETF",
+      "name": "Vanguard S&P 500 UCITS ETF USD (Acc)",
+      "isin": "IE00BFMXXD54"
+    },
+    {
+      "id": "yahoo:NMS:AMZN:USD",
+      "provider": "yahoo",
+      "symbol": "AMZN",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Amazon.com, Inc.",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:GOOGL:USD",
+      "provider": "yahoo",
+      "symbol": "GOOGL",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Alphabet Inc. Class A",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:META:USD",
+      "provider": "yahoo",
+      "symbol": "META",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Meta Platforms, Inc. Class A",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:TSLA:USD",
+      "provider": "yahoo",
+      "symbol": "TSLA",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Tesla, Inc.",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:AVGO:USD",
+      "provider": "yahoo",
+      "symbol": "AVGO",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Broadcom Inc.",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:AMD:USD",
+      "provider": "yahoo",
+      "symbol": "AMD",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Advanced Micro Devices, Inc.",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:NFLX:USD",
+      "provider": "yahoo",
+      "symbol": "NFLX",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Netflix, Inc.",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:COST:USD",
+      "provider": "yahoo",
+      "symbol": "COST",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Costco Wholesale Corporation",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:ADBE:USD",
+      "provider": "yahoo",
+      "symbol": "ADBE",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Adobe Inc.",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:PEP:USD",
+      "provider": "yahoo",
+      "symbol": "PEP",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "PepsiCo, Inc.",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:CSCO:USD",
+      "provider": "yahoo",
+      "symbol": "CSCO",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "Cisco Systems, Inc.",
+      "isin": ""
+    },
+    {
+      "id": "yahoo:NMS:QCOM:USD",
+      "provider": "yahoo",
+      "symbol": "QCOM",
+      "exchange": "NMS",
+      "currency": "USD",
+      "type": "STOCK",
+      "name": "QUALCOMM Incorporated",
+      "isin": ""
     }
   ]
 }
