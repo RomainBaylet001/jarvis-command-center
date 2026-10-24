@@ -1,0 +1,181 @@
+name: NORTHSTAR - Stocks and ETF Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    # UTC: covers European and US regular sessions in summer and winter.
+    - cron: '37 7-22 * * 1-5'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  update-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Check catalogue and updater
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          catalogue='public/data/instruments.json'
+
+          if [[ -f "$catalogue" && -f "$catalogue." ]]; then
+            echo '::error::Two catalogue files exist. Keep only public/data/instruments.json.'
+            exit 1
+          fi
+
+          if [[ ! -f "$catalogue" && -f "$catalogue." ]]; then
+            git mv -- "$catalogue." "$catalogue"
+            echo 'Removed the extra dot from the catalogue filename.'
+          fi
+
+          for file in "$catalogue" scripts/update-market-data.py; do
+            if [[ ! -s "$file" ]]; then
+              echo "::error file=$file::Required file is missing or empty."
+              exit 1
+            fi
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install market-data dependencies
+        run: >-
+          python -m pip install
+          'yfinance>=0.2.60,<2'
+          'exchange-calendars>=4.11,<5'
+
+      - name: Check market update window
+        id: window
+        shell: bash
+        run: |
+          python - <<'PY'
+          import importlib.util
+          import os
+          from datetime import datetime, timedelta, timezone
+          from pathlib import Path
+
+          import exchange_calendars as xcals
+          import pandas as pd
+
+          path = Path('scripts/update-market-data.py')
+          spec = importlib.util.spec_from_file_location('northstar_market', path)
+          market = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(market)
+          catalogue = market.load_catalog(market.CATALOG)
+
+          now = datetime.now(timezone.utc)
+          should_run = os.environ.get('GITHUB_EVENT_NAME') != 'schedule'
+
+          exchanges = {
+              item['exchange']
+              for item in catalogue['instruments']
+          }
+
+          for exchange in exchanges:
+              calendar_name, _, zone = market.MARKETS[exchange]
+              local_day = pd.Timestamp(now).tz_convert(zone).date()
+
+              calendar = xcals.get_calendar(
+                  calendar_name,
+                  start=str(local_day - timedelta(days=7)),
+                  end=str(local_day + timedelta(days=7)),
+              )
+
+              label = pd.Timestamp(local_day)
+
+              if not calendar.is_session(label):
+                  continue
+
+              opening = calendar.session_open(label)
+              closing = (
+                  calendar.session_close(label)
+                  + timedelta(minutes=90)
+              )
+
+              if opening <= now <= closing:
+                  should_run = True
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(
+                  f'run={str(should_run).lower()}\n'
+              )
+
+          print(
+              'Updating catalogue data.'
+              if should_run
+              else 'Outside market update windows; skipped.'
+          )
+          PY
+
+      - name: Retrieve stock, ETF and currency data
+        if: steps.window.outputs.run == 'true'
+        run: python scripts/update-market-data.py
+
+      - name: Commit generated data
+        if: steps.window.outputs.run == 'true'
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          git add -- public/data/instruments.json public/data/market-data.json
+
+          if git diff --cached --quiet; then
+            echo 'publish=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m 'Update Northstar stocks, ETFs and currency data'
+
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+
+            if git push origin HEAD:main; then
+              echo 'publish=true' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          echo '::error::Could not push the data update after three attempts.'
+          exit 1
+
+      - name: Configure GitHub Pages
+        if: steps.changes.outputs.publish == 'true'
+        uses: actions/configure-pages@v5
+
+      - name: Upload website
+        if: steps.changes.outputs.publish == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+      - name: Publish website
+        if: steps.changes.outputs.publish == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4
